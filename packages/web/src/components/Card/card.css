@@ -1,0 +1,16 @@
+.flip_card {
+  background: black;
+  color: black;
+  border: 0.3rem solid white;
+}
+
+.normal_face {
+  background: initial;
+  color: initial;
+}
+.flip_image {
+  z-index: -1;
+}
+.normal_image {
+  z-index: 1;
+}
