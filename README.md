@@ -1,4 +1,4 @@
-# react-card-game
+# 56-card-game
 
 A multliplayer game built with socket.io + react + nodejs + typescript.
 
@@ -15,4 +15,3 @@ yarn run run-server
 yarn run run-client
 
 Navigate to <http://localhost:3000>.
-# 56-card-game
