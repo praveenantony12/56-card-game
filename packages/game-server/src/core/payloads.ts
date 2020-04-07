@@ -7,11 +7,11 @@ export class Payloads {
    */
   public static sendCards(cards: string[]): common.GameActionResponse {
     const data: common.ICards = {
-      cards
+      cards,
     };
     return {
       action: common.MESSAGES.cards,
-      data
+      data,
     };
   }
 
@@ -21,11 +21,11 @@ export class Payloads {
    */
   public static sendNotifyTurn(currentPlayerId): common.GameActionResponse {
     const data: common.INotifyTurn = {
-      currentPlayerId
+      currentPlayerId,
     };
     return {
       action: common.MESSAGES.turnInfo,
-      data
+      data,
     };
   }
 
@@ -35,7 +35,7 @@ export class Payloads {
   public static sendCardDropAccepted(): common.GameActionResponse {
     return {
       action: common.MESSAGES.cardDropAccepted,
-      data: {}
+      data: {},
     };
   }
 
@@ -45,11 +45,29 @@ export class Payloads {
    */
   public static sendDroppedCards(cards: string[]): common.GameActionResponse {
     const data: common.IDroppedCards = {
-      cards
+      cards,
     };
     return {
       action: common.MESSAGES.droppedCards,
-      data
+      data,
+    };
+  }
+
+  /**
+   * Forms reponse to notify the dropped card.
+   * @param cards The card to send.
+   */
+  public static sendBetByPlayer(
+    playerBet: string,
+    playerId: string
+  ): common.GameActionResponse {
+    const data: common.IPlayerBet = {
+      playerBet,
+      playerId,
+    };
+    return {
+      action: common.MESSAGES.incrementBetByPlayer,
+      data,
     };
   }
 
@@ -59,11 +77,11 @@ export class Payloads {
    */
   public static sendTeamACards(cards: string[]): common.GameActionResponse {
     const data: common.ITeamACards = {
-      cards
+      cards,
     };
     return {
       action: common.MESSAGES.teamACards,
-      data
+      data,
     };
   }
 
@@ -73,11 +91,11 @@ export class Payloads {
    */
   public static sendTeamBCards(cards: string[]): common.GameActionResponse {
     const data: common.ITeamBCards = {
-      cards
+      cards,
     };
     return {
       action: common.MESSAGES.teamBCards,
-      data
+      data,
     };
   }
 
@@ -87,11 +105,11 @@ export class Payloads {
    */
   public static sendTableCards(cards: string[]): common.GameActionResponse {
     const data: common.ITableCards = {
-      cards
+      cards,
     };
     return {
       action: common.MESSAGES.tableCards,
-      data
+      data,
     };
   }
 
@@ -101,11 +119,11 @@ export class Payloads {
    */
   public static sendGameOver(winnerId: string): common.GameActionResponse {
     const data: common.IGameOver = {
-      winnerId
+      winnerId,
     };
     return {
       action: common.MESSAGES.gameOver,
-      data
+      data,
     };
   }
 
@@ -115,11 +133,11 @@ export class Payloads {
    */
   public static sendGameAborted(reason: string): common.GameActionResponse {
     const data: common.IGameAborted = {
-      reason
+      reason,
     };
     return {
       action: common.MESSAGES.gameAborted,
-      data
+      data,
     };
   }
 
@@ -129,11 +147,11 @@ export class Payloads {
    */
   public static sendPenality(cards: string[]): common.GameActionResponse {
     const data: common.IPenality = {
-      cards
+      cards,
     };
     return {
       action: common.MESSAGES.penality,
-      data
+      data,
     };
   }
 
@@ -143,11 +161,11 @@ export class Payloads {
    */
   public static sendPlayersInfo(players: string[]): common.GameActionResponse {
     const data: common.IPlayers = {
-      players
+      players,
     };
     return {
       action: common.MESSAGES.playerInfo,
-      data
+      data,
     };
   }
 }

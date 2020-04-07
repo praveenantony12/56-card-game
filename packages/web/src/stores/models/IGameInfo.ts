@@ -4,6 +4,8 @@ export interface IGame {
   teamACards?: string[];
   teamBCards?: string[];
   tableCards?: string[];
+  currentBet?: string;
+  currentBetPlayerId?: string;
   notification?: string;
   canStartGame?: boolean;
   yourTurn?: boolean;

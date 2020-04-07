@@ -2,23 +2,24 @@ import {
   deckWonByTeamAPayload,
   deckWonByTeamBPayload,
   dropCardPayload,
+  incrementBetByPlayerPayload,
   loginPayload,
   pingPayload,
   ResponseType,
   restartGamePayload,
   selectPlayerPayload,
-  SuccessResponse
+  SuccessResponse,
 } from "@rcg/common";
 import * as io from "socket.io-client";
 
 const ifDevelopment = process.env.NODE_ENV === "development";
 const connection = ifDevelopment
-  ? "http://75.177.132.239:90"
-  : // "http://192.168.1.220:4500/"
-    document.location.protocol + "//" + document.location.host;
+  ? // ? "http://75.177.132.239:90" :
+    "http://192.168.1.220:4500/"
+  : document.location.protocol + "//" + document.location.host;
 
 const ioClient: SocketIOClient.Socket = io(connection, {
-  timeout: 200000
+  timeout: 200000,
 });
 
 class GameService {
@@ -84,6 +85,22 @@ class GameService {
     token: string
   ): Promise<any> {
     return this.sendRequest(selectPlayerPayload(playerId, gameId, token));
+  }
+
+  /**
+   * Sends the increased bet to the game server.
+   * @param playerId The player Id selected
+   * @param gameId The gameId
+   * @param token The user token
+   */
+  public incrementBetByPlayer(
+    playerBet: string,
+    gameId: string,
+    token: string
+  ): Promise<any> {
+    return this.sendRequest(
+      incrementBetByPlayerPayload(playerBet, gameId, token)
+    );
   }
 
   /**

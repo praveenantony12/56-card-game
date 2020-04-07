@@ -2,10 +2,12 @@ import {
   DeckWonByTeamARequestPayload,
   DeckWonByTeamBRequestPayload,
   DropCardRequestPayload,
+  IncrementBetByPlayerRequestPayload,
   GameActionResponse,
   RESPONSE_CODES,
   RestartGameRequestPayload,
-  SelectPlayerRequestPayload
+  SelectPlayerRequestPayload,
+  incrementBetByPlayerPayload,
   // TableCardsRequestPayload
 } from "@rcg/common";
 
@@ -62,7 +64,7 @@ export class GameCore {
         socketId: socket.id,
         playerId,
         token: getUniqueId(),
-        gameId: this.currentGameId
+        gameId: this.currentGameId,
       };
 
       this.playersPool.push(player);
@@ -93,16 +95,15 @@ export class GameCore {
    */
   public startGame(gameId: string, players: IPlayer[]) {
     const gameObject = this.createGameObject(players);
-
     this.inMemoryStore.saveGame(gameId, gameObject);
 
-    gameObject.players.forEach(player => {
+    gameObject.players.forEach((player) => {
       this.sendCards(player.socketId, gameObject[player.token]);
     });
 
     this.sendPlayersInfo(
       gameId,
-      players.map(x => x.playerId)
+      players.map((x) => x.playerId)
     );
 
     this.notifyTurn(gameId);
@@ -130,6 +131,15 @@ export class GameCore {
       dropCardPayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
+    const incrementBetPayload: GameActionResponse = Payloads.sendBetByPlayer(
+      "27",
+      this.playersPoolForReGame[0].playerId
+    );
+    response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      incrementBetPayload
+    );
+    this.ioServer.to(req.gameId).emit("data", response);
   }
 
   /**
@@ -144,10 +154,6 @@ export class GameCore {
     }
 
     const currentGameIns = new Game(this.inMemoryStore, gameId, card, token);
-    const gameObj = this.inMemoryStore.fetchGame(gameId);
-
-    console.log("CURRENT TURN ===> " + JSON.stringify(gameObj.currentTurn));
-    console.log("MAX TURN ===> " + JSON.stringify(gameObj.maxTurn));
 
     // This is possible in only hacky way of sending rather than from the UI.
     // So softly deny it and don't operate on this.
@@ -156,9 +162,42 @@ export class GameCore {
       return;
     }
 
-    // if (gameObj.currentTurn !== gameObj.maxTurn) {
     this.rotateStrike(currentGameIns, cb);
-    // }
+  }
+
+  /**
+   * The event handles for increasing the current player bet.
+   * @param req The IncrementBetByPlayerRequest.
+   */
+  public onIncrementBetByPlayer(
+    req: IncrementBetByPlayerRequestPayload,
+    cb: Function
+  ) {
+    const { gameId, token } = req;
+    const currentGameIns = new Game(this.inMemoryStore, gameId, "", token);
+    const gameObj = this.inMemoryStore.fetchGame(req.gameId);
+    const player = currentGameIns.gameObj.players.find(
+      (element) => element.token === currentGameIns.currentPlayerToken
+    );
+    gameObj.currentBet = req.playerBet;
+    gameObj.playerWithCurrentBet = player.playerId;
+    const IncrementBetByPlayerPayload: GameActionResponse = Payloads.sendBetByPlayer(
+      req.playerBet,
+      player.playerId
+    );
+    let response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      IncrementBetByPlayerPayload
+    );
+    this.ioServer.to(req.gameId).emit("data", response);
+    this.inMemoryStore.saveGame(req.gameId, gameObj);
+    const dropCardPayload: GameActionResponse = Payloads.sendDroppedCards([]);
+    response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      dropCardPayload
+    );
+    this.ioServer.to(req.gameId).emit("data", response);
+    this.inMemoryStore.saveGame(req.gameId, gameObj);
   }
 
   /**
@@ -167,8 +206,6 @@ export class GameCore {
    */
   public onDeckWonByTeamA(req: DeckWonByTeamARequestPayload, cb: Function) {
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
-    // const dropCards =
-    //   gameObj && gameObj.dropDetails ? Object.keys(gameObj.dropDetails) : [];
     const dropCards = gameObj && gameObj.dropDetails ? gameObj.dropDetails : [];
     const alreadyFoldedCardsLength =
       gameObj.teamACards.length + gameObj.teamBCards.length;
@@ -259,11 +296,11 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(gameId);
 
     const playerToPlay = gameObj.players.find(
-      player => player.playerId === currentPlayerId
+      (player) => player.playerId === currentPlayerId
     );
 
     const playerIndex = gameObj.players.findIndex(
-      player => player.playerId === currentPlayerId
+      (player) => player.playerId === currentPlayerId
     );
 
     const selectedPlayerObj = gameObj.players.slice(
@@ -423,11 +460,13 @@ export class GameCore {
     game["teamBCards"] = [];
     game["tableCards"] = [];
     game["dropDetails"] = [];
+    game["currentBet"] = "27";
+    game["playerWithCurrentBet"] = players[0].playerId;
 
     const cards: string[][] = this.deck.getCardsForGame();
-    console.log("CARDS FOR THE GAME => " + JSON.stringify(cards));
-    const sortedCards = cards.map(handCards => this.deck.sortCards(handCards));
-    console.log("SORTED CARDS => " + JSON.stringify(sortedCards));
+    const sortedCards = cards.map((handCards) =>
+      this.deck.sortCards(handCards)
+    );
 
     for (let idx in players) {
       const player: IPlayer = players[idx];
@@ -453,7 +492,7 @@ export class GameCore {
     }
 
     const index = this.playersPool.filter(
-      o => o.playerId === playerId || o.socketId === socketId
+      (o) => o.playerId === playerId || o.socketId === socketId
     ).length;
 
     if (index > 0) {

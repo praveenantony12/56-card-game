@@ -1,11 +1,8 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
-import { Dimmer, Grid, Label } from "semantic-ui-react";
+import { Button, Dimmer, Grid, Icon, Label } from "semantic-ui-react";
 import { IStore } from "../../stores/IStore";
 import Card from "../Card/Card";
-// import Draggable from "react-draggable"; // The default
-// import { DraggableCore } from "react-draggable"; // <DraggableCore>
-// import Draggable, { DraggableCore } from "react-draggable";
 
 import "./game-grid.css";
 
@@ -32,7 +29,9 @@ class GameGrid extends React.Component<IProps, {}> {
       droppedCards,
       players,
       teamACards,
-      teamBCards
+      teamBCards,
+      currentBet,
+      currentBetPlayerId,
     } = this.store.game;
 
     const { gameId } = this.store.user;
@@ -56,7 +55,18 @@ class GameGrid extends React.Component<IProps, {}> {
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
         <Grid stackable={true} id="game-grid">
-          <Grid.Column width={16}>
+          <Grid.Column width={4}>
+            <h5 className="ui dividing header">Bidding</h5>
+            {this.playerBidding(
+              currentBet,
+              currentBetPlayerId,
+              droppedCards,
+              teamACards,
+              teamBCards
+            )}
+          </Grid.Column>
+
+          <Grid.Column width={12}>
             <h5 className="ui dividing header">Who starts next round</h5>
             {this.selectPlayerStart(players, droppedCards)}
           </Grid.Column>
@@ -74,7 +84,6 @@ class GameGrid extends React.Component<IProps, {}> {
           <Grid.Column width={16}>
             <h5 className="ui dividing header">Who won the current round</h5>
             {firstPlayer &&
-              lastPlayer &&
               players &&
               this.renderTeamButtons(
                 firstPlayer,
@@ -102,21 +111,50 @@ class GameGrid extends React.Component<IProps, {}> {
             </h5>
             {this.renderCards(teamBCards, false, true)}
           </Grid.Column>
-          {/* <Grid.Column width={16} className="teamCards">
-            <React.Fragment>
-              <h5 className="ui dividing header">RESTART</h5>
-              <a
-                className="ui image label gameOptionsButton"
-                onClick={this.handleRestartGameClick.bind(this, gameId)}
-              >
-                Restart Game
-              </a>
-            </React.Fragment>
-          </Grid.Column> */}
         </Grid>
       </Dimmer.Dimmable>
     );
   }
+
+  private playerBidding = (
+    currentBet?: string,
+    currentBetPlayerId?: string,
+    droppedCards?: string[],
+    teamACards?: string[],
+    teamBCards?: string[]
+  ) => {
+    const gameStarted =
+      (droppedCards && droppedCards.length > 0) ||
+      (teamACards && teamACards.length > 0) ||
+      (teamBCards && teamBCards.length > 0);
+    return (
+      <div className="btn-group">
+        <Button
+          icon={true}
+          className="plusminusButtons"
+          onClick={this.decrement.bind(this, currentBet)}
+          disabled={Number(currentBet) === 28 || gameStarted ? true : false}
+        >
+          <Icon name="minus square outline" />
+        </Button>
+        {currentBet && currentBet > "27" ? (
+          <Label className={gameStarted ? "bidFinal" : "bidInProgress"}>
+            {currentBetPlayerId} bids {currentBet}
+          </Label>
+        ) : (
+          <Label>No bids yet</Label>
+        )}
+        <Button
+          icon={true}
+          className="plusminusButtons"
+          onClick={this.increment.bind(this, currentBet)}
+          disabled={Number(currentBet) === 56 || gameStarted ? true : false}
+        >
+          <Icon name="plus square outline" />
+        </Button>
+      </div>
+    );
+  };
 
   private handleCardClick = (card: string) => {
     const el = document.getElementById(card);
@@ -129,9 +167,19 @@ class GameGrid extends React.Component<IProps, {}> {
     this.store.dropCard(card);
   };
 
+  private increment = (bet: string) => {
+    const currentBet = bet && Number(bet) < 56 ? Number(bet) + 1 : "28";
+    this.store.incrementBetByPlayer(currentBet.toString());
+  };
+
+  private decrement = (bet: string) => {
+    const currentBet = bet && Number(bet) > 29 ? Number(bet) - 1 : "28";
+    this.store.incrementBetByPlayer(currentBet.toString());
+  };
+
   private enableCardClicks = () => {
     const cards = Array.from(document.getElementsByClassName("card-clickable"));
-    cards.forEach(card => card.classList.remove("disabled"));
+    cards.forEach((card) => card.classList.remove("disabled"));
   };
 
   private renderTeamButtons(
@@ -143,7 +191,7 @@ class GameGrid extends React.Component<IProps, {}> {
     return (
       <div className="btn-group">
         {typeof droppedCards === "undefined" ||
-        droppedCards.length === players.length ? (
+        !(droppedCards.length < players.length) ? (
           <React.Fragment>
             <a
               className="ui image label playerSelectButton"
@@ -182,7 +230,7 @@ class GameGrid extends React.Component<IProps, {}> {
       return null;
     }
 
-    return cards.map(card => (
+    return cards.map((card) => (
       <Card
         className={isClickable ? "card-clickable" : "card"}
         id={card}
@@ -234,9 +282,9 @@ class GameGrid extends React.Component<IProps, {}> {
 
   private viewAllCards = () => {
     const teamCards = document.querySelectorAll(".flip_card");
-    teamCards.forEach(teamCard => teamCard.classList.remove("flip_card"));
+    teamCards.forEach((teamCard) => teamCard.classList.remove("flip_card"));
     const teamCardImages = document.querySelectorAll(".flip_image");
-    teamCardImages.forEach(teamCardImage => {
+    teamCardImages.forEach((teamCardImage) => {
       teamCardImage.classList.remove("flip_image");
     });
   };

@@ -23,7 +23,7 @@ export class Game {
     private inMemoryStore: InMemoryStore,
     private currentGameId: string,
     private droppedCard: string,
-    private currentPlayerToken: string
+    public currentPlayerToken: string
   ) {
     this.initialize();
   }
@@ -54,6 +54,22 @@ export class Game {
 
   /**
    *
+   * Sets the current bet.
+   */
+  public set currentBet(bet: string) {
+    this.gameObj.currentBet = bet;
+  }
+
+  /**
+   *
+   * Sets the current player with bet
+   */
+  public set playerWithCurrentBet(player: string) {
+    this.gameObj.playerWithCurrentBet = player;
+  }
+
+  /**
+   *
    * Sets table cards.
    */
   public set tableCards(cards: Array<string>) {
@@ -68,10 +84,26 @@ export class Game {
   }
 
   /**
-   * Gets the current turn.
+   * Get the current turn.
    */
   public get currentTurn(): number {
     return this.gameObj.currentTurn;
+  }
+
+  /**
+   *
+   * Get the current bet.
+   */
+  public get currentBet() {
+    return this.gameObj.currentBet;
+  }
+
+  /**
+   *
+   * Get the current player with bet
+   */
+  public get playerWithCurrentBet() {
+    return this.gameObj.playerWithCurrentBet;
   }
 
   /**
@@ -218,7 +250,7 @@ export class Game {
    * Finds index of the player who was selected to start next round.
    */
   public selectedPlayerIndex(token): number {
-    return this.gameObj.players.findIndex(x => x.token === token);
+    return this.gameObj.players.findIndex((x) => x.token === token);
   }
 
   /**
@@ -285,6 +317,6 @@ export class Game {
     this.gameObj.droppedCards.push(this.droppedCard);
     this.gameObj[this.currentPlayerToken] = this.gameObj[
       this.currentPlayerToken
-    ].filter(x => x !== this.droppedCard);
+    ].filter((x) => x !== this.droppedCard);
   }
 }

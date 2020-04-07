@@ -13,6 +13,8 @@ export interface ICardGame {
   teamBCards: Array<string>;
   tableCards: Array<string>;
   dropDetails: Array<string>;
+  currentBet: any;
+  playerWithCurrentBet: any;
 
   // This is to store the card details by userId/token.
   [token: string]: Array<any>;

@@ -67,7 +67,7 @@ class Store implements IStore {
       if (ack.code === common.RESPONSE_CODES.success) {
         try {
           this.gameInfo.cards = (this.gameInfo.cards || []).filter(
-            x => x !== card
+            (x) => x !== card
           );
         } catch (err) {
           console.log("Error caught while removing child node == > " + err);
@@ -164,6 +164,25 @@ class Store implements IStore {
     }
   }
 
+  public async incrementBetByPlayer(playerBet: string) {
+    const { gameId, token } = this.userInfo;
+    this.clearNotifications();
+    try {
+      const ack: common.SuccessResponse = await this.gameService.incrementBetByPlayer(
+        playerBet,
+        gameId as string,
+        token as string
+      );
+
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log("this.gameInfo.playerBet ===> " + this.gameInfo.currentBet);
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
   public leaveGame() {
     this.gameService.leaveGame();
     this.initializeStore();
@@ -222,6 +241,12 @@ class Store implements IStore {
 
       case common.MESSAGES.droppedCards:
         this.gameInfo.droppedCards = (data as common.IDroppedCards).cards;
+        break;
+
+      case common.MESSAGES.incrementBetByPlayer:
+        console.log("SWITCH incrementBetByPlayer");
+        this.gameInfo.currentBet = (data as common.IPlayerBet).playerBet;
+        this.gameInfo.currentBetPlayerId = (data as common.IPlayerBet).playerId;
         break;
 
       case common.MESSAGES.teamACards:

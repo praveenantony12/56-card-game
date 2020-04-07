@@ -14,6 +14,8 @@ export interface IStore {
 
   deckWonByTeamB(): Promise<any>;
 
+  incrementBetByPlayer(playerBet: string): Promise<any>;
+
   selectPlayer(player: string): Promise<any>;
 
   restartGame(gameId: string): Promise<any>;

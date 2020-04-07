@@ -23,7 +23,15 @@ export interface INotifyTurn {
 /**
  * Dropped response model.
  */
-export interface IDroppedCards {
+export interface IPlayerBet {
+  card: string;
+  playerId: string;
+}
+
+/**
+ * Dropped response model.
+ */
+export interface IPl {
   cards: string[];
 }
 

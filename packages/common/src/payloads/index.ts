@@ -16,6 +16,17 @@ export const dropCardPayload = (
   return { operation: MESSAGES.dropCard, payload: { card, gameId, token } };
 };
 
+export const incrementBetByPlayerPayload = (
+  playerBet: string,
+  gameId: string,
+  token: string
+) => {
+  return {
+    operation: MESSAGES.incrementBetByPlayer,
+    payload: { playerBet, gameId, token },
+  };
+};
+
 export const deckWonByTeamAPayload = (gameId: string) => {
   return { operation: MESSAGES.deckWonByTeamA, payload: { gameId } };
 };
@@ -39,6 +50,6 @@ export const selectPlayerPayload = (
 ) => {
   return {
     operation: MESSAGES.selectPlayer,
-    payload: { currentPlayerId, gameId, token }
+    payload: { currentPlayerId, gameId, token },
   };
 };

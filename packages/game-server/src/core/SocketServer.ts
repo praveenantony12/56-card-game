@@ -3,10 +3,11 @@ import {
   Request,
   SignInRequest,
   DropCardRequestPayload,
+  IncrementBetByPlayerRequestPayload,
   DeckWonByTeamARequestPayload,
   DeckWonByTeamBRequestPayload,
   SelectPlayerRequestPayload,
-  RestartGameRequestPayload
+  RestartGameRequestPayload,
   // TableCardsRequestPayload
 } from "@rcg/common";
 import { GameCore } from "../core/GameCore";
@@ -52,7 +53,7 @@ export class SocketServer {
   private subscribe(socket: SocketIO.Socket) {
     socket.on("data", (data, cb) => this.onDataHandler(socket, data, cb));
 
-    socket.on("error", error => this.onErrorHandler(socket, error));
+    socket.on("error", (error) => this.onErrorHandler(socket, error));
 
     socket.on("disconnect", () => this.onDisconnectHandler(socket));
   }
@@ -87,6 +88,11 @@ export class SocketServer {
       case MESSAGES.dropCard:
         const dropCardRequest = payload as DropCardRequestPayload;
         this.gameCore.onDropCard(dropCardRequest, cb);
+        break;
+
+      case MESSAGES.incrementBetByPlayer:
+        const incrementBetByPlayerRequest = payload as IncrementBetByPlayerRequestPayload;
+        this.gameCore.onIncrementBetByPlayer(incrementBetByPlayerRequest, cb);
         break;
 
       case MESSAGES.deckWonByTeamA:

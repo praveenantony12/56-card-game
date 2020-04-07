@@ -1,6 +1,6 @@
 export const KEYS = {
   loggedIn: "LOGGEDIN",
-  game: "GAME"
+  game: "GAME",
 };
 
-export const MAX_PLAYERS = 6;
+export const MAX_PLAYERS = 2;
