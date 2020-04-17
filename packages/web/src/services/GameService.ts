@@ -14,7 +14,7 @@ import * as io from "socket.io-client";
 
 const ifDevelopment = process.env.NODE_ENV === "development";
 const connection = ifDevelopment
-  ? // ? "http://75.177.132.239:90" :
+  ? // ? "http://75.177.132.239:90"
     "http://192.168.1.220:4500/"
   : document.location.protocol + "//" + document.location.host;
 

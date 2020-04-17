@@ -162,6 +162,19 @@ export class GameCore {
       return;
     }
 
+    // This is to prevent player from cheating by putting a different suit
+    // when the player has the same suit card available
+    if (currentGameIns.isCheating) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "You have the same suit card. Please play one of them!!"
+        )
+      );
+      return;
+    }
+
     this.rotateStrike(currentGameIns, cb);
   }
 

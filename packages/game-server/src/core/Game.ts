@@ -187,8 +187,12 @@ export class Game {
    * Gets the last dropped card.
    */
   public get lastDroppedCard(): string {
-    const lastIndex = this.gameObj.droppedCards.length - 1;
-    return this.gameObj.droppedCards[lastIndex];
+    if (this.gameObj.droppedCards.length > 0) {
+      const lastIndex = this.gameObj.droppedCards.length - 1;
+      return this.gameObj.droppedCards[lastIndex];
+    } else {
+      return null;
+    }
   }
 
   /**
@@ -305,7 +309,7 @@ export class Game {
     if (this.droppedCards.length === 0) {
       this.sameSuitDropped = true;
     } else {
-      this.sameSuitDropped = this.droppedCard[0] === this.lastDroppedCard[0];
+      this.sameSuitDropped = this.droppedCard[1] === this.lastDroppedCard[1];
     }
   }
 

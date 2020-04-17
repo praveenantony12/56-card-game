@@ -1,3 +1,8 @@
 #players-list {
   border-radius: 0;
 }
+.ui.blue.segment:not(.inverted) {
+  border-top: 2px solid;
+  background: #2185d0;
+  color: white;
+}
