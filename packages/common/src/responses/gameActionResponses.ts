@@ -24,14 +24,14 @@ export interface INotifyTurn {
  * Dropped response model.
  */
 export interface IPlayerBet {
-  card: string;
+  playerBet: string;
   playerId: string;
 }
 
 /**
  * Dropped response model.
  */
-export interface IPl {
+export interface IDroppedCards {
   cards: string[];
 }
 
@@ -80,4 +80,12 @@ export interface IPenality extends ICards {}
  */
 export interface IPlayers {
   players: string[];
+}
+
+/**
+ * Players response model.
+ */
+export interface IDropCardPlayer {
+  cardId: string;
+  playerId: string;
 }
