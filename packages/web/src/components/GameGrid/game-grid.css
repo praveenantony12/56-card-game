@@ -161,6 +161,6 @@
 }
 
 .cardHeight {
-  height: 13rem;
+  min-height: 13rem;
   margin-bottom: 1rem;
 }

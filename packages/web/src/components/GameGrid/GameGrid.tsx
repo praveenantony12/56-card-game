@@ -1,8 +1,10 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
 import { Button, Dimmer, Grid, Icon, Label } from "semantic-ui-react";
+import POINTS from "../../constants/points";
 import { IStore } from "../../stores/IStore";
 import Card from "../Card/Card";
+// import POINTS from "../../constants/Points";
 
 import "./game-grid.css";
 
@@ -89,16 +91,18 @@ class GameGrid extends React.Component<IProps, {}> {
               )}
           </Grid.Column>
 
-          <Grid.Column width={8} className="teamCards cardHeight">
+          <Grid.Column width={8} className="teamCards teamACards cardHeight">
             <h5 className="ui dividing header">
               Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
+              <Label className="teamAPoints">0</Label>
             </h5>
             {this.renderCards(teamACards, false, true)}
           </Grid.Column>
 
-          <Grid.Column width={8} className="teamCards cardHeight">
+          <Grid.Column width={8} className="teamCards  teamBCards cardHeight">
             <h5 className="teamCards ui dividing header">
               Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
+              <Label className="teamBPoints">0</Label>
             </h5>
             {this.renderCards(teamBCards, false, true)}
           </Grid.Column>
@@ -288,6 +292,10 @@ class GameGrid extends React.Component<IProps, {}> {
   }
 
   private handleRestartGameClick = (gameId: string) => {
+    const teamAPointsDiv: any = document.querySelectorAll(".teamAPoints");
+    const teamABointsDiv: any = document.querySelectorAll(".teamBPoints");
+    teamAPointsDiv[0].innerText = "0";
+    teamABointsDiv[0].innerText = "0";
     this.store.restartGame(gameId);
   };
 
@@ -298,6 +306,44 @@ class GameGrid extends React.Component<IProps, {}> {
     teamCardImages.forEach((teamCardImage) => {
       teamCardImage.classList.remove("flip_image");
     });
+    this.calculatePoints();
+  };
+
+  private calculatePoints = () => {
+    const teamACardsDiv: any = document.querySelectorAll(".teamACards .card");
+    const teamBCardsDiv: any = document.querySelectorAll(".teamBCards .card");
+    const teamACards = [];
+    const teamBCards = [];
+    for (const card of teamACardsDiv) {
+      teamACards.push(card.id);
+    }
+    for (const card of teamBCardsDiv) {
+      teamBCards.push(card.id);
+    }
+
+    const mappedTeamACards = teamACards.map((card) => {
+      return { card, weight: POINTS[card.slice(2)] };
+    });
+    const mappedTeamBCards = teamBCards.map((card) => {
+      return { card, weight: POINTS[card.slice(2)] };
+    });
+    const totalTeamAPoints = mappedTeamACards.reduce(
+      /* tslint:disable:no-string-literal */
+      (a, b) => a + (b["weight"] || 0),
+      0
+      /* tslint:disable:no-string-literal */
+    );
+    const totalTeamBPoints = mappedTeamBCards.reduce(
+      /* tslint:disable:no-string-literal */
+      (a, b) => a + (b["weight"] || 0),
+      0
+      /* tslint:disable:no-string-literal */
+    );
+
+    const teamAPointsDiv: any = document.querySelectorAll(".teamAPoints");
+    const teamABointsDiv: any = document.querySelectorAll(".teamBPoints");
+    teamAPointsDiv[0].innerText = totalTeamAPoints;
+    teamABointsDiv[0].innerText = totalTeamBPoints;
   };
 
   private gameOptions(cards?: string[], gameId?: string) {
