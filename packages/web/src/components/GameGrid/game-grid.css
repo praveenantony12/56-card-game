@@ -164,3 +164,8 @@
   min-height: 13rem;
   margin-bottom: 1rem;
 }
+
+.clearButton {
+  font-size: 0.75rem !important;
+  background: #2185d0 !important;
+}

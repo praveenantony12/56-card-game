@@ -37,7 +37,7 @@ class GameGrid extends React.Component<IProps, {}> {
       dropCardPlayer,
     } = this.store.game;
 
-    const { gameId } = this.store.user;
+    const { gameId, playerId } = this.store.user;
     const firstPlayer = players && players.length > 0 ? players[0] : "";
     const secondPlayer = players && players.length > 1 ? players[1] : "";
     const thirdPlayer = players && players.length > 2 ? players[2] : "";
@@ -45,6 +45,11 @@ class GameGrid extends React.Component<IProps, {}> {
     const fifthPlayer = players && players.length > 4 ? players[4] : "";
     const lastPlayer =
       players && players.length > 0 ? players[players.length - 1] : "";
+    let isFirstPlayer = false;
+
+    if (players && players.length > 0 && playerId) {
+      isFirstPlayer = players[0] === playerId;
+    }
 
     if (!canStartGame) {
       return null;
@@ -95,6 +100,18 @@ class GameGrid extends React.Component<IProps, {}> {
             <h5 className="ui dividing header">
               Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
               <Label className="teamAPoints">0</Label>
+              <Label>
+                <Button
+                  onClick={this.clearPoints}
+                  animated="fade"
+                  className="clearButton"
+                >
+                  <Button.Content visible={true}>Reset</Button.Content>
+                  <Button.Content hidden={true}>
+                    <Icon name="refresh" />
+                  </Button.Content>
+                </Button>
+              </Label>
             </h5>
             {this.renderCards(teamACards, false, true)}
           </Grid.Column>
@@ -103,6 +120,18 @@ class GameGrid extends React.Component<IProps, {}> {
             <h5 className="teamCards ui dividing header">
               Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
               <Label className="teamBPoints">0</Label>
+              <Label>
+                <Button
+                  onClick={this.clearPoints}
+                  animated="fade"
+                  className="clearButton"
+                >
+                  <Button.Content visible={true}>Reset</Button.Content>
+                  <Button.Content hidden={true}>
+                    <Icon name="refresh" />
+                  </Button.Content>
+                </Button>
+              </Label>
             </h5>
             {this.renderCards(teamBCards, false, true)}
           </Grid.Column>
@@ -110,11 +139,18 @@ class GameGrid extends React.Component<IProps, {}> {
 
         <Grid.Column width={16}>
           <h5 className="ui dividing header">Game options</h5>
-          {this.gameOptions(cards, gameId)}
+          {this.gameOptions(cards, gameId, isFirstPlayer)}
         </Grid.Column>
       </Dimmer.Dimmable>
     );
   }
+
+  private clearPoints = () => {
+    const teamAPointsDiv: any = document.querySelectorAll(".teamAPoints");
+    const teamABointsDiv: any = document.querySelectorAll(".teamBPoints");
+    teamAPointsDiv[0].innerText = 0;
+    teamABointsDiv[0].innerText = 0;
+  };
 
   private playerBidding = (
     currentBet?: string,
@@ -346,26 +382,31 @@ class GameGrid extends React.Component<IProps, {}> {
     teamABointsDiv[0].innerText = totalTeamBPoints;
   };
 
-  private gameOptions(cards?: string[], gameId?: string) {
+  private gameOptions(
+    cards?: string[],
+    gameId?: string,
+    isFirstPlayer?: boolean
+  ) {
+    const isCardsEmpty = typeof cards === "undefined" || cards.length === 0;
+    const showRestartButton = isCardsEmpty || isFirstPlayer;
     return (
       <div className="btn-group">
-        {typeof cards === "undefined" ||
-          (cards.length === 0 && (
-            <React.Fragment>
-              <a
-                className="ui image label gameOptionsButton"
-                onClick={this.handleRestartGameClick.bind(this, gameId)}
-              >
-                <Label as="a">Restart Game</Label>
-              </a>
-              <a
-                className="ui image label gameOptionsButton"
-                onClick={this.viewAllCards.bind(this, gameId)}
-              >
-                <Label as="a">View All Cards</Label>
-              </a>
-            </React.Fragment>
-          ))}
+        {showRestartButton && (
+          <a
+            className="ui image label gameOptionsButton"
+            onClick={this.handleRestartGameClick.bind(this, gameId)}
+          >
+            <Label as="a">Restart Game</Label>
+          </a>
+        )}
+        {isCardsEmpty && (
+          <a
+            className="ui image label gameOptionsButton"
+            onClick={this.viewAllCards.bind(this, gameId)}
+          >
+            <Label as="a">View All Cards</Label>
+          </a>
+        )}
       </div>
     );
   }
