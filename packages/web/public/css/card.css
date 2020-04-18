@@ -21,7 +21,7 @@
   float: left;
   margin-right: 0.5em;
   margin-bottom: 0.5em;
-  box-shadow: 0 1px 2px 0 rgba(2, 15, 27, 0.13);
+  box-shadow: 0 0.35rem 0.25rem 0 rgb(95, 95, 95);
 }
 
 .card-clickable {
@@ -209,7 +209,7 @@
   border: 0.08em solid rgb(101, 54, 200);
 }
 
-.ui.small.table>thead>tr>th {
+.ui.small.table > thead > tr > th {
   background: rgb(101, 54, 200);
   color: white;
 }

@@ -1,6 +1,7 @@
 export * from "./BasePayload";
 export * from "./DropCardRequestPayload";
 export * from "./IncrementBetByPlayerRequestPayload";
+export * from "./DropCardByPlayerRequestPayload";
 export * from "./DeckWonByTeamARequestPayload";
 export * from "./DeckWonByTeamBRequestPayload";
 export * from "./TableCardsRequestPayload";

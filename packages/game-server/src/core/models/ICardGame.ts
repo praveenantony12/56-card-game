@@ -1,4 +1,5 @@
 import { IPlayer } from "./IPlayer";
+import { IDropCardPlayer } from "./IDropCardPlayer";
 import { IDroppedDetails } from "./IDroppedDetails";
 
 /**
@@ -6,6 +7,7 @@ import { IDroppedDetails } from "./IDroppedDetails";
  */
 export interface ICardGame {
   players: [IPlayer];
+  dropCardPlayer: string[];
   currentTurn: any;
   maxTurn: any;
   droppedCards: Array<string>;

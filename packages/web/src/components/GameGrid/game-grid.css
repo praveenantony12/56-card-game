@@ -159,3 +159,8 @@
 .bidFinal {
   background: indianred !important;
 }
+
+.cardHeight {
+  height: 13rem;
+  margin-bottom: 1rem;
+}

@@ -1,6 +1,7 @@
 export interface IGame {
   cards?: string[];
   droppedCards?: string[];
+  dropCardPlayer?: string[];
   teamACards?: string[];
   teamBCards?: string[];
   tableCards?: string[];

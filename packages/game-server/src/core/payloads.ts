@@ -1,4 +1,5 @@
 import * as common from "@rcg/common";
+import { IDropCardPlayer } from "@rcg/common";
 
 export class Payloads {
   /**
@@ -67,6 +68,22 @@ export class Payloads {
     };
     return {
       action: common.MESSAGES.incrementBetByPlayer,
+      data,
+    };
+  }
+
+  /**
+   * Forms reponse to notify the dropped card by player.
+   * @param dropCard The player who dropped card.
+   */
+  public static sendDropCardByPlayer(
+    dropCardPlayer: string[]
+  ): common.GameActionResponse {
+    const data: common.IDropCardPlayer = {
+      dropCardPlayer,
+    };
+    return {
+      action: common.MESSAGES.dropCardPlayer,
       data,
     };
   }

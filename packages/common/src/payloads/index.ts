@@ -11,9 +11,13 @@ export const pingPayload = () => {
 export const dropCardPayload = (
   card: string,
   gameId: string,
-  token: string
+  token: string,
+  playerId: string
 ) => {
-  return { operation: MESSAGES.dropCard, payload: { card, gameId, token } };
+  return {
+    operation: MESSAGES.dropCard,
+    payload: { card, gameId, token, playerId },
+  };
 };
 
 export const incrementBetByPlayerPayload = (
@@ -24,6 +28,13 @@ export const incrementBetByPlayerPayload = (
   return {
     operation: MESSAGES.incrementBetByPlayer,
     payload: { playerBet, gameId, token },
+  };
+};
+
+export const dropCardByPlayerPayload = (dropCardPlayer: string[]) => {
+  return {
+    operation: MESSAGES.dropCardPlayer,
+    payload: { dropCardPlayer },
   };
 };
 

@@ -1,6 +1,7 @@
 import { ICardGame } from "./models/ICardGame";
 import { isCardAvail } from "../utils/misc";
 import { IPlayer } from "./models/IPlayer";
+import { IDropCardPlayer } from "./models/IDropCardPlayer";
 import { Deck } from "../utils/deck";
 import { MAX_PLAYERS } from "../constants/misc";
 import { InMemoryStore } from "../persistence/InMemoryStore";
@@ -161,7 +162,7 @@ export class Game {
    * Identifies whether the user dropped the same suit or not.
    */
   public get isValidCard(): boolean {
-    return this.lastDroppedCard[0] === this.droppedCard[0];
+    return this.firstDroppedCard[1] === this.droppedCard[1];
   }
 
   /**
@@ -170,7 +171,7 @@ export class Game {
   public get isCheating(): boolean {
     const cards = this.gameObj[this.currentPlayer.token];
     // Checking whether he has the same suit card which is been dropped earlier.
-    const doesHeHasTheCorrectCard = isCardAvail(this.lastDroppedCard, cards);
+    const doesHeHasTheCorrectCard = isCardAvail(this.firstDroppedCard, cards);
 
     if (this.isSameSuitDropped) {
       return false;
@@ -181,6 +182,17 @@ export class Game {
     }
 
     return true;
+  }
+
+  /**
+   * Gets the first dropped card.
+   */
+  public get firstDroppedCard(): string {
+    if (this.gameObj.droppedCards.length > 0) {
+      return this.gameObj.droppedCards[0];
+    } else {
+      return null;
+    }
   }
 
   /**
@@ -309,7 +321,7 @@ export class Game {
     if (this.droppedCards.length === 0) {
       this.sameSuitDropped = true;
     } else {
-      this.sameSuitDropped = this.droppedCard[1] === this.lastDroppedCard[1];
+      this.sameSuitDropped = this.droppedCard[1] === this.firstDroppedCard[1];
     }
   }
 

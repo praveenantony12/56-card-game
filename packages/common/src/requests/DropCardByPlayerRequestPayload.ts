@@ -1,6 +1,5 @@
 import { BasePayload } from "./BasePayload";
 
 export interface DropCardRequestPayload extends BasePayload {
-  card: string;
-  playerId: string;
+  dropCardPlayer: string[];
 }

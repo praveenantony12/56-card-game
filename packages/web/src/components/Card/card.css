@@ -14,3 +14,11 @@
 .normal_image {
   z-index: 1;
 }
+.playerLabel {
+  margin-top: 8.5rem;
+  text-align: center;
+  font-size: x-large;
+  font-family: monospace;
+  font-variant-caps: all-petite-caps;
+  color: #5c5c5c;
+}

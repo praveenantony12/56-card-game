@@ -32,25 +32,21 @@ class GameGrid extends React.Component<IProps, {}> {
       teamBCards,
       currentBet,
       currentBetPlayerId,
+      dropCardPlayer,
     } = this.store.game;
 
     const { gameId } = this.store.user;
     const firstPlayer = players && players.length > 0 ? players[0] : "";
-    const secondPlayer = players && players.length > 0 ? players[1] : "";
-    const thirdPlayer = players && players.length > 0 ? players[2] : "";
-    const fourthPlayer = players && players.length > 0 ? players[3] : "";
-    const fifthPlayer = players && players.length > 0 ? players[4] : "";
+    const secondPlayer = players && players.length > 1 ? players[1] : "";
+    const thirdPlayer = players && players.length > 2 ? players[2] : "";
+    const fourthPlayer = players && players.length > 3 ? players[3] : "";
+    const fifthPlayer = players && players.length > 4 ? players[4] : "";
     const lastPlayer =
-      players && players.length > 1 ? players[players.length - 1] : "";
+      players && players.length > 0 ? players[players.length - 1] : "";
 
     if (!canStartGame) {
       return null;
     }
-
-    console.log("Cards ===> " + JSON.stringify(cards));
-    console.log("Dropped Cards ===> " + JSON.stringify(droppedCards));
-    console.log("Team A Cards ===> " + JSON.stringify(teamACards));
-    console.log("Team B Cards ===> " + JSON.stringify(teamBCards));
 
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
@@ -71,17 +67,17 @@ class GameGrid extends React.Component<IProps, {}> {
             {this.selectPlayerStart(players, droppedCards)}
           </Grid.Column>
 
-          <Grid.Column width={10}>
+          <Grid.Column width={16}>
             <h5 className="ui dividing header">Your Cards</h5>
             {this.renderCards(cards, true, false)}
           </Grid.Column>
 
-          <Grid.Column width={6}>
+          <Grid.Column width={10} className="cardHeight">
             <h5 className="ui dividing header">Table</h5>
-            {this.renderCards(droppedCards, false, false)}
+            {this.renderCards(droppedCards, false, false, dropCardPlayer)}
           </Grid.Column>
 
-          <Grid.Column width={16}>
+          <Grid.Column width={6}>
             <h5 className="ui dividing header">Who won the current round</h5>
             {firstPlayer &&
               players &&
@@ -93,25 +89,25 @@ class GameGrid extends React.Component<IProps, {}> {
               )}
           </Grid.Column>
 
-          <Grid.Column width={16}>
-            <h5 className="ui dividing header">Game options</h5>
-            {this.gameOptions(cards, gameId)}
-          </Grid.Column>
-
-          <Grid.Column width={8} className="teamCards">
+          <Grid.Column width={8} className="teamCards cardHeight">
             <h5 className="ui dividing header">
               Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
             </h5>
             {this.renderCards(teamACards, false, true)}
           </Grid.Column>
 
-          <Grid.Column width={8} className="teamCards">
+          <Grid.Column width={8} className="teamCards cardHeight">
             <h5 className="teamCards ui dividing header">
               Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
             </h5>
             {this.renderCards(teamBCards, false, true)}
           </Grid.Column>
         </Grid>
+
+        <Grid.Column width={16}>
+          <h5 className="ui dividing header">Game options</h5>
+          {this.gameOptions(cards, gameId)}
+        </Grid.Column>
       </Dimmer.Dimmable>
     );
   }
@@ -133,7 +129,7 @@ class GameGrid extends React.Component<IProps, {}> {
           icon={true}
           className="plusminusButtons"
           onClick={this.decrement.bind(this, currentBet)}
-          disabled={Number(currentBet) === 28 || gameStarted ? true : false}
+          disabled={Number(currentBet) === 28 || gameStarted}
         >
           <Icon name="minus square outline" />
         </Button>
@@ -148,7 +144,7 @@ class GameGrid extends React.Component<IProps, {}> {
           icon={true}
           className="plusminusButtons"
           onClick={this.increment.bind(this, currentBet)}
-          disabled={Number(currentBet) === 56 || gameStarted ? true : false}
+          disabled={Number(currentBet) === 56 || gameStarted}
         >
           <Icon name="plus square outline" />
         </Button>
@@ -221,10 +217,22 @@ class GameGrid extends React.Component<IProps, {}> {
     }
   }
 
+  private addNameToCardOnTable = (card: string, dropCardPlayer: string[]) => {
+    const playerCardCombo = dropCardPlayer.find(
+      (element) => element.indexOf(card) > -1
+    );
+    if (playerCardCombo && playerCardCombo.split("-").length > 1) {
+      return playerCardCombo.split("-")[1];
+    } else {
+      return "";
+    }
+  };
+
   private renderCards(
     cards?: string[],
     isClickable: boolean = false,
-    flipOver: boolean = false
+    flipOver: boolean = false,
+    dropCardPlayer?: string[]
   ) {
     if (!cards) {
       return null;
@@ -236,6 +244,9 @@ class GameGrid extends React.Component<IProps, {}> {
         id={card}
         key={card}
         card={card}
+        playerName={
+          dropCardPlayer ? this.addNameToCardOnTable(card, dropCardPlayer) : ""
+        }
         style={{ fontSize: "17pt" }}
         disabled={!isClickable}
         onCardClick={this.handleCardClick}
@@ -289,58 +300,6 @@ class GameGrid extends React.Component<IProps, {}> {
     });
   };
 
-  private checkAndDeletePreviousCards(cards?: string[]) {
-    // const existingDeckCards = document.querySelectorAll(".ten .card-clickable");
-    const existingDeckCards = [].slice.call(
-      document.querySelectorAll(".ten .card-clickable")
-    );
-    const parentNode =
-      existingDeckCards.length > 0 ? existingDeckCards[0].parentNode : null;
-
-    // if (cards && parentNode != null) {
-    //   existingDeckCards.forEach((deckCard: any, index: any) => {
-    //     if (deckCard.id !== cards[index]) {
-    //       try {
-    //         parentNode.removeChild(deckCard);
-    //         existingDeckCards.splice(index, 1);
-    //       } catch (err) {
-    //         console.log("Error caught while removing child node == > " + err);
-    //       }
-    //     }
-    //   });
-    // }
-
-    if (cards && parentNode != null) {
-      cards.forEach((card, index) => {
-        if (card !== existingDeckCards[index].id) {
-          const insideIndex = index;
-          while (
-            card !== existingDeckCards[insideIndex].id &&
-            insideIndex < existingDeckCards.length
-          ) {
-            try {
-              parentNode.removeChild(existingDeckCards[insideIndex]);
-              existingDeckCards.splice(insideIndex, 1);
-            } catch (err) {
-              console.log(
-                "Error caught at checkAndDeletePreviousCards == > " + err
-              );
-            }
-          }
-        }
-      });
-      for (let i = cards.length; i < existingDeckCards.length; i++) {
-        try {
-          parentNode.removeChild(existingDeckCards[i]);
-        } catch (err) {
-          console.log(
-            "Error caught at checkAndDeletePreviousCards == > " + err
-          );
-        }
-      }
-    }
-  }
-
   private gameOptions(cards?: string[], gameId?: string) {
     return (
       <div className="btn-group">
@@ -361,12 +320,6 @@ class GameGrid extends React.Component<IProps, {}> {
               </a>
             </React.Fragment>
           ))}
-        <a
-          className="ui image label"
-          onClick={this.checkAndDeletePreviousCards.bind(this, cards)}
-        >
-          <Label as="a">Refresh Cards</Label>
-        </a>
       </div>
     );
   }

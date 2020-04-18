@@ -1,6 +1,7 @@
 import {
   deckWonByTeamAPayload,
   deckWonByTeamBPayload,
+  dropCardByPlayerPayload,
   dropCardPayload,
   incrementBetByPlayerPayload,
   loginPayload,
@@ -10,6 +11,7 @@ import {
   selectPlayerPayload,
   SuccessResponse,
 } from "@rcg/common";
+
 import * as io from "socket.io-client";
 
 const ifDevelopment = process.env.NODE_ENV === "development";
@@ -51,8 +53,13 @@ class GameService {
    * @param gameId The gameId
    * @param token The user token
    */
-  public dropCard(card: string, gameId: string, token: string): Promise<any> {
-    return this.sendRequest(dropCardPayload(card, gameId, token));
+  public dropCard(
+    card: string,
+    gameId: string,
+    token: string,
+    playerId: string
+  ): Promise<any> {
+    return this.sendRequest(dropCardPayload(card, gameId, token, playerId));
   }
 
   /**
@@ -101,6 +108,14 @@ class GameService {
     return this.sendRequest(
       incrementBetByPlayerPayload(playerBet, gameId, token)
     );
+  }
+
+  /**
+   * Sends the dropped cards by player to the game server.
+   * @param dropCardPlayer Player-Card array
+   */
+  public dropCardPlayer(dropCardPlayer: string[]): Promise<any> {
+    return this.sendRequest(dropCardByPlayerPayload(dropCardPlayer));
   }
 
   /**

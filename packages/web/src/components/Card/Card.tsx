@@ -11,6 +11,7 @@ interface IProps {
   className: string;
   disabled: boolean;
   flipOver: boolean;
+  playerName: string;
 }
 
 const Rules: React.SFC<IProps> = ({
@@ -19,7 +20,8 @@ const Rules: React.SFC<IProps> = ({
   onCardClick,
   className,
   disabled,
-  flipOver
+  flipOver,
+  playerName,
 }) => {
   if (!card) {
     return (
@@ -128,6 +130,7 @@ const Rules: React.SFC<IProps> = ({
           {addIfKQJ()}
           {getSymbols()}
         </div>
+        {playerName && <div className="playerLabel">{playerName}</div>}
       </div>
     );
   };
@@ -136,11 +139,10 @@ const Rules: React.SFC<IProps> = ({
     const teamCards = document.querySelectorAll(".teamCards .card");
     const teamCardImages = document.querySelectorAll(".teamCards .card img");
     setTimeout(() => {
-      teamCardImages.forEach(teamCardImage => {
-        // teamCardImage.setAttribute("src", "");
+      teamCardImages.forEach((teamCardImage) => {
         teamCardImage.classList.add("flip_image");
       });
-      teamCards.forEach(teamCard => {
+      teamCards.forEach((teamCard) => {
         if (
           teamCard.firstElementChild &&
           teamCard.firstElementChild.classList

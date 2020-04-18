@@ -55,14 +55,15 @@ class Store implements IStore {
   }
 
   public async dropCard(card: string) {
-    const { gameId, token } = this.userInfo;
+    const { gameId, token, playerId } = this.userInfo;
     this.clearNotifications();
 
     try {
       const ack: common.SuccessResponse = await this.gameService.dropCard(
         card,
         gameId as string,
-        token as string
+        token as string,
+        playerId as string
       );
       if (ack.code === common.RESPONSE_CODES.success) {
         try {
@@ -72,6 +73,25 @@ class Store implements IStore {
         } catch (err) {
           console.log("Error caught while removing child node == > " + err);
         }
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
+  public async dropCardPlayer(dropCardPlayer: string[]) {
+    // const { gameId, token, playerId } = this.userInfo;
+    this.clearNotifications();
+
+    try {
+      const ack: common.SuccessResponse = await this.gameService.dropCardPlayer(
+        dropCardPlayer
+      );
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log(
+          "this.gameInfo.dropCardPlayer ===> " + this.gameInfo.dropCardPlayer
+        );
       }
     } catch (error) {
       console.log("error ===> " + error);
@@ -244,9 +264,12 @@ class Store implements IStore {
         break;
 
       case common.MESSAGES.incrementBetByPlayer:
-        console.log("SWITCH incrementBetByPlayer");
         this.gameInfo.currentBet = (data as common.IPlayerBet).playerBet;
         this.gameInfo.currentBetPlayerId = (data as common.IPlayerBet).playerId;
+        break;
+
+      case common.MESSAGES.dropCardPlayer:
+        this.gameInfo.dropCardPlayer = (data as common.IDropCardPlayer).dropCardPlayer;
         break;
 
       case common.MESSAGES.teamACards:

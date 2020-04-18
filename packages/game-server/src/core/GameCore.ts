@@ -12,6 +12,7 @@ import {
 } from "@rcg/common";
 
 import { IPlayer } from "../core/models/IPlayer";
+import { IDropCardPlayer } from "../core/models/IDropCardPlayer";
 import { successResponse, errorResponse } from "../utils/responses";
 import { Payloads } from "../core/payloads";
 import { Deck } from "../utils/deck";
@@ -27,6 +28,7 @@ import { stringify } from "querystring";
  */
 export class GameCore {
   playersPool: IPlayer[] = [];
+  dropCardPlayer: string[] = [];
   playersPoolForReGame: IPlayer[] = [];
   currentGameId = getUniqueId();
   deck: Deck;
@@ -106,6 +108,10 @@ export class GameCore {
       players.map((x) => x.playerId)
     );
 
+    const gameObj = this.inMemoryStore.fetchGame(gameId);
+    gameObj.dropCardPlayer = [];
+    this.inMemoryStore.saveGame(gameId, gameObj);
+
     this.notifyTurn(gameId);
   }
 
@@ -131,6 +137,17 @@ export class GameCore {
       dropCardPayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
+    // const dropCardByPlayerPayload: GameActionResponse = Payloads.sendDropCardByPlayer(
+    //   []
+    // );
+    // response = successResponse(
+    //   RESPONSE_CODES.gameNotification,
+    //   dropCardByPlayerPayload
+    // );
+    // this.ioServer.to(req.gameId).emit("data", response);
+    const gameObj = this.inMemoryStore.fetchGame(req.gameId);
+    gameObj.dropCardPlayer = [];
+    this.inMemoryStore.saveGame(req.gameId, gameObj);
     const incrementBetPayload: GameActionResponse = Payloads.sendBetByPlayer(
       "27",
       this.playersPoolForReGame[0].playerId
@@ -140,6 +157,7 @@ export class GameCore {
       incrementBetPayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
+    this.dropCardPlayer = [];
   }
 
   /**
@@ -147,7 +165,7 @@ export class GameCore {
    * @param req The dropCardRequest.
    */
   public onDropCard(req: DropCardRequestPayload, cb: Function) {
-    const { card, gameId, token } = req;
+    const { card, gameId, token, playerId } = req;
     if (!card) {
       cb(null, errorResponse(RESPONSE_CODES.failed, "Invalid card!!"));
       return;
@@ -175,6 +193,19 @@ export class GameCore {
       return;
     }
 
+    const gameObj = this.inMemoryStore.fetchGame(req.gameId);
+    const dropCardPlayer = `${card}-${playerId}`;
+    this.dropCardPlayer.push(dropCardPlayer);
+    const DropCardByPlayerPayload: GameActionResponse = Payloads.sendDropCardByPlayer(
+      this.dropCardPlayer
+    );
+    let response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      DropCardByPlayerPayload
+    );
+    this.ioServer.to(req.gameId).emit("data", response);
+    gameObj.dropCardPlayer.push(dropCardPlayer);
+    this.inMemoryStore.saveGame(req.gameId, gameObj);
     this.rotateStrike(currentGameIns, cb);
   }
 
@@ -473,6 +504,7 @@ export class GameCore {
     game["teamBCards"] = [];
     game["tableCards"] = [];
     game["dropDetails"] = [];
+    game["dropCardPlayer"] = [];
     game["currentBet"] = "27";
     game["playerWithCurrentBet"] = players[0].playerId;
 
