@@ -10,6 +10,7 @@
 
 .card {
   border: 1px solid #6536c842;
+  margin-bottom: 2.5rem !important;
 }
 
 .card,

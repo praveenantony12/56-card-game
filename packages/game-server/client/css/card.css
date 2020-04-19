@@ -10,6 +10,7 @@
 
 .card {
   border: 1px solid #6536c842;
+  margin-bottom: 2.5rem !important;
 }
 
 .card,
@@ -209,7 +210,7 @@
   border: 0.08em solid rgb(101, 54, 200);
 }
 
-.ui.small.table>thead>tr>th {
+.ui.small.table > thead > tr > th {
   background: rgb(101, 54, 200);
   color: white;
 }
