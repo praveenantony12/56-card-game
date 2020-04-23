@@ -1,4 +1,5 @@
 import * as React from "react";
+import Footer from "../../components/Footer/Footer";
 import Header from "../../components/Header/Header";
 import Game from "../Game/Game";
 
@@ -12,6 +13,7 @@ class Home extends React.Component<{}, {}> {
         <div className="container">
           <Game />
         </div>
+        <Footer />
       </React.Fragment>
     );
   }

@@ -1,5 +1,5 @@
 import { BasePayload } from "./BasePayload";
 
-export interface DropCardRequestPayload extends BasePayload {
+export interface DropCardByPlayerRequestPayload extends BasePayload {
   dropCardPlayer: string[];
 }

@@ -86,6 +86,5 @@ export interface IPlayers {
  * Players response model.
  */
 export interface IDropCardPlayer {
-  cardId: string;
-  playerId: string;
+  dropCardPlayer: string[];
 }

@@ -1,0 +1,15 @@
+.footer {
+  position: fixed;
+  text-align: center;
+  opacity: 0.5;
+  bottom: 0.5rem;
+  right: 1%;
+}
+
+@media only screen and (max-width: 480px) {
+  .footer {
+    font-size: x-small;
+    left: 25%;
+    right: 25%;
+  }
+}
