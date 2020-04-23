@@ -169,3 +169,16 @@
   font-size: 0.75rem !important;
   background: #2185d0 !important;
 }
+
+.ui.inverted.dimmer {
+  background-color: rgb(245, 247, 247, 0.5) !important;
+  font-family: cursive;
+}
+
+@media only screen and (max-width: 480px) {
+  .ui.inverted.dimmer {
+    font-size: x-small;
+    left: 25%;
+    font-size: x-small;
+  }
+}
