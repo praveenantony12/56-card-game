@@ -130,11 +130,12 @@ export class SocketServer {
    * @param socket The socket instance.
    */
   private onDisconnectHandler(socket: SocketIO.Socket) {
-    LoggerService.log("Disconnected", "Socket disconnected");
+    LoggerService.log("Disconnected", `Socket disconnected - ${socket.id}`);
 
     const { gameInfo } = socket as any;
 
     if (gameInfo) {
+      LoggerService.log("Disconnected", `Player ID - ${gameInfo.playerId}`);
       this.gameCore.abortGame((socket as any).gameInfo.gameId);
     }
   }
