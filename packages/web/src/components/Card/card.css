@@ -1,7 +1,7 @@
 .flip_card {
-  background: black;
-  color: black;
-  border: 0.3rem solid white;
+  background-image: url("./cardBack.gif");
+  background-size: 100% 100%;
+  font-size: 0;
 }
 
 .normal_face {
