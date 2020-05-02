@@ -77,7 +77,7 @@ class GameGrid extends React.Component<IProps, {}> {
           <Grid.Column width={16}>
             <h5 className="ui dividing header">Your Cards</h5>
             <Dimmer active={!yourTurn} inverted={true} className="myCards">
-              <Loader>Wait untill your turn!</Loader>
+              <Loader>Wait for your turn!</Loader>
             </Dimmer>
             {this.renderCards(cards, true, false)}
           </Grid.Column>
