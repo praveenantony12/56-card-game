@@ -1,6 +1,6 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
-import { Button, Dimmer, Grid, Icon, Label, Loader } from "semantic-ui-react";
+import { Button, Dimmer, Grid, Icon, Label } from "semantic-ui-react";
 import POINTS from "../../constants/points";
 import { IStore } from "../../stores/IStore";
 import Card from "../Card/Card";
@@ -76,9 +76,9 @@ class GameGrid extends React.Component<IProps, {}> {
 
           <Grid.Column width={16}>
             <h5 className="ui dividing header">Your Cards</h5>
-            <Dimmer active={!yourTurn} inverted={true} className="myCards">
+            {/* <Dimmer active={!yourTurn} inverted={true} className="myCards">
               <Loader>Wait!</Loader>
-            </Dimmer>
+            </Dimmer> */}
             {this.renderCards(cards, true, false)}
           </Grid.Column>
 

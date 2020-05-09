@@ -85,12 +85,12 @@
 // ];
 
 export const cardToWeightageDict = {
-  J: 3,
-  "9": 2,
-  A: 1,
+  J: 4,
+  "9": 3,
+  A: 2,
   "10": 1,
   K: 0,
-  Q: 0
+  Q: 0,
 };
 
 export const names = ["A", "9", "10", "J", "Q", "K"];
