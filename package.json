@@ -11,12 +11,14 @@
     "run:server": "cd ./packages/game-server && yarn start",
     "build:client": "cd ./packages/web && yarn run build",
     "build:common": "cd ./packages/common && yarn run build",
-    "build:server": "cd ./packages/game-server && yarn run build"
+    "build:server": "cd ./packages/game-server && yarn run build",
+    "start": "concurrently \"yarn run:server\" \"yarn run:client\""
   },
   "dependencies": {
     "yarn": "^1.22.4",
-    "react-draggable": "4.2.0",
-    "react-bootstrap": "1.0.0",
-    "mdbreact": "4.25.6"
+    "react-draggable": "^4.2.0",
+    "react-bootstrap": "^1.0.0",
+    "mdbreact": "^4.25.6",
+    "concurrently": "^5.2.0"
   }
 }
