@@ -6,6 +6,7 @@ export interface IGame {
   teamBCards?: string[];
   tableCards?: string[];
   currentBet?: string;
+  gameScore?: string;
   currentBetPlayerId?: string;
   notification?: string;
   canStartGame?: boolean;

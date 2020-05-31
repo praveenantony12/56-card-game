@@ -10,6 +10,7 @@ export const MESSAGES = {
   playAgain: "PLAY_AGAIN",
   dropCard: "DROP_CARD",
   incrementBetByPlayer: "INCREMENT_BET_BY_PLAYER",
+  updateGameScore: "UPDATE_GAME_SCORE",
   dropCardPlayer: "DROP_CARD_PLAYER",
   deckWonByTeamA: "DECK_WON_BY_TEAM_A",
   deckWonByTeamB: "DECK_WON_BY_TEAM_B",

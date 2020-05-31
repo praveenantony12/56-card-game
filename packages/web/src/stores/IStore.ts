@@ -16,6 +16,8 @@ export interface IStore {
 
   incrementBetByPlayer(playerBet: string): Promise<any>;
 
+  updateGameScore(gameScore: string): Promise<any>;
+
   selectPlayer(player: string): Promise<any>;
 
   restartGame(gameId: string): Promise<any>;

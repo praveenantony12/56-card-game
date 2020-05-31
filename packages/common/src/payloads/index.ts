@@ -31,6 +31,17 @@ export const incrementBetByPlayerPayload = (
   };
 };
 
+export const updateGameScorePayload = (
+  gameScore: string,
+  gameId: string,
+  token: string
+) => {
+  return {
+    operation: MESSAGES.updateGameScore,
+    payload: { gameScore, gameId, token },
+  };
+};
+
 export const dropCardByPlayerPayload = (dropCardPlayer: string[]) => {
   return {
     operation: MESSAGES.dropCardPlayer,

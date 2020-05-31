@@ -1,5 +1,8 @@
 #players-list {
-  border-radius: 0;
+  border-radius: 1rem;
+}
+.ui.segment {
+  text-align: center;
 }
 .ui.blue.segment:not(.inverted) {
   border-top: 2px solid;
@@ -7,4 +10,5 @@
   background-image: url("./background.gif");
   background-size: 100% 100%;
   color: white;
+  text-align: center;
 }

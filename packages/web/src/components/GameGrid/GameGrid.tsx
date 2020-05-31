@@ -46,32 +46,45 @@ class GameGrid extends React.Component<IProps, {}> {
     const lastPlayer =
       players && players.length > 0 ? players[players.length - 1] : "";
     let isFirstPlayer = false;
+    let isLastPlayer = false;
+    const gameStarted =
+      (droppedCards && droppedCards.length > 0) ||
+      (teamACards && teamACards.length > 0) ||
+      (teamBCards && teamBCards.length > 0);
 
     if (players && players.length > 0 && playerId) {
       isFirstPlayer = players[0] === playerId;
+    }
+
+    if (players && players.length > 0 && playerId) {
+      isLastPlayer = players[players.length - 1] === playerId;
     }
 
     if (!canStartGame) {
       return null;
     }
 
+    const { gameScore } = !this.store.game.gameScore
+      ? { gameScore: "0" }
+      : this.store.game;
+
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
         <Grid stackable={true} id="game-grid">
           <Grid.Column width={4}>
             <h5 className="ui dividing header">Bidding</h5>
-            {this.playerBidding(
-              currentBet,
-              currentBetPlayerId,
-              droppedCards,
-              teamACards,
-              teamBCards
-            )}
+            {this.playerBidding(currentBet, currentBetPlayerId, gameStarted)}
           </Grid.Column>
 
           <Grid.Column width={12}>
-            <h5 className="ui dividing header">Who starts next round</h5>
-            {this.selectPlayerStart(players, droppedCards)}
+            <h5 className="ui dividing header">Scoring</h5>
+            {this.scorePoints(
+              gameScore,
+              gameStarted,
+              firstPlayer,
+              lastPlayer,
+              isLastPlayer
+            )}
           </Grid.Column>
 
           <Grid.Column width={16}>
@@ -82,12 +95,17 @@ class GameGrid extends React.Component<IProps, {}> {
             {this.renderCards(cards, true, false)}
           </Grid.Column>
 
-          <Grid.Column width={10} className="cardHeight">
+          <Grid.Column width={16} className="cardHeight">
             <h5 className="ui dividing header">Table</h5>
             {this.renderCards(droppedCards, false, false, dropCardPlayer)}
           </Grid.Column>
 
-          <Grid.Column width={6}>
+          <Grid.Column width={12} className="marginBottom2">
+            <h5 className="ui dividing header">Who starts next round</h5>
+            {this.selectPlayerStart(players, droppedCards)}
+          </Grid.Column>
+
+          <Grid.Column width={4} className="marginBottom2">
             <h5 className="ui dividing header">Who won the current round</h5>
             {firstPlayer &&
               players &&
@@ -158,14 +176,8 @@ class GameGrid extends React.Component<IProps, {}> {
   private playerBidding = (
     currentBet?: string,
     currentBetPlayerId?: string,
-    droppedCards?: string[],
-    teamACards?: string[],
-    teamBCards?: string[]
+    gameStarted?: boolean
   ) => {
-    const gameStarted =
-      (droppedCards && droppedCards.length > 0) ||
-      (teamACards && teamACards.length > 0) ||
-      (teamBCards && teamBCards.length > 0);
     return (
       <div className="btn-group">
         <Button
@@ -193,6 +205,45 @@ class GameGrid extends React.Component<IProps, {}> {
         </Button>
       </div>
     );
+  };
+
+  private scorePoints = (
+    gameScore?: string,
+    gameStarted?: boolean,
+    firstPlayer?: string,
+    lastPlayer?: string,
+    isLastPlayer?: boolean
+  ) => {
+    // const value = { value: 10 };
+    const teamAScore = 0 - Number(gameScore);
+    const teamBScore = 0 + Number(gameScore);
+    const isDisabled = gameStarted || !isLastPlayer;
+    return (
+      <div className="scoreContainer">
+        <Label className="scoringLabel">
+          {firstPlayer}'s Team: {teamAScore}
+        </Label>
+        <input
+          type="range"
+          min="-10"
+          max="10"
+          step="1"
+          value={gameScore}
+          className="slider"
+          id="gameScoreSlider"
+          data-show-value="true"
+          disabled={isDisabled}
+          onChange={this.updateScore.bind(event)}
+        />
+        <Label className="scoringLabel">
+          {lastPlayer}'s Team: {teamBScore}
+        </Label>
+      </div>
+    );
+  };
+
+  private updateScore = (event: any) => {
+    this.store.updateGameScore(event.target.value);
   };
 
   private handleCardClick = (card: string) => {

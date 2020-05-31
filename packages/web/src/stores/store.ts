@@ -203,6 +203,25 @@ class Store implements IStore {
     }
   }
 
+  public async updateGameScore(gameScore: string) {
+    const { gameId, token } = this.userInfo;
+    this.clearNotifications();
+    try {
+      const ack: common.SuccessResponse = await this.gameService.updateGameScore(
+        gameScore,
+        gameId as string,
+        token as string
+      );
+
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log("this.gameInfo.gameScore ===> " + this.gameInfo.gameScore);
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
   public leaveGame() {
     this.gameService.leaveGame();
     this.initializeStore();
@@ -266,6 +285,10 @@ class Store implements IStore {
       case common.MESSAGES.incrementBetByPlayer:
         this.gameInfo.currentBet = (data as common.IPlayerBet).playerBet;
         this.gameInfo.currentBetPlayerId = (data as common.IPlayerBet).playerId;
+        break;
+
+      case common.MESSAGES.updateGameScore:
+        this.gameInfo.gameScore = (data as common.IGameScore).gameScore;
         break;
 
       case common.MESSAGES.dropCardPlayer:

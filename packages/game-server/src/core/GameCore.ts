@@ -3,6 +3,7 @@ import {
   DeckWonByTeamBRequestPayload,
   DropCardRequestPayload,
   IncrementBetByPlayerRequestPayload,
+  UpdateGameScoreRequestPayload,
   GameActionResponse,
   RESPONSE_CODES,
   RestartGameRequestPayload,
@@ -239,6 +240,24 @@ export class GameCore {
     response = successResponse(
       RESPONSE_CODES.gameNotification,
       dropCardPayload
+    );
+    this.ioServer.to(req.gameId).emit("data", response);
+    this.inMemoryStore.saveGame(req.gameId, gameObj);
+  }
+
+  /**
+   * The event handles for updating the current score.
+   * @param req The UpdateGameScoreRequest.
+   */
+  public onUpdateGameScore(req: UpdateGameScoreRequestPayload, cb: Function) {
+    const gameObj = this.inMemoryStore.fetchGame(req.gameId);
+    gameObj.gameScore = req.gameScore;
+    const UpdateGameScorePayload: GameActionResponse = Payloads.sendUpdatedGameScore(
+      req.gameScore
+    );
+    let response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      UpdateGameScorePayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
     this.inMemoryStore.saveGame(req.gameId, gameObj);

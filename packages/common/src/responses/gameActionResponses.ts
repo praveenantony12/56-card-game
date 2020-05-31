@@ -21,11 +21,18 @@ export interface INotifyTurn {
 }
 
 /**
- * Dropped response model.
+ * Player Bet response model.
  */
 export interface IPlayerBet {
   playerBet: string;
   playerId: string;
+}
+
+/**
+ * Game Scpre response model.
+ */
+export interface IGameScore {
+  gameScore: string;
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   restartGamePayload,
   selectPlayerPayload,
   SuccessResponse,
+  updateGameScorePayload,
 } from "@rcg/common";
 
 import * as io from "socket.io-client";
@@ -109,6 +110,20 @@ class GameService {
     return this.sendRequest(
       incrementBetByPlayerPayload(playerBet, gameId, token)
     );
+  }
+
+  /**
+   * Sends the update game score to the game server.
+   * @param gameScore The updated score for all games combined
+   * @param gameId The gameId
+   * @param token The user token
+   */
+  public updateGameScore(
+    gameScore: string,
+    gameId: string,
+    token: string
+  ): Promise<any> {
+    return this.sendRequest(updateGameScorePayload(gameScore, gameId, token));
   }
 
   /**

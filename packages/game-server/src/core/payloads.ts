@@ -55,8 +55,9 @@ export class Payloads {
   }
 
   /**
-   * Forms reponse to notify the dropped card.
-   * @param cards The card to send.
+   * Forms reponse to notify the updated Bet.
+   * @param playerBet The player bet to send
+   * @param playerId The player Id who made the bet to send.
    */
   public static sendBetByPlayer(
     playerBet: string,
@@ -73,8 +74,24 @@ export class Payloads {
   }
 
   /**
-   * Forms reponse to notify the dropped card by player.
-   * @param dropCard The player who dropped card.
+   * Forms reponse to notify the updated Score.
+   * @param gameScore The game score to send
+   */
+  public static sendUpdatedGameScore(
+    gameScore: string
+  ): common.GameActionResponse {
+    const data: common.IGameScore = {
+      gameScore,
+    };
+    return {
+      action: common.MESSAGES.updateGameScore,
+      data,
+    };
+  }
+
+  /**
+   * Forms reponse to notify the updated game score.
+   * @param game The player who dropped card.
    */
   public static sendDropCardByPlayer(
     dropCardPlayer: string[]

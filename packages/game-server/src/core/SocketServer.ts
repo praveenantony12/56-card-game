@@ -4,6 +4,7 @@ import {
   SignInRequest,
   DropCardRequestPayload,
   IncrementBetByPlayerRequestPayload,
+  UpdateGameScoreRequestPayload,
   DeckWonByTeamARequestPayload,
   DeckWonByTeamBRequestPayload,
   SelectPlayerRequestPayload,
@@ -93,6 +94,11 @@ export class SocketServer {
       case MESSAGES.incrementBetByPlayer:
         const incrementBetByPlayerRequest = payload as IncrementBetByPlayerRequestPayload;
         this.gameCore.onIncrementBetByPlayer(incrementBetByPlayerRequest, cb);
+        break;
+
+      case MESSAGES.updateGameScore:
+        const updateGameScoreRequest = payload as UpdateGameScoreRequestPayload;
+        this.gameCore.onUpdateGameScore(updateGameScoreRequest, cb);
         break;
 
       case MESSAGES.deckWonByTeamA:
