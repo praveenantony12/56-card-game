@@ -12,3 +12,8 @@
   color: white;
   text-align: center;
 }
+
+text-align {
+  border: 1px;
+  margin-bottom: 1px;
+}
