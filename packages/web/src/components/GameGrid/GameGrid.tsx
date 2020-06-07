@@ -95,7 +95,7 @@ class GameGrid extends React.Component<IProps, {}> {
             {this.renderCards(cards, true, false)}
           </Grid.Column>
 
-          <Grid.Column width={16} className="cardHeight">
+          <Grid.Column width={16} className="cardHeight cardTable">
             <h5 className="ui dividing header">Table</h5>
             {this.renderCards(droppedCards, false, false, dropCardPlayer)}
           </Grid.Column>

@@ -190,3 +190,9 @@
   background: #4caf50; /* Green background */
   cursor: pointer; /* Cursor on hover */
 }
+
+.cardTable {
+  background: url("./cardTable3.png") no-repeat;
+  background-size: 100% 37.5rem;
+  height: 29rem;
+}
