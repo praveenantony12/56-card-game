@@ -215,9 +215,9 @@
 
 .scoreSlider {
   opacity: 1 !important;
-  top: 35%;
+  top: 30%;
   transform: rotate(270deg);
-  width: 7%;
+  width: 9%;
 }
 
 .hideSlider {
