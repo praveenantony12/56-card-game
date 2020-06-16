@@ -1,6 +1,6 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
-import { Grid, Segment } from "semantic-ui-react";
+import { Button, Grid, Icon, Label } from "semantic-ui-react";
 import { IStore } from "../../stores/IStore";
 import { IGame } from "../../stores/models/IGameInfo";
 
@@ -25,36 +25,62 @@ class PlayersList extends React.Component<IProps, {}> {
     return this.renderList();
   }
 
+  private handlePlayerSelectClick = (playerId: string) => {
+    this.store.selectPlayer(playerId);
+  };
+
   private renderList() {
     const { players, currentPlayerId } = this.gameInfo;
+    const { droppedCards } = this.store.game;
+
+    const canSelectPlayer =
+      typeof droppedCards === "undefined" || droppedCards.length === 0;
 
     if (!players) {
       return null;
     }
 
-    const currentPlayerStrikeHighLightColor = (player: string) =>
-      player === currentPlayerId ? "blue" : undefined;
-
-    const rows = players.map(player => {
+    const rows = players.map((player) => {
       return (
-        <Grid.Column key={player}>
-          <Segment
+        <Grid.Column textAlign="center" key={player}>
+          {/* <Segment
             color={currentPlayerStrikeHighLightColor(player)}
             id="players-list"
+          > */}
+          <Button
+            as="div"
+            labelPosition="right"
+            disabled={
+              canSelectPlayer || player === currentPlayerId ? false : true
+            }
+            onClick={
+              canSelectPlayer
+                ? this.handlePlayerSelectClick.bind(this, player)
+                : false
+            }
           >
-            {player}
-          </Segment>
+            <Button color={player === currentPlayerId ? "red" : "grey"}>
+              <Icon name="user" />
+              {player}
+            </Button>
+            <Label
+              as="a"
+              basic={true}
+              color={player === currentPlayerId ? "red" : "grey"}
+              pointing="left"
+            >
+              {player === currentPlayerId ? "Play" : "Wait"}
+            </Label>
+          </Button>
+          {/* </Segment> */}
         </Grid.Column>
       );
     });
 
     return (
-      <div>
-        <h5 className="ui dividing header">Players in the game!</h5>
-        <Grid columns="equal">
-          <Grid.Row>{rows}</Grid.Row>
-        </Grid>
-      </div>
+      <Grid className="playersGrid" columns="equal">
+        <Grid.Row>{rows}</Grid.Row>
+      </Grid>
     );
   }
 }

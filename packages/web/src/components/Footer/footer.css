@@ -5,6 +5,7 @@
   bottom: 0.5rem;
   right: 1%;
   font-size: x-small;
+  color: whitesmoke;
 }
 
 @media only screen and (max-width: 480px) {

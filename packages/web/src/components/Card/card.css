@@ -1,5 +1,5 @@
 .flip_card {
-  background-image: url("./cardBack.gif");
+  background-image: url("./cardBack.png");
   background-size: 100% 100%;
   font-size: 0;
 }
@@ -20,5 +20,5 @@
   font-size: x-large;
   font-family: monospace;
   font-variant-caps: all-petite-caps;
-  color: #5c5c5c;
+  color: black;
 }

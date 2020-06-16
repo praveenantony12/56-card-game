@@ -1,19 +1,11 @@
-#players-list {
-  border-radius: 1rem;
-}
-.ui.segment {
-  text-align: center;
-}
-.ui.blue.segment:not(.inverted) {
-  border-top: 2px solid;
-  background: #2185d0;
-  background-image: url("./background.gif");
-  background-size: 100% 100%;
-  color: white;
-  text-align: center;
+.playersGrid {
+  padding: 2rem 0 0 !important;
 }
 
-text-align {
-  border: 1px;
-  margin-bottom: 1px;
+.playerIcon {
+  color: white;
+}
+
+.playerSelectButton {
+  opacity: 0.7 !important;
 }

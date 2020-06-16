@@ -25,7 +25,11 @@ class Header extends React.Component<IProps, {}> {
 
   public render() {
     return (
-      <Menu attached={true} size="small">
+      <Menu
+        attached={true}
+        size="small"
+        className={this.store.user.isSignedIn ? "hide" : "show"}
+      >
         <Menu.Item>
           <h5>56</h5>
         </Menu.Item>

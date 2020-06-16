@@ -192,7 +192,59 @@
 }
 
 .cardTable {
-  background: url("./cardTable3.png") no-repeat;
-  background-size: 100% 37.5rem;
-  height: 29rem;
+  background: url("./cardTable4.png") no-repeat;
+  height: 35rem;
+  background-position: center;
+}
+
+.cardOnTable {
+  display: flex;
+  justify-content: center;
+  padding-top: 13rem;
+}
+
+.myCards {
+  display: flex;
+  justify-content: center;
+  margin: -2.5rem 0 3rem;
+}
+
+.biddingGrid {
+  margin-top: 1rem;
+}
+
+.scoreSlider {
+  opacity: 1 !important;
+  top: 35%;
+  transform: rotate(270deg);
+  width: 7%;
+}
+
+.hideSlider {
+  display: none;
+}
+
+.showSlider {
+  display: inline;
+  cursor: pointer;
+}
+
+.ui .buttons {
+  width: 50%;
+}
+
+.teamCards {
+  margin: 1rem;
+}
+
+.teamAButtonGroup {
+  padding-left: 1rem !important;
+}
+
+.teamBButtonGroup {
+  padding-right: 1rem !important;
+}
+
+.showCursor {
+  cursor: pointer;
 }
