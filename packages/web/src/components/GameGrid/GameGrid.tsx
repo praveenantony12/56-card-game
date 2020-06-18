@@ -189,13 +189,13 @@ class GameGrid extends React.Component<IProps, {}> {
 
         <Grid centered={true}>
           <Grid.Row centered={true} columns={2}>
-            <Grid.Column textAlign="center">
+            <Grid.Column textAlign="left">
               <Button.Group className="teamAButtonGroup">
                 <Button as="div" labelPosition="left">
-                  <Label as="a" basic={true} color="grey" pointing="right">
+                  <Label as="a" basic={true} color="black" pointing="right">
                     Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
                   </Label>
-                  <Button color="grey" className="teamAPoints">
+                  <Button color="black" className="teamAPoints">
                     0
                   </Button>
                 </Button>
@@ -203,7 +203,7 @@ class GameGrid extends React.Component<IProps, {}> {
                   <Label
                     as="a"
                     basic={true}
-                    color="grey"
+                    color="black"
                     onClick={this.clearPoints}
                     className="showCursor"
                   >
@@ -215,13 +215,13 @@ class GameGrid extends React.Component<IProps, {}> {
                 {this.renderCards(teamACards, false, true)}
               </div>
             </Grid.Column>
-            <Grid.Column textAlign="center">
+            <Grid.Column textAlign="right">
               <Button.Group className="teamBButtonGroup">
                 <Button as="div" labelPosition="left">
-                  <Label as="a" basic={true} color="grey" pointing="right">
+                  <Label as="a" basic={true} color="black" pointing="right">
                     Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
                   </Label>
-                  <Button color="grey" className="teamBPoints">
+                  <Button color="black" className="teamBPoints">
                     0
                   </Button>
                 </Button>
@@ -229,7 +229,7 @@ class GameGrid extends React.Component<IProps, {}> {
                   <Label
                     as="a"
                     basic={true}
-                    color="grey"
+                    color="black"
                     onClick={this.clearPoints}
                     className="showCursor"
                   >
