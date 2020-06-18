@@ -189,8 +189,8 @@ class GameGrid extends React.Component<IProps, {}> {
 
         <Grid centered={true}>
           <Grid.Row centered={true} columns={2}>
-            <Grid.Column>
-              <Button.Group fluid={true} className="teamAButtonGroup">
+            <Grid.Column textAlign="center">
+              <Button.Group className="teamAButtonGroup">
                 <Button as="div" labelPosition="left">
                   <Label as="a" basic={true} color="grey" pointing="right">
                     Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
@@ -198,6 +198,8 @@ class GameGrid extends React.Component<IProps, {}> {
                   <Button color="grey" className="teamAPoints">
                     0
                   </Button>
+                </Button>
+                <Button as="div" labelPosition="right">
                   <Label
                     as="a"
                     basic={true}
@@ -213,8 +215,8 @@ class GameGrid extends React.Component<IProps, {}> {
                 {this.renderCards(teamACards, false, true)}
               </div>
             </Grid.Column>
-            <Grid.Column>
-              <Button.Group fluid={true} className="teamBButtonGroup">
+            <Grid.Column textAlign="center">
+              <Button.Group className="teamBButtonGroup">
                 <Button as="div" labelPosition="left">
                   <Label as="a" basic={true} color="grey" pointing="right">
                     Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
@@ -222,6 +224,8 @@ class GameGrid extends React.Component<IProps, {}> {
                   <Button color="grey" className="teamBPoints">
                     0
                   </Button>
+                </Button>
+                <Button as="div" labelPosition="right">
                   <Label
                     as="a"
                     basic={true}
