@@ -68,7 +68,7 @@ class Header extends React.Component<IProps, {}> {
       <Form className="signin-form">
         <Input action={true} placeholder="Player name">
           <input type="text" ref={this.onTextRef} />
-          <Button type="submit" color="blue" onClick={this.onSignIn}>
+          <Button type="submit" color="black" onClick={this.onSignIn}>
             Sign In
           </Button>
         </Input>
