@@ -189,7 +189,7 @@ class GameGrid extends React.Component<IProps, {}> {
 
         <Grid centered={true}>
           <Grid.Row centered={true} columns={2}>
-            <Grid.Column textAlign="left">
+            <Grid.Column textAlign="center">
               <Button.Group className="teamAButtonGroup">
                 <Button as="div" labelPosition="left">
                   <Label as="a" basic={true} color="black" pointing="right">
@@ -215,7 +215,7 @@ class GameGrid extends React.Component<IProps, {}> {
                 {this.renderCards(teamACards, false, true)}
               </div>
             </Grid.Column>
-            <Grid.Column textAlign="right">
+            <Grid.Column textAlign="center">
               <Button.Group className="teamBButtonGroup">
                 <Button as="div" labelPosition="left">
                   <Label as="a" basic={true} color="black" pointing="right">
