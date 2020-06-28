@@ -2,3 +2,11 @@
   margin-right: 80px;
   padding: 0px;
 }
+
+.hide {
+  display: none !important;
+}
+
+.show {
+  display: block;
+}

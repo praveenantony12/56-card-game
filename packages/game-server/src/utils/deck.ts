@@ -16,13 +16,13 @@ export class Deck {
   }
 
   public sortCards(cards: Array<string>) {
-    const mapped = cards.map(card => {
+    const mapped = cards.map((card) => {
       return { card: card, weight: cardToWeightageDict[card.slice(2)] };
     });
 
     const mappedByWeight = this.sortByWeight(mapped);
     const mappedByName = this.sortByName(mappedByWeight);
-    return mappedByName.map(m => m.card);
+    return mappedByName.map((m) => m.card);
   }
 
   public sortByWeight(cards) {
@@ -30,7 +30,7 @@ export class Deck {
   }
 
   public sortByName(cards) {
-    return cards.sort(function(a, b) {
+    return cards.sort(function (a, b) {
       if (a.card[1] < b.card[1]) {
         return -1;
       }
@@ -50,9 +50,9 @@ export class Deck {
     let start,
       end = 0;
 
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < 8; i++) {
       start = end;
-      end = start + 8;
+      end = start + 6;
       cards.push(shuffled.slice(start, end));
     }
     return cards;

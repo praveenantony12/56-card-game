@@ -25,7 +25,11 @@ class Header extends React.Component<IProps, {}> {
 
   public render() {
     return (
-      <Menu attached={true} size="small">
+      <Menu
+        attached={true}
+        size="small"
+        className={this.store.user.isSignedIn ? "hide" : "show"}
+      >
         <Menu.Item>
           <h5>56</h5>
         </Menu.Item>
@@ -64,7 +68,7 @@ class Header extends React.Component<IProps, {}> {
       <Form className="signin-form">
         <Input action={true} placeholder="Player name">
           <input type="text" ref={this.onTextRef} />
-          <Button type="submit" color="blue" onClick={this.onSignIn}>
+          <Button type="submit" color="black" onClick={this.onSignIn}>
             Sign In
           </Button>
         </Input>

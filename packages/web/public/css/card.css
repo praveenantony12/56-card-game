@@ -22,7 +22,7 @@
   float: left;
   margin-right: 0.5em;
   margin-bottom: 0.5em;
-  box-shadow: 0 0.35rem 0.25rem 0 rgb(95, 95, 95);
+  box-shadow: 2px 0rem 1rem 1px rgb(6, 6, 6);
 }
 
 .card-clickable {
