@@ -271,144 +271,6 @@ class GameGrid extends React.Component<IProps, {}> {
             </Button.Group>
           </Grid.Row>
         </Grid>
-
-        {/* Divider */}
-
-        {/* <Grid centered={true}>
-          <Grid.Row centered={true} columns={4}>
-            <Grid.Column width={8} className="teamCards teamACards cardHeight">
-              <h5 className="ui dividing header">
-                Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
-                <Label className="teamAPoints">0</Label>
-                <Label>
-                  <Button
-                    onClick={this.clearPoints}
-                    animated="fade"
-                    className="clearButton"
-                  >
-                    <Button.Content visible={true}>Reset</Button.Content>
-                    <Button.Content hidden={true}>
-                      <Icon name="refresh" />
-                    </Button.Content>
-                  </Button>
-                </Label>
-              </h5>
-              {this.renderCards(teamACards, false, true)}
-            </Grid.Column>
-            <Grid.Column width={8} className="teamCards  teamBCards cardHeight">
-              <h5 className="teamCards ui dividing header">
-                Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
-                <Label className="teamBPoints">0</Label>
-                <Label>
-                  <Button
-                    onClick={this.clearPoints}
-                    animated="fade"
-                    className="clearButton"
-                  >
-                    <Button.Content visible={true}>Reset</Button.Content>
-                    <Button.Content hidden={true}>
-                      <Icon name="refresh" />
-                    </Button.Content>
-                  </Button>
-                </Label>
-              </h5>
-              {this.renderCards(teamBCards, false, true)}
-            </Grid.Column>
-          </Grid.Row>
-        </Grid>
-
-        <Grid stackable={true} id="game-grid">
-          <Grid.Column width={4}>
-            <h5 className="ui dividing header">Bidding</h5>
-            {this.playerBidding(currentBet, currentBetPlayerId, gameStarted)}
-          </Grid.Column>
-
-          <Grid.Column width={12}>
-            <h5 className="ui dividing header">Scoring</h5>
-            {this.scorePoints(
-              gameScore,
-              gameStarted,
-              firstPlayer,
-              lastPlayer,
-              isLastPlayer
-            )}
-          </Grid.Column>
-
-          <Grid.Column width={16}>
-            <h5 className="ui dividing header">Your Cards</h5> */}
-        {/* <Dimmer active={!yourTurn} inverted={true} className="myCards">
-              <Loader>Wait!</Loader>
-            </Dimmer> */}
-        {/* {this.renderCards(cards, true, false)}
-          </Grid.Column> */}
-
-        {/* <Grid.Column width={16} className="cardHeight cardTable">
-            <h5 className="ui dividing header">Table</h5>
-            {this.renderCards(droppedCards, false, false, dropCardPlayer)}
-          </Grid.Column> */}
-
-        {/* <Grid.Column width={12} className="marginBottom2">
-            <h5 className="ui dividing header">Who starts next round</h5>
-            {this.selectPlayerStart(players, droppedCards)}
-          </Grid.Column>
-
-          <Grid.Column width={4} className="marginBottom2">
-            <h5 className="ui dividing header">Who won the current round</h5>
-            {firstPlayer &&
-              players &&
-              this.renderTeamButtons(
-                firstPlayer,
-                lastPlayer,
-                players,
-                droppedCards
-              )}
-          </Grid.Column> */}
-
-        {/* <Grid.Column width={8} className="teamCards teamACards cardHeight">
-            <h5 className="ui dividing header">
-              Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
-              <Label className="teamAPoints">0</Label>
-              <Label>
-                <Button
-                  onClick={this.clearPoints}
-                  animated="fade"
-                  className="clearButton"
-                >
-                  <Button.Content visible={true}>Reset</Button.Content>
-                  <Button.Content hidden={true}>
-                    <Icon name="refresh" />
-                  </Button.Content>
-                </Button>
-              </Label>
-            </h5>
-            {this.renderCards(teamACards, false, true)}
-          </Grid.Column>
-
-          <Grid.Column width={8} className="teamCards  teamBCards cardHeight">
-            <h5 className="teamCards ui dividing header">
-              Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
-              <Label className="teamBPoints">0</Label>
-              <Label>
-                <Button
-                  onClick={this.clearPoints}
-                  animated="fade"
-                  className="clearButton"
-                >
-                  <Button.Content visible={true}>Reset</Button.Content>
-                  <Button.Content hidden={true}>
-                    <Icon name="refresh" />
-                  </Button.Content>
-                </Button>
-              </Label>
-            </h5>
-            {this.renderCards(teamBCards, false, true)}
-          </Grid.Column> */}
-        {/* </Grid>
-
-        <Grid.Column width={16}>
-          <h5 className="ui dividing header">Game options</h5>
-          {this.gameOptions(cards, gameId, isFirstPlayer)}
-        </Grid.Column> */}
       </Dimmer.Dimmable>
     );
   }
@@ -419,75 +281,6 @@ class GameGrid extends React.Component<IProps, {}> {
     teamAPointsDiv[0].innerText = 0;
     teamABointsDiv[0].innerText = 0;
   };
-
-  // private playerBidding = (
-  //   currentBet?: string,
-  //   currentBetPlayerId?: string,
-  //   gameStarted?: boolean
-  // ) => {
-  //   return (
-  //     <div className="btn-group">
-  //       <Button
-  //         icon={true}
-  //         className="plusminusButtons"
-  //         onClick={this.decrement.bind(this, currentBet)}
-  //         disabled={Number(currentBet) === 28 || gameStarted}
-  //       >
-  //         <Icon name="minus square outline" />
-  //       </Button>
-  //       {currentBet && currentBet > "27" ? (
-  //         <Label className={gameStarted ? "bidFinal" : "bidInProgress"}>
-  //           {currentBetPlayerId} bids {currentBet}
-  //         </Label>
-  //       ) : (
-  //         <Label>No bids yet</Label>
-  //       )}
-  //       <Button
-  //         icon={true}
-  //         className="plusminusButtons"
-  //         onClick={this.increment.bind(this, currentBet)}
-  //         disabled={Number(currentBet) === 56 || gameStarted}
-  //       >
-  //         <Icon name="plus square outline" />
-  //       </Button>
-  //     </div>
-  //   );
-  // };
-
-  // private scorePoints = (
-  //   gameScore?: string,
-  //   gameStarted?: boolean,
-  //   firstPlayer?: string,
-  //   lastPlayer?: string,
-  //   isLastPlayer?: boolean
-  // ) => {
-  //   // const value = { value: 10 };
-  //   const teamAScore = 0 - Number(gameScore);
-  //   const teamBScore = 0 + Number(gameScore);
-  //   const isDisabled = gameStarted || !isLastPlayer;
-  //   return (
-  //     <div className="scoreContainer">
-  //       <Label className="scoringLabel">
-  //         {firstPlayer}'s Team: {teamAScore}
-  //       </Label>
-  //       <input
-  //         type="range"
-  //         min="-10"
-  //         max="10"
-  //         step="1"
-  //         value={gameScore}
-  //         className="slider"
-  //         id="gameScoreSlider"
-  //         data-show-value="true"
-  //         disabled={isDisabled}
-  //         onChange={this.updateScore.bind(event)}
-  //       />
-  //       <Label className="scoringLabel">
-  //         {lastPlayer}'s Team: {teamBScore}
-  //       </Label>
-  //     </div>
-  //   );
-  // };
 
   private updateScore = (event: any) => {
     this.store.updateGameScore(event.target.value);
@@ -518,37 +311,6 @@ class GameGrid extends React.Component<IProps, {}> {
     const cards = Array.from(document.getElementsByClassName("card-clickable"));
     cards.forEach((card) => card.classList.remove("disabled"));
   };
-
-  // private renderTeamButtons(
-  //   firstPlayer: string,
-  //   lastPlayer: string,
-  //   players: string[],
-  //   droppedCards?: string[]
-  // ) {
-  //   return (
-  //     <div className="btn-group">
-  //       {typeof droppedCards === "undefined" ||
-  //       !(droppedCards.length < players.length) ? (
-  //         <React.Fragment>
-  //           <a
-  //             className="ui image label playerSelectButton"
-  //             onClick={this.handleRoundWinnerButtonClick.bind(this, "A")}
-  //           >
-  //             <Label as="a">{firstPlayer}'s Team</Label>
-  //           </a>
-  //           <a
-  //             className="ui image label playerSelectButton"
-  //             onClick={this.handleRoundWinnerButtonClick.bind(this, "B")}
-  //           >
-  //             <Label as="a">{lastPlayer}'s Team</Label>
-  //           </a>
-  //         </React.Fragment>
-  //       ) : (
-  //         <div>Game in progress</div>
-  //       )}
-  //     </div>
-  //   );
-  // }
 
   private handleRoundWinnerButtonClick(teamName: string) {
     if (teamName === "A") {
@@ -595,38 +357,6 @@ class GameGrid extends React.Component<IProps, {}> {
       />
     ));
   }
-
-  // private handlePlayerSelectClick = (playerId: string) => {
-  //   this.store.selectPlayer(playerId);
-  // };
-
-  // private selectPlayerStart(players?: string[], droppedCards?: string[]) {
-  //   if (!players) {
-  //     return null;
-  //   }
-
-  //   return (
-  //     <div className="btn-group">
-  //       {typeof droppedCards === "undefined" || droppedCards.length === 0 ? (
-  //         players.map((player, index) => (
-  //           <a
-  //             color="blue"
-  //             className="ui image label playerSelectButton"
-  //             key={index}
-  //             onClick={this.handlePlayerSelectClick.bind(this, player)}
-  //           >
-  //             <Label as="a">
-  //               <img src="https://react.semantic-ui.com/images/avatar/small/joe.jpg" />
-  //               {player}
-  //             </Label>
-  //           </a>
-  //         ))
-  //       ) : (
-  //         <div>Game in progress</div>
-  //       )}
-  //     </div>
-  //   );
-  // }
 
   private handleRestartGameClick = (gameId: string) => {
     const teamAPointsDiv: any = document.querySelectorAll(".teamAPoints");
@@ -682,35 +412,6 @@ class GameGrid extends React.Component<IProps, {}> {
     teamAPointsDiv[0].innerText = totalTeamAPoints;
     teamABointsDiv[0].innerText = totalTeamBPoints;
   };
-
-  // private gameOptions(
-  //   cards?: string[],
-  //   gameId?: string,
-  //   isFirstPlayer?: boolean
-  // ) {
-  //   const isCardsEmpty = typeof cards === "undefined" || cards.length === 0;
-  //   const showRestartButton = isCardsEmpty || isFirstPlayer;
-  //   return (
-  //     <div className="btn-group">
-  //       {showRestartButton && (
-  //         <a
-  //           className="ui image label gameOptionsButton"
-  //           onClick={this.handleRestartGameClick.bind(this, gameId)}
-  //         >
-  //           <Label as="a">Restart Game</Label>
-  //         </a>
-  //       )}
-  //       {isCardsEmpty && (
-  //         <a
-  //           className="ui image label gameOptionsButton"
-  //           onClick={this.viewAllCards.bind(this, gameId)}
-  //         >
-  //           <Label as="a">View All Cards</Label>
-  //         </a>
-  //       )}
-  //     </div>
-  //   );
-  // }
 }
 
 export default GameGrid;
