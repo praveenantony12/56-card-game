@@ -42,7 +42,7 @@ class GameService {
   }
 
   /**
-   * Sigin to the game.
+   * Sign in to the game.
    * @param userId The user id.
    */
   public signIn(userId: string): Promise<any> {
