@@ -50,9 +50,9 @@ export class Deck {
     let start,
       end = 0;
 
-    for (var i = 0; i < 8; i++) {
+    for (var i = 0; i < 6; i++) {
       start = end;
-      end = start + 6;
+      end = start + 8;
       cards.push(shuffled.slice(start, end));
     }
     return cards;
