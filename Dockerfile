@@ -1,5 +1,5 @@
 
-FROM node:9.10.0-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -8,8 +8,7 @@ COPY ./packages/game-server/package.json ./packages/game-server/
 COPY ./packages/game-server/client/ ./packages/game-server/client/
 COPY ./packages/common/package.json ./packages/common/
 
-RUN npm i -g yarn
-RUN yarn install --production
+RUN npm ci --production
 
 COPY ./packages/game-server/dist ./packages/game-server/dist
 COPY ./packages/common/dist ./packages/common/dist
