@@ -12,7 +12,7 @@
     "build:client": "cd ./packages/web && npm run build",
     "build:common": "cd ./packages/common && npm run build",
     "build:server": "cd ./packages/game-server && npm run build",
-    "start": "concurrently \"npm run:server\" \"npm run:client\""
+    "start": "concurrently \"npm run run:server\" \"npm run run:client\""
   },
   "dependencies": {
     "react-draggable": "^4.2.0",
