@@ -276,7 +276,7 @@ export class GameCore {
       alreadyFoldedCardsLength,
       dropCards.length
     );
-    const updatedTeamACards = gameObj.teamACards.concat(remainingDropCards);
+    const updatedTeamACards = remainingDropCards.concat(gameObj.teamACards);
     const teamAPayload: GameActionResponse = Payloads.sendTeamACards(
       updatedTeamACards
     );
@@ -319,7 +319,7 @@ export class GameCore {
       alreadyFoldedCardsLength,
       dropCards.length
     );
-    const updatedTeamBCards = gameObj.teamBCards.concat(remainingDropCards);
+    const updatedTeamBCards = remainingDropCards.concat(gameObj.teamBCards);
     const teamBPayload: GameActionResponse = Payloads.sendTeamBCards(
       updatedTeamBCards
     );
