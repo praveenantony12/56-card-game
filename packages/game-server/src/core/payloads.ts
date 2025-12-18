@@ -202,4 +202,40 @@ export class Payloads {
       data,
     };
   }
+
+  /**
+   * Forms response to send the selected trump suits.
+   * @param playerTrumpSuit The trump suits selected by each player
+   * @param trumpSuit The final trump suit for the game (first one selected)
+   */
+  public static sendTrumpSuitSelected(
+    playerTrumpSuit: { [playerId: string]: string },
+    trumpSuit?: string
+  ): common.GameActionResponse {
+    const data: common.ITrumpSuitSelected = {
+      playerTrumpSuit,
+      trumpSuit,
+    };
+    return {
+      action: common.MESSAGES.trumpSuitSelected,
+      data,
+    };
+  }
+
+  /**
+   * Forms response to send the round winner determined automatically.
+   * @param roundWinnerTeam The team that won the round
+   */
+  public static sendRoundWinner(
+    roundWinnerTeam: string
+  ): common.GameActionResponse {
+    const data: common.IRoundWinner = {
+      roundWinnerTeam,
+    };
+    return {
+      action: roundWinnerTeam === "B" ? common.MESSAGES.deckWonByTeamB : common.MESSAGES.deckWonByTeamA,
+      data,
+    };
+  }
 }
+

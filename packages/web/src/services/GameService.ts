@@ -9,6 +9,7 @@ import {
   ResponseType,
   restartGamePayload,
   selectPlayerPayload,
+  selectTrumpSuitPayload,
   SuccessResponse,
   updateGameScorePayload,
 } from "@rcg/common";
@@ -141,6 +142,24 @@ class GameService {
    */
   public restartGame(gameId: string): Promise<any> {
     return this.sendRequest(restartGamePayload(gameId));
+  }
+
+  /**
+   * Sends the selected trump suit to the game server.
+   * @param trumpSuit The trump suit selected
+   * @param gameId The gameId
+   * @param token The user token
+   * @param playerId The player id
+   */
+  public selectTrumpSuit(
+    trumpSuit: string,
+    gameId: string,
+    token: string,
+    playerId: string
+  ): Promise<any> {
+    return this.sendRequest(
+      selectTrumpSuitPayload(trumpSuit, gameId, token, playerId)
+    );
   }
 
   /**

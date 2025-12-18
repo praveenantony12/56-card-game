@@ -80,7 +80,7 @@ export interface IGameAborted {
 /**
  * Penality cards response model.
  */
-export interface IPenality extends ICards {}
+export interface IPenality extends ICards { }
 
 /**
  * Players response model.
@@ -94,4 +94,19 @@ export interface IPlayers {
  */
 export interface IDropCardPlayer {
   dropCardPlayer: string[];
+}
+
+/**
+ * Trump suit response model.
+ */
+export interface ITrumpSuitSelected {
+  playerTrumpSuit: { [playerId: string]: string };
+  trumpSuit?: string;
+}
+
+/**
+ * Round winner response model.
+ */
+export interface IRoundWinner {
+  roundWinnerTeam: string;
 }

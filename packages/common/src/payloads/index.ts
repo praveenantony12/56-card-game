@@ -75,3 +75,15 @@ export const selectPlayerPayload = (
     payload: { currentPlayerId, gameId, token },
   };
 };
+
+export const selectTrumpSuitPayload = (
+  trumpSuit: string,
+  gameId: string,
+  token: string,
+  playerId: string
+) => {
+  return {
+    operation: MESSAGES.selectTrumpSuit,
+    payload: { trumpSuit, gameId, token, playerId },
+  };
+};

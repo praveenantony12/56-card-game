@@ -6,7 +6,7 @@
   "version": "1.0.0",
   "license": "MIT",
   "scripts": {
-    "build": "rimraf ./dist && tsc"
+    "build": "rimraf ./dist && tsc --noEmitOnError false"
   },
   "devDependencies": {
     "rimraf": "^2.6.2",

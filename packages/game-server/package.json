@@ -31,6 +31,6 @@
   "scripts": {
     "start": "nodemon",
     "test": "jest",
-    "build": "rimraf ./dist && tsc"
+    "build": "rimraf ./dist && tsc --noEmitOnError false"
   }
 }

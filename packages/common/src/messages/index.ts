@@ -27,4 +27,6 @@ export const MESSAGES = {
   penality: "PENALITY",
   playerInfo: "PLAYER_INFO",
   gameAborted: "GAME_ABORTED",
+  selectTrumpSuit: "SELECT_TRUMP_SUIT",
+  trumpSuitSelected: "TRUMP_SUIT_SELECTED",
 };

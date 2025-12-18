@@ -15,9 +15,13 @@
     "start": "concurrently \"npm run run:server\" \"npm run run:client\""
   },
   "dependencies": {
-    "react-draggable": "^4.2.0",
-    "react-bootstrap": "^1.0.0",
+    "concurrently": "^5.2.0",
     "mdbreact": "^4.25.6",
-    "concurrently": "^5.2.0"
+    "react-bootstrap": "^1.0.0",
+    "react-draggable": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/socket.io": "^3.0.2"
   }
 }

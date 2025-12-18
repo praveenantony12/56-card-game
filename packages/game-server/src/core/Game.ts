@@ -199,9 +199,9 @@ export class Game {
    * Gets the last dropped card.
    */
   public get lastDroppedCard(): string {
-    if (this.gameObj.droppedCards.length > 0) {
-      const lastIndex = this.gameObj.droppedCards.length - 1;
-      return this.gameObj.droppedCards[lastIndex];
+    if (this.gameObj?.droppedCards.length > 0) {
+      const lastIndex = this.gameObj?.droppedCards.length - 1;
+      return this.gameObj?.droppedCards[lastIndex];
     } else {
       return null;
     }
@@ -211,14 +211,14 @@ export class Game {
    * Gets the current player.
    */
   public get currentPlayer(): IPlayer {
-    return this.gameObj.players[this.gameObj.currentTurn];
+    return this.gameObj?.players[this.gameObj.currentTurn];
   }
 
   /**
    * Identifies the player who played is the right player in the current turn.
    */
   public get isHisTurn(): boolean {
-    return this.currentPlayer.token === this.currentPlayerToken;
+    return this.currentPlayer?.token === this.currentPlayerToken;
   }
 
   /**
@@ -232,7 +232,7 @@ export class Game {
    * Identifies that the current turn is the first turn of the round.
    */
   public get isCurrentTurnIsFirstTurn(): boolean {
-    return this.gameObj.droppedCards.length === 0;
+    return this.gameObj?.droppedCards.length === 0;
   }
 
   /**

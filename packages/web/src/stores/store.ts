@@ -203,6 +203,27 @@ class Store implements IStore {
     }
   }
 
+  public async selectTrumpSuit(trumpSuit: string) {
+    const { gameId, token, playerId } = this.userInfo;
+    this.clearNotifications();
+
+    try {
+      const ack: common.SuccessResponse = await this.gameService.selectTrumpSuit(
+        trumpSuit,
+        gameId as string,
+        token as string,
+        playerId as string
+      );
+
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log("Trump suit selected: " + trumpSuit);
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
   public async updateGameScore(gameScore: string) {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
@@ -314,6 +335,11 @@ class Store implements IStore {
 
       case common.MESSAGES.playerInfo:
         this.gameInfo.players = (data as common.IPlayers).players;
+        break;
+
+      case common.MESSAGES.trumpSuitSelected:
+        this.gameInfo.playerTrumpSuit = (data as common.ITrumpSuitSelected).playerTrumpSuit;
+        this.gameInfo.trumpSuit = (data as common.ITrumpSuitSelected).trumpSuit;
         break;
 
       case common.MESSAGES.gameAborted:

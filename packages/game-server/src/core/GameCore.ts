@@ -23,6 +23,7 @@ import { getUniqueId, delayed, sleep } from "../utils/misc";
 import { Game } from "../core/Game";
 import { InMemoryStore } from "../persistence/InMemoryStore";
 import { stringify } from "querystring";
+import { Server as IOServer, Socket as IOSocket } from "socket.io";
 
 /**
  * Game :- A main class that manages all the game actions/logics.
@@ -35,6 +36,7 @@ export class GameCore {
   deck: Deck;
   inMemoryStore: InMemoryStore = InMemoryStore.instance;
   reachedMaxLoad = false;
+  roundTimers: { [gameId: string]: NodeJS.Timeout } = {};
 
   /**
    * Initializes a new instance of the class Game.
@@ -42,7 +44,7 @@ export class GameCore {
    * @param socket The socket instance.
    * @param gameId The game id.
    */
-  constructor(private ioServer: SocketIO.Server) {
+  constructor(private ioServer: IOServer) {
     this.deck = new Deck();
   }
 
@@ -56,11 +58,19 @@ export class GameCore {
    * variable because we are adding the socket to room (game id).
    */
   public addPlayerToGamePool(
-    socket: SocketIO.Socket,
+    socket: IOSocket,
     playerId: string,
     cb: Function
   ) {
     try {
+      // Validate inputs
+      if (!socket || !socket.id) {
+        throw new Error("Invalid socket");
+      }
+      if (!playerId || typeof playerId !== "string") {
+        throw new Error("Invalid player ID");
+      }
+
       this.checkValidityAndThrowIfInValid(playerId, socket.id);
 
       const player: IPlayer = {
@@ -88,7 +98,7 @@ export class GameCore {
         this.startGame(starvingGamePoolId, [...starvingPlayers]);
       }
     } catch (error) {
-      cb(null, errorResponse(RESPONSE_CODES.loginFailed, error.message));
+      cb(null, errorResponse(RESPONSE_CODES.loginFailed, error && error.message ? error.message : "Unknown error"));
     }
   }
 
@@ -268,15 +278,22 @@ export class GameCore {
    * @param req The DeckWonByTeamRequest.
    */
   public onDeckWonByTeamA(req: DeckWonByTeamARequestPayload, cb: Function) {
+    // Validate request
+    if (!req || !req.gameId) return;
+
+    // Clear any pending auto-determination timer
+    if (this.roundTimers[req.gameId]) {
+      clearTimeout(this.roundTimers[req.gameId]);
+      delete this.roundTimers[req.gameId];
+    }
+
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
-    const dropCards = gameObj && gameObj.dropDetails ? gameObj.dropDetails : [];
-    const alreadyFoldedCardsLength =
-      gameObj.teamACards.length + gameObj.teamBCards.length;
-    const remainingDropCards = dropCards.slice(
-      alreadyFoldedCardsLength,
-      dropCards.length
-    );
-    const updatedTeamACards = remainingDropCards.concat(gameObj.teamACards);
+    if (!gameObj) return;
+
+    const dropCards = (gameObj && gameObj.dropDetails) ? gameObj.dropDetails : [];
+    // Use all dropped cards from this round (dropDetails is cleared each round)
+    const remainingDropCards = dropCards;
+    const updatedTeamACards = remainingDropCards.concat(gameObj.teamACards || []);
     const teamAPayload: GameActionResponse = Payloads.sendTeamACards(
       updatedTeamACards
     );
@@ -287,7 +304,7 @@ export class GameCore {
     );
     this.ioServer.to(req.gameId).emit("data", response);
     const teamBPayload: GameActionResponse = Payloads.sendTeamBCards(
-      gameObj.teamBCards
+      gameObj.teamBCards || []
     );
 
     response = successResponse(RESPONSE_CODES.gameNotification, teamBPayload);
@@ -300,10 +317,20 @@ export class GameCore {
       dropCardPayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
-    this.inMemoryStore.saveGame(req.gameId, gameObj);
+
+    // Clear dropDetails for next round
+    if (gameObj) {
+      gameObj.dropDetails = [];
+      gameObj.dropCardPlayer = [];
+      this.dropCardPlayer = [];
+      this.inMemoryStore.saveGame(req.gameId, gameObj);
+    }
 
     const currentGameIns = new Game(this.inMemoryStore, req.gameId, "", "");
     currentGameIns.droppedCards = [];
+
+    // Notify the next player (winner of this round) that it's their turn
+    this.notifyTurn(req.gameId);
   }
 
   /**
@@ -311,15 +338,22 @@ export class GameCore {
    * @param req The DeckWonByTeamRequest.
    */
   public onDeckWonByTeamB(req: DeckWonByTeamBRequestPayload, cb: Function) {
+    // Validate request
+    if (!req || !req.gameId) return;
+
+    // Clear any pending auto-determination timer
+    if (this.roundTimers[req.gameId]) {
+      clearTimeout(this.roundTimers[req.gameId]);
+      delete this.roundTimers[req.gameId];
+    }
+
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
-    const dropCards = gameObj && gameObj.dropDetails ? gameObj.dropDetails : [];
-    const alreadyFoldedCardsLength =
-      gameObj.teamACards.length + gameObj.teamBCards.length;
-    const remainingDropCards = dropCards.slice(
-      alreadyFoldedCardsLength,
-      dropCards.length
-    );
-    const updatedTeamBCards = remainingDropCards.concat(gameObj.teamBCards);
+    if (!gameObj) return;
+
+    const dropCards = (gameObj && gameObj.dropDetails) ? gameObj.dropDetails : [];
+    // Use all dropped cards from this round (dropDetails is cleared each round)
+    const remainingDropCards = dropCards;
+    const updatedTeamBCards = remainingDropCards.concat(gameObj.teamBCards || []);
     const teamBPayload: GameActionResponse = Payloads.sendTeamBCards(
       updatedTeamBCards
     );
@@ -331,7 +365,7 @@ export class GameCore {
     this.ioServer.to(req.gameId).emit("data", response);
 
     const teamAPayload: GameActionResponse = Payloads.sendTeamACards(
-      gameObj.teamACards
+      gameObj.teamACards || []
     );
 
     response = successResponse(RESPONSE_CODES.gameNotification, teamAPayload);
@@ -344,10 +378,20 @@ export class GameCore {
       dropCardPayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
-    this.inMemoryStore.saveGame(req.gameId, gameObj);
+
+    // Clear dropDetails for next round
+    if (gameObj) {
+      gameObj.dropDetails = [];
+      gameObj.dropCardPlayer = [];
+      this.dropCardPlayer = [];
+      this.inMemoryStore.saveGame(req.gameId, gameObj);
+    }
 
     const currentGameIns = new Game(this.inMemoryStore, req.gameId, "", "");
     currentGameIns.droppedCards = [];
+
+    // Notify the next player (winner of this round) that it's their turn
+    this.notifyTurn(req.gameId);
   }
 
   /**
@@ -355,16 +399,37 @@ export class GameCore {
    * @param req The SelectPlayerRequest.
    */
   public onSelectPlayer(req: SelectPlayerRequestPayload, cb: Function) {
+    // Validate request
+    if (!req || !req.gameId || !req.currentPlayerId) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Invalid request"));
+      return;
+    }
+
     const { currentPlayerId, gameId } = req;
     const gameObj = this.inMemoryStore.fetchGame(gameId);
 
+    if (!gameObj || !gameObj.players || gameObj.players.length < 1) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found or no players"));
+      return;
+    }
+
     const playerToPlay = gameObj.players.find(
-      (player) => player.playerId === currentPlayerId
+      (player) => player && player.playerId === currentPlayerId
     );
 
+    if (!playerToPlay) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Player not found"));
+      return;
+    }
+
     const playerIndex = gameObj.players.findIndex(
-      (player) => player.playerId === currentPlayerId
+      (player) => player && player.playerId === currentPlayerId
     );
+
+    if (playerIndex === -1) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Player index not found"));
+      return;
+    }
 
     const selectedPlayerObj = gameObj.players.slice(
       playerIndex,
@@ -383,6 +448,7 @@ export class GameCore {
       .concat(arrayBeforeSelectedPlayer);
 
     gameObj.players.splice(0, gameObj.players.length, ...updatedArray);
+    this.inMemoryStore.saveGame(gameId, gameObj);
 
     const payload: GameActionResponse = Payloads.sendNotifyTurn(
       playerToPlay.playerId
@@ -391,6 +457,7 @@ export class GameCore {
     const response = successResponse(RESPONSE_CODES.gameNotification, payload);
 
     this.ioServer.to(gameId).emit("data", response);
+    cb(null, response);
   }
 
   /**
@@ -414,6 +481,20 @@ export class GameCore {
     );
 
     currentGameIns.saveGame();
+
+    // Check if all players have dropped their cards
+    const gameObj = this.inMemoryStore.fetchGame(currentGameIns.gameId);
+    const allPlayersDropped = gameObj.dropDetails &&
+      gameObj.dropDetails.length >= gameObj.players.length;
+
+    if (allPlayersDropped && !this.roundTimers[currentGameIns.gameId]) {
+      // Set a 5-second timer to auto-determine the winner
+      this.roundTimers[currentGameIns.gameId] = setTimeout(() => {
+        this.autoDetermineRoundWinner(currentGameIns.gameId);
+        delete this.roundTimers[currentGameIns.gameId];
+      }, 5000);
+    }
+
     this.notifyTurn(currentGameIns.gameId);
   }
 
@@ -444,6 +525,74 @@ export class GameCore {
     const payload: GameActionResponse = Payloads.sendCardDropAccepted();
     const response = successResponse(RESPONSE_CODES.success, payload);
     cb(null, successResponse(RESPONSE_CODES.success, response));
+  }
+
+  /**
+   * Auto-determines the winner of a round based on card weights.
+   * @param gameId The game id.
+   */
+  private autoDetermineRoundWinner(gameId: string) {
+    const gameObj = this.inMemoryStore.fetchGame(gameId);
+    if (!gameObj || !gameObj.players || (gameObj.players.length as number) === 0) return;
+
+    const { cardToWeightageDict } = require("../constants/deck");
+    if (!cardToWeightageDict) return;
+
+    const dropCardPlayer = gameObj.dropCardPlayer || [];
+    if (!dropCardPlayer || dropCardPlayer.length === 0) return;
+
+    let highestCardWeight = -1;
+    let winningPlayerIndex = -1;
+    let winnerTeam = "A";
+
+    // Find the player with the highest single card
+    for (const cardDetail of dropCardPlayer) {
+      if (!cardDetail) continue;
+
+      const [card, playerId] = cardDetail.split("-");
+      if (!card || !playerId) continue;
+
+      const playerIndex = gameObj.players.findIndex(
+        (p: IPlayer) => p && p.playerId === playerId
+      );
+
+      if (playerIndex === -1) continue;
+
+      let cardWeight = cardToWeightageDict[card.slice(2)] || 0;
+
+      // Add trump bonus (+10) if card suit matches trump suit
+      if (gameObj.trumpSuit && card.length > 1 && card[1] === gameObj.trumpSuit) {
+        cardWeight += 10;
+      }
+
+      // Check if this is the highest card so far
+      if (cardWeight > highestCardWeight) {
+        highestCardWeight = cardWeight;
+        winningPlayerIndex = playerIndex;
+        // Determine team based on player index (0,2,4... = Team A | 1,3,5... = Team B)
+        winnerTeam = playerIndex % 2 === 0 ? "A" : "B";
+      }
+    }
+
+    // Only proceed if we found a valid winner
+    if (winningPlayerIndex === -1) return;
+
+    gameObj.roundWinnerTeam = winnerTeam;
+    gameObj.currentTurn = winningPlayerIndex;
+    gameObj.nextStrikePlayerIndex = winningPlayerIndex;
+    this.inMemoryStore.saveGame(gameId, gameObj);
+
+    // Send notification to all players
+    const payload: GameActionResponse = Payloads.sendRoundWinner(winnerTeam);
+    const response = successResponse(RESPONSE_CODES.gameNotification, payload);
+    this.ioServer.to(gameId).emit("data", response);
+
+    // Automatically update the winning team's cards (same as manual button click)
+    if (winnerTeam === "A") {
+      this.onDeckWonByTeamA({ gameId } as any, () => { });
+    } else {
+      this.onDeckWonByTeamB({ gameId } as any, () => { });
+    }
   }
 
   /**
@@ -503,6 +652,12 @@ export class GameCore {
 
     const response = successResponse(RESPONSE_CODES.gameNotification, payload);
     this.ioServer.to(gameId).emit("data", response);
+
+    // Send each player their remaining cards for the next round
+    gameObj.players.forEach((player) => {
+      const playerCards = gameObj[player.token] || [];
+      this.sendCards(player.socketId, playerCards);
+    });
   }
 
   /**
@@ -539,6 +694,36 @@ export class GameCore {
     }
 
     return <GameModel>game;
+  }
+
+  /**
+   * The event handles trump suit selection by a player.
+   * @param req The SelectTrumpSuitRequestPayload.
+   */
+  public onSelectTrumpSuit(req: any, cb: Function) {
+    const { trumpSuit, gameId, playerId } = req;
+    const gameObj = this.inMemoryStore.fetchGame(gameId);
+
+    if (!gameObj.playerTrumpSuit) {
+      gameObj.playerTrumpSuit = {};
+    }
+
+    gameObj.playerTrumpSuit[playerId] = trumpSuit;
+
+    // Set trump suit if this is the first selection
+    if (!gameObj.trumpSuit && gameObj.playerTrumpSuit[playerId]) {
+      gameObj.trumpSuit = trumpSuit;
+    }
+
+    const payload: GameActionResponse = Payloads.sendTrumpSuitSelected(
+      gameObj.playerTrumpSuit,
+      gameObj.trumpSuit
+    );
+
+    const response = successResponse(RESPONSE_CODES.gameNotification, payload);
+    this.ioServer.to(gameId).emit("data", response);
+    this.inMemoryStore.saveGame(gameId, gameObj);
+    cb(null, response);
   }
 
   /**

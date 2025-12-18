@@ -35,6 +35,8 @@ class GameGrid extends React.Component<IProps, {}> {
       currentBet,
       currentBetPlayerId,
       dropCardPlayer,
+      trumpSuit,
+      playerTrumpSuit,
     } = this.store.game;
 
     const { gameId, playerId } = this.store.user;
@@ -68,6 +70,13 @@ class GameGrid extends React.Component<IProps, {}> {
       ? { gameScore: "0" }
       : this.store.game;
 
+    const suits = [
+      { symbol: "♥", name: "H", label: "Hearts" },
+      { symbol: "♦", name: "D", label: "Diamonds" },
+      { symbol: "♠", name: "E", label: "Spades" },
+      { symbol: "♣", name: "C", label: "Clubs" }
+    ];
+
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
         <Grid.Row centered={true} columns={1}>
@@ -84,22 +93,27 @@ class GameGrid extends React.Component<IProps, {}> {
         </Grid.Row>
 
         <Grid centered={true}>
-          <Grid.Row centered={true} columns={4} className="biddingGrid">
-            {typeof droppedCards === "undefined" ||
-              (players && droppedCards.length >= players.length && (
-                <Grid.Column textAlign="center">
-                  <Button
-                    as="div"
-                    labelPosition="left"
-                    onClick={this.handleRoundWinnerButtonClick.bind(this, "A")}
-                  >
-                    <Label as="a" basic={true} color="red" pointing="right">
-                      Deck Won by
-                    </Label>
-                    <Button color="red">{firstPlayer}'s Team</Button>
-                  </Button>
-                </Grid.Column>
-              ))}
+          <Grid.Row centered={true} columns={5} className="biddingGrid">
+            {!gameStarted && (
+              <Grid.Column textAlign="center">
+                <Label as="a" basic={true} color="blue">
+                  Trump Suit
+                </Label>
+                <Button.Group fluid={true}>
+                  {suits.map((suit) => (
+                    <Button
+                      key={suit.name}
+                      color={trumpSuit === suit.name ? "green" : "grey"}
+                      onClick={() => this.handleTrumpSuitClick(suit.name)}
+                      disabled={playerId && playerTrumpSuit && playerTrumpSuit[playerId] ? true : false}
+                      title={suit.label}
+                    >
+                      {suit.symbol}
+                    </Button>
+                  ))}
+                </Button.Group>
+              </Grid.Column>
+            )}
 
             <Grid.Column textAlign="right">
               <Button.Group fluid={true}>
@@ -169,21 +183,6 @@ class GameGrid extends React.Component<IProps, {}> {
                 onChange={this.updateScore.bind(event)}
               />
             </Grid.Column>
-            {typeof droppedCards === "undefined" ||
-              (players && droppedCards.length >= players.length && (
-                <Grid.Column textAlign="center">
-                  <Button
-                    as="div"
-                    labelPosition="left"
-                    onClick={this.handleRoundWinnerButtonClick.bind(this, "B")}
-                  >
-                    <Label as="a" basic={true} color="red" pointing="right">
-                      Deck Won By
-                    </Label>
-                    <Button color="red">{lastPlayer}'s Team</Button>
-                  </Button>
-                </Grid.Column>
-              ))}
           </Grid.Row>
         </Grid>
 
@@ -320,6 +319,10 @@ class GameGrid extends React.Component<IProps, {}> {
     }
   }
 
+  private handleTrumpSuitClick(suit: string) {
+    this.store.selectTrumpSuit(suit);
+  }
+
   private addNameToCardOnTable = (card: string, dropCardPlayer: string[]) => {
     const playerCardCombo = dropCardPlayer.find(
       (element) => element.indexOf(card) > -1
@@ -377,6 +380,7 @@ class GameGrid extends React.Component<IProps, {}> {
   };
 
   private calculatePoints = () => {
+    const { trumpSuit } = this.store.game;
     const teamACardsDiv: any = document.querySelectorAll(".teamACards .card");
     const teamBCardsDiv: any = document.querySelectorAll(".teamBCards .card");
     const teamACards = [];
@@ -389,10 +393,22 @@ class GameGrid extends React.Component<IProps, {}> {
     }
 
     const mappedTeamACards = teamACards.map((card) => {
-      return { card, weight: POINTS[card.slice(2)] };
+      const cardType = card.slice(2) as keyof typeof POINTS;
+      let weight = (POINTS[cardType] as any) || 0;
+      // Add trump bonus: if card suit matches trump suit, add 10 points
+      if (trumpSuit && card[1] === trumpSuit) {
+        weight += 10;
+      }
+      return { card, weight };
     });
     const mappedTeamBCards = teamBCards.map((card) => {
-      return { card, weight: POINTS[card.slice(2)] };
+      const cardType = card.slice(2) as keyof typeof POINTS;
+      let weight = (POINTS[cardType] as any) || 0;
+      // Add trump bonus: if card suit matches trump suit, add 10 points
+      if (trumpSuit && card[1] === trumpSuit) {
+        weight += 10;
+      }
+      return { card, weight };
     });
     const totalTeamAPoints = mappedTeamACards.reduce(
       /* tslint:disable:no-string-literal */

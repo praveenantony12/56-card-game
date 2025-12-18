@@ -8,11 +8,13 @@ import {
   DeckWonByTeamARequestPayload,
   DeckWonByTeamBRequestPayload,
   SelectPlayerRequestPayload,
+  SelectTrumpSuitRequestPayload,
   RestartGameRequestPayload,
   // TableCardsRequestPayload
 } from "@rcg/common";
 import { GameCore } from "../core/GameCore";
 import { LoggerService } from "../services/LoggerService";
+import { Server as IOServer, Socket as IOSocket } from "socket.io";
 
 /**
  * Socket server class.
@@ -26,7 +28,7 @@ export class SocketServer {
   /**
    * The socket server.
    */
-  public ioServer: SocketIO.Server;
+  public ioServer: IOServer;
 
   /**
    * Initializes a new instance of the class SocketServer.
@@ -41,7 +43,7 @@ export class SocketServer {
    * Listen socket
    */
   public watchConnection() {
-    this.ioServer.on("connection", (socket: SocketIO.Socket) => {
+    this.ioServer.on("connection", (socket: IOSocket) => {
       LoggerService.log("Connected", `"Socket connected - ${socket.id}"`);
       this.subscribe(socket);
     });
@@ -51,7 +53,7 @@ export class SocketServer {
    * Subscribes to the socket events.
    * @param socket The socket instance
    */
-  private subscribe(socket: SocketIO.Socket) {
+  private subscribe(socket: IOSocket) {
     socket.on("data", (data, cb) => this.onDataHandler(socket, data, cb));
 
     socket.on("error", (error) => this.onErrorHandler(socket, error));
@@ -66,7 +68,7 @@ export class SocketServer {
    * @param cb The callback method.
    */
   private async onDataHandler(
-    socket: SocketIO.Socket,
+    socket: IOSocket,
     request: Request,
     cb: Function
   ) {
@@ -116,6 +118,11 @@ export class SocketServer {
         this.gameCore.onRestartGame(restartGameRequest, cb);
         break;
 
+      case MESSAGES.selectTrumpSuit:
+        const selectTrumpSuitRequest = payload as any;
+        this.gameCore.onSelectTrumpSuit(selectTrumpSuitRequest, cb);
+        break;
+
       default:
         break;
     }
@@ -126,7 +133,7 @@ export class SocketServer {
    * @param socket The socket instance
    * @param error The error message
    */
-  private onErrorHandler(socket: SocketIO.Socket, error: any) {
+  private onErrorHandler(socket: IOSocket, error: any) {
     LoggerService.logError("Error in socket", error);
   }
 
@@ -135,7 +142,7 @@ export class SocketServer {
    * Can be used to close or clean gracefully when required.
    * @param socket The socket instance.
    */
-  private onDisconnectHandler(socket: SocketIO.Socket) {
+  private onDisconnectHandler(socket: IOSocket) {
     LoggerService.log("Disconnected", `Socket disconnected - ${socket.id}`);
 
     const { gameInfo } = socket as any;

@@ -20,6 +20,8 @@ export interface IStore {
 
   selectPlayer(player: string): Promise<any>;
 
+  selectTrumpSuit(trumpSuit: string): Promise<any>;
+
   restartGame(gameId: string): Promise<any>;
 
   ping(): Promise<void>;

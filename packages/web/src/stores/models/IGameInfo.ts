@@ -18,4 +18,7 @@ export interface IGame {
   players?: string[];
   penalityCards?: string[];
   isConnected?: boolean;
+  trumpSuit?: string;
+  playerTrumpSuit?: { [playerId: string]: string };
+  roundWinnerTeam?: string;
 }

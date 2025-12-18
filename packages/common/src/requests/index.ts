@@ -8,5 +8,6 @@ export * from "./DeckWonByTeamBRequestPayload";
 export * from "./TableCardsRequestPayload";
 export * from "./SelectPlayerRequestPayload";
 export * from "./RestartGameRequestPayload";
+export * from "./SelectTrumpSuitRequestPayload";
 export * from "./request.model";
 export * from "./signin-request.model";

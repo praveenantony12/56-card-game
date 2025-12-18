@@ -3,4 +3,4 @@ export const KEYS = {
   game: "GAME",
 };
 
-export const MAX_PLAYERS = 6;
+export const MAX_PLAYERS = 2;
