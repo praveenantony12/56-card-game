@@ -94,26 +94,24 @@ class GameGrid extends React.Component<IProps, {}> {
 
         <Grid centered={true}>
           <Grid.Row centered={true} columns={5} className="biddingGrid">
-            {!gameStarted && (
-              <Grid.Column textAlign="center">
-                <Label as="a" basic={true} color="blue">
-                  Trump Suit
-                </Label>
-                <Button.Group fluid={true}>
-                  {suits.map((suit) => (
-                    <Button
-                      key={suit.name}
-                      color={trumpSuit === suit.name ? "green" : "grey"}
-                      onClick={() => this.handleTrumpSuitClick(suit.name)}
-                      disabled={playerId && playerTrumpSuit && playerTrumpSuit[playerId] ? true : false}
-                      title={suit.label}
-                    >
-                      {suit.symbol}
-                    </Button>
-                  ))}
-                </Button.Group>
-              </Grid.Column>
-            )}
+            <Grid.Column textAlign="center">
+              <Label as="a" basic={true} color="blue">
+                Trump Suit
+              </Label>
+              <Button.Group fluid={true}>
+                {suits.map((suit) => (
+                  <Button
+                    key={suit.name}
+                    color={trumpSuit === suit.name ? "green" : "grey"}
+                    onClick={() => this.handleTrumpSuitClick(suit.name)}
+                    disabled={gameStarted}
+                    title={suit.label}
+                  >
+                    {suit.symbol}
+                  </Button>
+                ))}
+              </Button.Group>
+            </Grid.Column>
 
             <Grid.Column textAlign="right">
               <Button.Group fluid={true}>
@@ -396,18 +394,18 @@ class GameGrid extends React.Component<IProps, {}> {
       const cardType = card.slice(2) as keyof typeof POINTS;
       let weight = (POINTS[cardType] as any) || 0;
       // Add trump bonus: if card suit matches trump suit, add 10 points
-      if (trumpSuit && card[1] === trumpSuit) {
-        weight += 10;
-      }
+      // if (trumpSuit && card[1] === trumpSuit) {
+      //   weight += 10;
+      // }
       return { card, weight };
     });
     const mappedTeamBCards = teamBCards.map((card) => {
       const cardType = card.slice(2) as keyof typeof POINTS;
       let weight = (POINTS[cardType] as any) || 0;
       // Add trump bonus: if card suit matches trump suit, add 10 points
-      if (trumpSuit && card[1] === trumpSuit) {
-        weight += 10;
-      }
+      // if (trumpSuit && card[1] === trumpSuit) {
+      //   weight += 10;
+      // }
       return { card, weight };
     });
     const totalTeamAPoints = mappedTeamACards.reduce(

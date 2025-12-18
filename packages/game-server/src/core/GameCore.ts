@@ -710,8 +710,14 @@ export class GameCore {
 
     gameObj.playerTrumpSuit[playerId] = trumpSuit;
 
-    // Set trump suit if this is the first selection
-    if (!gameObj.trumpSuit && gameObj.playerTrumpSuit[playerId]) {
+    // Allow all players to update the trump suit until the game starts
+    // The last selected suit becomes the trump suit
+    const gameStarted =
+      (gameObj.droppedCards && gameObj.droppedCards.length > 0) ||
+      (gameObj.teamACards && gameObj.teamACards.length > 0) ||
+      (gameObj.teamBCards && gameObj.teamBCards.length > 0);
+
+    if (!gameStarted) {
       gameObj.trumpSuit = trumpSuit;
     }
 
