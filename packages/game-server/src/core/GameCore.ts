@@ -204,7 +204,25 @@ export class GameCore {
       return;
     }
 
-    const gameObj = this.inMemoryStore.fetchGame(req.gameId);
+    // Prevent additional drops if the round already has plays from all players
+    const currentGameObj = this.inMemoryStore.fetchGame(req.gameId);
+    if (
+      currentGameObj &&
+      currentGameObj.dropDetails &&
+      currentGameObj.players &&
+      currentGameObj.dropDetails.length >= currentGameObj.players.length
+    ) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "Round completed. Please wait for the round result."
+        )
+      );
+      return;
+    }
+
+    const gameObj = currentGameObj;
     const dropCardPlayer = `${card}-${playerId}`;
     this.dropCardPlayer.push(dropCardPlayer);
     const DropCardByPlayerPayload: GameActionResponse = Payloads.sendDropCardByPlayer(

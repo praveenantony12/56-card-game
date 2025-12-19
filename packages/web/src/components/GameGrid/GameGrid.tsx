@@ -12,15 +12,71 @@ interface IProps {
   store?: IStore;
 }
 
+interface IState {
+  timerRemaining: number;
+  isRoundReveal: boolean;
+}
+
 @inject("store")
 @observer
-class GameGrid extends React.Component<IProps, {}> {
+class GameGrid extends React.Component<IProps, IState> {
   private get store(): IStore {
     return this.props.store as IStore;
   }
 
+  private roundInterval: any = null;
+  private roundRevealStarted: boolean = false;
+  private lastDropCount: number = 0;
+
   constructor(props: IProps) {
     super(props);
+    this.state = { timerRemaining: 0, isRoundReveal: false };
+  }
+
+  componentDidUpdate(prevProps: IProps, prevState: IState) {
+    const { dropCardPlayer, players } = this.store.game;
+    const currentDropCount = dropCardPlayer ? dropCardPlayer.length : 0;
+    const playersCount = players ? players.length : 0;
+
+    // Debug
+    // console.debug(`[GameGrid] dropCounts: last=${this.lastDropCount}, current=${currentDropCount}, players=${playersCount}, revealBlocked=${this.revealBlocked}, roundRevealStarted=${this.roundRevealStarted}, timer=${this.state.timerRemaining}`);
+
+    // Detect start of a new round (drop count went from >0 to 0)
+    if (this.lastDropCount > 0 && currentDropCount === 0) {
+      this.roundRevealStarted = false;
+      if (this.roundInterval) {
+        clearInterval(this.roundInterval);
+        this.roundInterval = null;
+      }
+      this.setState({ timerRemaining: 0, isRoundReveal: false });
+    }
+
+    // When all players have dropped and no reveal has started yet, start the timer
+    // Start only on the transition when lastDropCount < playersCount -> currentDropCount === playersCount
+    if (currentDropCount === playersCount && playersCount > 0 && !this.roundRevealStarted && this.lastDropCount < playersCount) {
+      this.roundRevealStarted = true;
+      // console.debug("[GameGrid] Starting reveal timer");
+      this.setState({ isRoundReveal: true, timerRemaining: 5 }, () => {
+        this.roundInterval = setInterval(() => {
+          this.setState((s) => {
+            if (s.timerRemaining <= 1) {
+              if (this.roundInterval) {
+                clearInterval(this.roundInterval);
+                this.roundInterval = null;
+              }
+              // mark reveal as finished so next rounds can start their timer
+              this.roundRevealStarted = false;
+              // finished reveal; wait for server to clear drop list before next round
+              // console.debug("[GameGrid] Reveal finished; waiting for server to clear drops");
+              return { timerRemaining: 0, isRoundReveal: false };
+            }
+            return { timerRemaining: s.timerRemaining - 1 } as IState;
+          });
+        }, 1000);
+      });
+    }
+
+    this.lastDropCount = currentDropCount;
   }
 
   public render() {
@@ -78,17 +134,23 @@ class GameGrid extends React.Component<IProps, {}> {
       { symbol: "♣", name: "C", label: "Clubs" }
     ];
 
+    const allPlayersDropped =
+      dropCardPlayer && players && dropCardPlayer.length >= players.length;
+
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
         <Grid.Row centered={true} columns={1}>
           <Grid.Column className="cardHeight cardTable">
             <div className="cardOnTable">
               {this.renderCards(droppedCards, false, false, dropCardPlayer)}
+              {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
+                <div className="round-timer">Folding cards in {this.state.timerRemaining}s</div>
+              )}
             </div>
           </Grid.Column>
           <Grid.Column>
             <div className="myCards">
-              {this.renderCards(cards, true, false)}
+              {this.renderCards(cards, true, false, undefined, this.state.isRoundReveal && this.state.timerRemaining > 0)}
             </div>
           </Grid.Column>
         </Grid.Row>
@@ -333,7 +395,8 @@ class GameGrid extends React.Component<IProps, {}> {
     cards?: string[],
     isClickable: boolean = false,
     flipOver: boolean = false,
-    dropCardPlayer?: string[]
+    dropCardPlayer?: string[],
+    disableAllCards: boolean = false
   ) {
     if (!cards) {
       return null;
@@ -349,7 +412,7 @@ class GameGrid extends React.Component<IProps, {}> {
           dropCardPlayer ? this.addNameToCardOnTable(card, dropCardPlayer) : ""
         }
         style={{ fontSize: "17pt" }}
-        disabled={!isClickable}
+        disabled={!isClickable || disableAllCards}
         onCardClick={this.handleCardClick}
         flipOver={flipOver}
       />
