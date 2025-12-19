@@ -71,9 +71,10 @@ class GameGrid extends React.Component<IProps, {}> {
       : this.store.game;
 
     const suits = [
+      { symbol: "Noes", name: "N", label: "Noes" },
       { symbol: "♥", name: "H", label: "Hearts" },
-      { symbol: "♦", name: "D", label: "Diamonds" },
-      { symbol: "♠", name: "E", label: "Spades" },
+      { symbol: "♠", name: "E", label: "Spade" },
+      { symbol: "♦", name: "D", label: "Diamond" },
       { symbol: "♣", name: "C", label: "Clubs" }
     ];
 
@@ -94,57 +95,56 @@ class GameGrid extends React.Component<IProps, {}> {
 
         <Grid centered={true}>
           <Grid.Row centered={true} columns={5} className="biddingGrid">
-            <Grid.Column textAlign="center">
-              <Label as="a" basic={true} color="blue">
-                Trump Suit
-              </Label>
-              <Button.Group fluid={true}>
-                {suits.map((suit) => (
-                  <Button
-                    key={suit.name}
-                    color={trumpSuit === suit.name ? "green" : "grey"}
-                    onClick={() => this.handleTrumpSuitClick(suit.name)}
-                    disabled={gameStarted}
-                    title={suit.label}
-                  >
-                    {suit.symbol}
-                  </Button>
-                ))}
-              </Button.Group>
-            </Grid.Column>
-
             <Grid.Column textAlign="right">
               <Button.Group fluid={true}>
-                <Button
-                  positive={true}
-                  onClick={this.decrement.bind(this, currentBet)}
-                  disabled={Number(currentBet) === 28 || gameStarted}
-                >
-                  <Icon name="minus" />
-                </Button>
-
                 {currentBet && currentBet > "27" ? (
                   <Button as="div" labelPosition="left">
                     <Label as="a" basic={true} color="red" pointing="right">
-                      {currentBetPlayerId} bids
+                      &nbsp; &nbsp; &nbsp; &nbsp; {currentBetPlayerId} bids {suits.find(suit => suit.name === trumpSuit)?.label || 'Noes'} &nbsp; &nbsp; &nbsp; &nbsp;
                     </Label>
                     <Button color="red">{currentBet}</Button>
                   </Button>
                 ) : (
                   <Button as="div" labelPosition="left">
                     <Label as="a" basic={true} color="red" pointing="right">
-                      No bids yet
+                      Game starting, no bids placed yet
                     </Label>
                     <Button color="red" />
                   </Button>
                 )}
-
+              </Button.Group>
+              <Button.Group fluid={true}>
                 <Button
-                  positive={true}
+                  icon
+                  color='red'
+                  onClick={this.decrement.bind(this, currentBet)}
+                  disabled={Number(currentBet) === 28 || gameStarted}
+                >
+                  <Icon name="minus" />
+                </Button>
+                <Button
+                  icon
+                  color='red'
                   onClick={this.increment.bind(this, currentBet)}
                   disabled={Number(currentBet) === 56 || gameStarted}
                 >
                   <Icon name="plus" />
+                </Button>
+                <Button as='div' labelPosition='right'>
+                  {suits.map((suit) => (
+                    <Label
+                      as='a'
+                      basic={trumpSuit === suit.name ? false : true}
+                      pointing='left'
+                      key={suit.name}
+                      color={trumpSuit === suit.name ? "green" : "red"}
+                      onClick={() => this.handleTrumpSuitClick(suit.name)}
+                      disabled={gameStarted}
+                      title={suit.label}
+                    >
+                      {suit.symbol}
+                    </Label>
+                  ))}
                 </Button>
               </Button.Group>
             </Grid.Column>
