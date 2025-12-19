@@ -130,7 +130,7 @@ class GameGrid extends React.Component<IProps, {}> {
                 >
                   <Icon name="plus" />
                 </Button>
-                <Button as='div' labelPosition='right'>
+                <Button as='div' labelPosition='right' disabled={gameStarted}>
                   {suits.map((suit) => (
                     <Label
                       as='a'
@@ -139,7 +139,6 @@ class GameGrid extends React.Component<IProps, {}> {
                       key={suit.name}
                       color={trumpSuit === suit.name ? "green" : "red"}
                       onClick={() => this.handleTrumpSuitClick(suit.name)}
-                      disabled={gameStarted}
                       title={suit.label}
                     >
                       {suit.symbol}
