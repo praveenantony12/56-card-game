@@ -71,7 +71,7 @@ class GameGrid extends React.Component<IProps, {}> {
       : this.store.game;
 
     const suits = [
-      { symbol: "Noes", name: "N", label: "Noes" },
+      { symbol: "Noes", name: "N", label: "" },
       { symbol: "♥", name: "H", label: "Hearts" },
       { symbol: "♠", name: "E", label: "Spade" },
       { symbol: "♦", name: "D", label: "Diamond" },
@@ -94,26 +94,26 @@ class GameGrid extends React.Component<IProps, {}> {
         </Grid.Row>
 
         <Grid centered={true}>
-          <Grid.Row centered={true} columns={5} className="biddingGrid">
-            <Grid.Column textAlign="right">
-              <Button.Group fluid={true}>
-                {currentBet && currentBet > "27" ? (
-                  <Button as="div" labelPosition="left">
-                    <Label as="a" basic={true} color="red" pointing="right">
-                      &nbsp; &nbsp; &nbsp; &nbsp; {currentBetPlayerId} bids {suits.find(suit => suit.name === trumpSuit)?.label || 'Noes'} &nbsp; &nbsp; &nbsp; &nbsp;
-                    </Label>
-                    <Button color="red">{currentBet}</Button>
-                  </Button>
-                ) : (
-                  <Button as="div" labelPosition="left">
-                    <Label as="a" basic={true} color="red" pointing="right">
-                      Game starting, no bids placed yet
-                    </Label>
-                    <Button color="red" />
-                  </Button>
-                )}
+          <Grid.Row centered={true} columns={1} className="biddingGrid">
+            <Grid.Column textAlign="center" mobile={16} tablet={16} computer={16} style={{ display: "flex", alignItems: "center", flexDirection: "column" }}>
+              <Button.Group fluid={true} style={{ width: "25%", display: "block" }}>
+                {(() => {
+                  const label = currentBet && currentBet > "27"
+                    ? `${currentBetPlayerId} bids ${suits.find(suit => suit.name === (trumpSuit || "N"))?.label} ${suits.find(suit => suit.name === (trumpSuit || "N"))?.symbol}`
+                    : "No bids yet";
+                  const betValue = currentBet && currentBet > "27" ? currentBet : "?";
+
+                  return (
+                    <Button as="div" className="bidStatus" labelPosition="left" style={{ width: "100%" }} disabled={gameStarted}>
+                      <Label as="a" basic={true} color="red" pointing="right" style={{ width: "90%", justifyContent: "center" }}>
+                        {label}
+                      </Label>
+                      <Button color="red">{betValue}</Button>
+                    </Button>
+                  );
+                })()}
               </Button.Group>
-              <Button.Group fluid={true}>
+              <Button.Group fluid={true} style={{ width: "100%", display: "block" }}>
                 <Button
                   icon
                   color='red'
@@ -122,42 +122,39 @@ class GameGrid extends React.Component<IProps, {}> {
                 >
                   <Icon name="minus" />
                 </Button>
-                <Button
-                  icon
-                  color='red'
-                  onClick={this.increment.bind(this, currentBet)}
-                  disabled={Number(currentBet) === 56 || gameStarted}
-                >
-                  <Icon name="plus" />
-                </Button>
                 <Button as='div' labelPosition='right' disabled={gameStarted}>
                   {suits.map((suit) => (
                     <Label
                       as='a'
                       basic={trumpSuit === suit.name ? false : true}
-                      pointing='left'
+                      pointing={suit.name === "N" ? "left" : "right"}
                       key={suit.name}
                       color={trumpSuit === suit.name ? "green" : "red"}
                       onClick={() => this.handleTrumpSuitClick(suit.name)}
                       title={suit.label}
                     >
-                      {suit.symbol}
+                      {suit.label} {suit.symbol}
                     </Label>
                   ))}
                 </Button>
+                <Button
+                  icon
+                  color="red"
+                  onClick={this.increment.bind(this, currentBet)}
+                  disabled={Number(currentBet) === 56 || gameStarted}>
+                  <Icon name="plus" />
+                </Button>
               </Button.Group>
-            </Grid.Column>
 
-            <Grid.Column textAlign="left">
-              <Button.Group fluid={true}>
-                <Button as="div" labelPosition="left">
+              <Button.Group fluid={true} style={{ width: "25%", display: "flex", justifyContent: "center" }}>
+                <Button as="div" labelPosition="left" disabled={gameStarted}>
                   <Label as="a" basic={true} color="red" pointing="right">
                     {firstPlayer}'s Team
                   </Label>
                   <Button color="red">{0 - Number(gameScore)}</Button>
                 </Button>
                 <Button.Or text="VS" />
-                <Button as="div" labelPosition="right">
+                <Button as="div" labelPosition="right" disabled={gameStarted}>
                   <Button color="red">{0 + Number(gameScore)}</Button>
                   <Label as="a" basic={true} color="red" pointing="left">
                     {lastPlayer}'s Team
@@ -179,6 +176,7 @@ class GameGrid extends React.Component<IProps, {}> {
                 data-show-value="true"
                 onChange={this.updateScore.bind(event)}
               />
+
             </Grid.Column>
           </Grid.Row>
         </Grid>
@@ -267,7 +265,7 @@ class GameGrid extends React.Component<IProps, {}> {
             </Button.Group>
           </Grid.Row>
         </Grid>
-      </Dimmer.Dimmable>
+      </Dimmer.Dimmable >
     );
   }
 
