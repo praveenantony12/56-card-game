@@ -144,7 +144,7 @@ class GameGrid extends React.Component<IProps, IState> {
             <div className="cardOnTable">
               {this.renderCards(droppedCards, false, false, dropCardPlayer)}
               {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
-                <div className="round-timer">Folding cards in {this.state.timerRemaining}s</div>
+                <div className="round-timer">{this.state.timerRemaining}</div>
               )}
             </div>
           </Grid.Column>
@@ -156,7 +156,7 @@ class GameGrid extends React.Component<IProps, IState> {
         </Grid.Row>
 
         <Grid centered={true}>
-          <Grid.Row centered={true} columns={1} className="biddingGrid">
+          <Grid.Row centered={true} columns={1} className="biddingGrid" style={{ marginTop: "-2rem" }}>
             <Grid.Column textAlign="center" mobile={16} tablet={16} computer={16} style={{ display: "flex", alignItems: "center", flexDirection: "column" }}>
               <Button.Group fluid={true} style={{ width: "25%", display: "block" }}>
                 {(() => {
@@ -210,7 +210,7 @@ class GameGrid extends React.Component<IProps, IState> {
 
               <Button.Group fluid={true} style={{ width: "25%", display: "flex", justifyContent: "center" }}>
                 <Button as="div" labelPosition="left" disabled={gameStarted}>
-                  <Label as="a" basic={true} color="red" pointing="right">
+                  <Label as="a" basic={true} color="red" pointing="right" style={{ width: "90%", justifyContent: "center" }}>
                     {firstPlayer}'s Team
                   </Label>
                   <Button color="red">{0 - Number(gameScore)}</Button>
@@ -218,7 +218,7 @@ class GameGrid extends React.Component<IProps, IState> {
                 <Button.Or text="VS" />
                 <Button as="div" labelPosition="right" disabled={gameStarted}>
                   <Button color="red">{0 + Number(gameScore)}</Button>
-                  <Label as="a" basic={true} color="red" pointing="left">
+                  <Label as="a" basic={true} color="red" pointing="left" style={{ width: "90%", justifyContent: "center" }}>
                     {lastPlayer}'s Team
                   </Label>
                 </Button>
@@ -318,7 +318,7 @@ class GameGrid extends React.Component<IProps, IState> {
               </Button>
               <Button.Or />
               <Button
-                positive={true}
+                color="red"
                 onClick={this.viewAllCards.bind(this, gameId)}
                 disabled={!(typeof cards === "undefined" || cards.length === 0)}
               >

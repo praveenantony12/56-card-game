@@ -132,7 +132,28 @@ export class GameCore {
    */
   public onRestartGame(req: RestartGameRequestPayload, cb: Function) {
     const { gameId } = req;
+    // Determine next starter index based on previous game's starter, but do NOT reorder players
+    const prevGame = this.inMemoryStore.fetchGame(gameId);
+    let nextStarterIndex = 0;
+    if (prevGame && prevGame.playerWithCurrentBet && this.playersPoolForReGame && this.playersPoolForReGame.length > 0) {
+      const prevStarterId = prevGame.playerWithCurrentBet;
+      const idx = this.playersPoolForReGame.findIndex((p) => p.playerId === prevStarterId);
+      if (idx !== -1) {
+        nextStarterIndex = (idx + 1) % this.playersPoolForReGame.length;
+      }
+    }
+
     this.startGame(gameId, this.playersPoolForReGame);
+
+    // Update the newly created game object to set the correct starter without changing players order
+    const newGameObj = this.inMemoryStore.fetchGame(gameId);
+    if (newGameObj && newGameObj.players && newGameObj.players.length > 0) {
+      newGameObj.currentTurn = nextStarterIndex;
+      newGameObj.playerWithCurrentBet = newGameObj.players[nextStarterIndex].playerId;
+      this.inMemoryStore.saveGame(gameId, newGameObj);
+      // Notify the correct starter explicitly
+      this.notifyTurn(gameId);
+    }
     const teamAPayload: GameActionResponse = Payloads.sendTeamACards([]);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
@@ -159,9 +180,13 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
     gameObj.dropCardPlayer = [];
     this.inMemoryStore.saveGame(req.gameId, gameObj);
+    const starterId = (this.inMemoryStore.fetchGame(req.gameId) && this.inMemoryStore.fetchGame(req.gameId).playerWithCurrentBet)
+      ? this.inMemoryStore.fetchGame(req.gameId).playerWithCurrentBet
+      : (this.playersPoolForReGame && this.playersPoolForReGame[0] ? this.playersPoolForReGame[0].playerId : "");
+
     const incrementBetPayload: GameActionResponse = Payloads.sendBetByPlayer(
       "27",
-      this.playersPoolForReGame[0].playerId
+      starterId
     );
     response = successResponse(
       RESPONSE_CODES.gameNotification,

@@ -59,13 +59,12 @@ class PlayersList extends React.Component<IProps, {}> {
                 : false
             }
           >
-            <Button color={player === currentPlayerId ? "red" : "black"}>
+            <Button color={player === currentPlayerId ? "green" : "white"}>
               <Icon name="user" />
               {player}
             </Button>
             <Label
               as="a"
-              basic={true}
               color={player === currentPlayerId ? "red" : "black"}
               pointing="left"
             >
