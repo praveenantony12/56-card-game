@@ -119,7 +119,7 @@ export class SocketServer {
         break;
 
       case MESSAGES.selectTrumpSuit:
-        const selectTrumpSuitRequest = payload as any;
+        const selectTrumpSuitRequest = payload as SelectTrumpSuitRequestPayload;
         this.gameCore.onSelectTrumpSuit(selectTrumpSuitRequest, cb);
         break;
 
