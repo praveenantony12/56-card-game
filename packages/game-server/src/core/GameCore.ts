@@ -179,6 +179,9 @@ export class GameCore {
     // this.ioServer.to(req.gameId).emit("data", response);
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
     gameObj.dropCardPlayer = [];
+    // Reset trump suit selection for new game
+    gameObj.trumpSuit = undefined;
+    gameObj.playerTrumpSuit = {};
     this.inMemoryStore.saveGame(req.gameId, gameObj);
     const starterId = (this.inMemoryStore.fetchGame(req.gameId) && this.inMemoryStore.fetchGame(req.gameId).playerWithCurrentBet)
       ? this.inMemoryStore.fetchGame(req.gameId).playerWithCurrentBet
@@ -193,6 +196,15 @@ export class GameCore {
       incrementBetPayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
+
+    // Reset trump suit selection notification
+    const trumpSuitPayload: GameActionResponse = Payloads.sendTrumpSuitSelected(
+      {},
+      undefined
+    );
+    response = successResponse(RESPONSE_CODES.gameNotification, trumpSuitPayload);
+    this.ioServer.to(req.gameId).emit("data", response);
+
     this.dropCardPlayer = [];
   }
 
