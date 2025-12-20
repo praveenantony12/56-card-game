@@ -37,6 +37,7 @@ export class GameCore {
   inMemoryStore: InMemoryStore = InMemoryStore.instance;
   reachedMaxLoad = false;
   roundTimers: { [gameId: string]: NodeJS.Timeout } = {};
+  gameStartIndex: number = 0; // Track which player starts the game
 
   /**
    * Initializes a new instance of the class Game.
@@ -95,6 +96,9 @@ export class GameCore {
         this.playersPool = [];
         this.currentGameId = getUniqueId();
 
+        // Reset starter index for the first game
+        this.gameStartIndex = 0;
+
         this.startGame(starvingGamePoolId, [...starvingPlayers]);
       }
     } catch (error) {
@@ -107,7 +111,7 @@ export class GameCore {
    * @param gameId The game id.
    */
   public startGame(gameId: string, players: IPlayer[]) {
-    const gameObject = this.createGameObject(players);
+    const gameObject = this.createGameObject(players, this.gameStartIndex);
     this.inMemoryStore.saveGame(gameId, gameObject);
 
     gameObject.players.forEach((player) => {
@@ -132,64 +136,44 @@ export class GameCore {
    */
   public onRestartGame(req: RestartGameRequestPayload, cb: Function) {
     const { gameId } = req;
-    // Determine next starter index based on previous game's starter, but do NOT reorder players
-    const prevGame = this.inMemoryStore.fetchGame(gameId);
-    let nextStarterIndex = 0;
-    if (prevGame && prevGame.playerWithCurrentBet && this.playersPoolForReGame && this.playersPoolForReGame.length > 0) {
-      const prevStarterId = prevGame.playerWithCurrentBet;
-      const idx = this.playersPoolForReGame.findIndex((p) => p.playerId === prevStarterId);
-      if (idx !== -1) {
-        nextStarterIndex = (idx + 1) % this.playersPoolForReGame.length;
-      }
+
+    // Move to next player clowkwise for the new game
+    if (this.playersPoolForReGame && this.playersPoolForReGame.length > 0) {
+      this.gameStartIndex = (this.gameStartIndex + 1) % this.playersPoolForReGame.length;
     }
 
     this.startGame(gameId, this.playersPoolForReGame);
 
-    // Update the newly created game object to set the correct starter without changing players order
-    const newGameObj = this.inMemoryStore.fetchGame(gameId);
-    if (newGameObj && newGameObj.players && newGameObj.players.length > 0) {
-      newGameObj.currentTurn = nextStarterIndex;
-      newGameObj.playerWithCurrentBet = newGameObj.players[nextStarterIndex].playerId;
-      this.inMemoryStore.saveGame(gameId, newGameObj);
-      // Notify the correct starter explicitly
-      this.notifyTurn(gameId);
-    }
+    // Send reset notifications for UI cleanup
     const teamAPayload: GameActionResponse = Payloads.sendTeamACards([]);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
       teamAPayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
+
     const teamBPayload: GameActionResponse = Payloads.sendTeamBCards([]);
     response = successResponse(RESPONSE_CODES.gameNotification, teamBPayload);
     this.ioServer.to(req.gameId).emit("data", response);
+
     const dropCardPayload: GameActionResponse = Payloads.sendDroppedCards([]);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
       dropCardPayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
-    // const dropCardByPlayerPayload: GameActionResponse = Payloads.sendDropCardByPlayer(
-    //   []
-    // );
-    // response = successResponse(
-    //   RESPONSE_CODES.gameNotification,
-    //   dropCardByPlayerPayload
-    // );
-    // this.ioServer.to(req.gameId).emit("data", response);
+
+    // Reset trump suit selection for new game
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
     gameObj.dropCardPlayer = [];
-    // Reset trump suit selection for new game
     gameObj.trumpSuit = undefined;
     gameObj.playerTrumpSuit = {};
     this.inMemoryStore.saveGame(req.gameId, gameObj);
-    const starterId = (this.inMemoryStore.fetchGame(req.gameId) && this.inMemoryStore.fetchGame(req.gameId).playerWithCurrentBet)
-      ? this.inMemoryStore.fetchGame(req.gameId).playerWithCurrentBet
-      : (this.playersPoolForReGame && this.playersPoolForReGame[0] ? this.playersPoolForReGame[0].playerId : "");
 
+    // Send bet notification with current starter
     const incrementBetPayload: GameActionResponse = Payloads.sendBetByPlayer(
       "27",
-      starterId
+      gameObj.playerWithCurrentBet
     );
     response = successResponse(
       RESPONSE_CODES.gameNotification,
@@ -721,11 +705,12 @@ export class GameCore {
   private createGameObject(
     // playerId: string,
     // token,
-    players: IPlayer[]
+    players: IPlayer[],
+    starterIndex: number = 0
   ): GameModel {
     const game = {};
     game["players"] = [];
-    game["currentTurn"] = 0;
+    game["currentTurn"] = starterIndex;
     game["maxTurn"] = MAX_PLAYERS - 1;
     game["droppedCards"] = [];
     game["dropdetails"] = [];
@@ -735,7 +720,7 @@ export class GameCore {
     game["dropDetails"] = [];
     game["dropCardPlayer"] = [];
     game["currentBet"] = "27";
-    game["playerWithCurrentBet"] = players[0].playerId;
+    game["playerWithCurrentBet"] = players[starterIndex].playerId;
 
     const cards: string[][] = this.deck.getCardsForGame();
     const sortedCards = cards.map((handCards) =>
