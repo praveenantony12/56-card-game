@@ -21,8 +21,8 @@ import { MAX_PLAYERS } from "../constants/misc";
 import { ICardGame as GameModel } from "../core/models/ICardGame";
 import { getUniqueId, delayed, sleep } from "../utils/misc";
 import { Game } from "../core/Game";
+import { cardToWeightagePoints, cardToWeightageDict } from "../constants/deck";
 import { InMemoryStore } from "../persistence/InMemoryStore";
-import { stringify } from "querystring";
 import { Server as IOServer, Socket as IOSocket } from "socket.io";
 
 /**
@@ -688,42 +688,93 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(gameId);
     if (!gameObj || !gameObj.players || (gameObj.players.length as number) === 0) return;
 
-    const { cardToWeightageDict } = require("../constants/deck");
+    if (!cardToWeightagePoints) return;
     if (!cardToWeightageDict) return;
 
     const dropCardPlayer = gameObj.dropCardPlayer || [];
     if (!dropCardPlayer || dropCardPlayer.length === 0) return;
 
+    // Determine the first card's suit to establish the leading suit
+    let firstCardSuit = null;
+    if (dropCardPlayer.length > 0) {
+      const firstCardDetail = dropCardPlayer[0];
+      if (firstCardDetail) {
+        const [firstCard] = firstCardDetail.split("-");
+        if (firstCard && firstCard.length > 1) {
+          firstCardSuit = firstCard[1]; // Assuming card format is like "1HA" where 'H' is the suit
+        }
+      }
+    }
+
+    // Check if trump is set and if there are trump cards in the round
+    const trumpSuit = gameObj.trumpSuit;
+    const isTrumpSet = trumpSuit && trumpSuit !== "N";
+    let trumpCardsInRound = false;
+
+    if (isTrumpSet) {
+      trumpCardsInRound = dropCardPlayer.some(cardDetail => {
+        if (!cardDetail) return false;
+        const [card] = cardDetail.split("-");
+        return card && card.length > 1 && card[1] === trumpSuit;
+      });
+    }
+
     let highestCardWeight = -1;
     let winningPlayerIndex = -1;
     let winnerTeam = "A";
 
-    // Find the player with the highest single card
-    for (const cardDetail of dropCardPlayer) {
-      if (!cardDetail) continue;
+    // Determine winning logic based on trump situation
 
-      const [card, playerId] = cardDetail.split("-");
-      if (!card || !playerId) continue;
+    if (isTrumpSet && trumpCardsInRound) {
+      // Trump cards are present - highest trump card wins
+      for (const cardDetail of dropCardPlayer) {
+        if (!cardDetail) continue;
 
-      const playerIndex = gameObj.players.findIndex(
-        (p: IPlayer) => p && p.playerId === playerId
-      );
+        const [card, playerId] = cardDetail.split("-");
+        if (!card || !playerId) continue;
 
-      if (playerIndex === -1) continue;
+        // Only considering trump cards for winning
+        if (card.length > 1 && card[1] === trumpSuit) {
 
-      let cardWeight = cardToWeightageDict[card.slice(2)] || 0;
+          const playerIndex = gameObj.players.findIndex(
+            (p: IPlayer) => p && p.playerId === playerId
+          );
 
-      // Add trump bonus (+10) if card suit matches trump suit
-      if (gameObj.trumpSuit && card.length > 1 && card[1] === gameObj.trumpSuit) {
-        cardWeight += 10;
+          if (playerIndex === -1) continue;
+
+          const cardWeight = cardToWeightageDict[card.slice(2)] || 0;
+
+          if (cardWeight > highestCardWeight) {
+            highestCardWeight = cardWeight;
+            winningPlayerIndex = playerIndex;
+            winnerTeam = playerIndex % 2 === 0 ? "A" : "B";
+          }
+        }
       }
+    } else {
+      // No trump set OR no trump cards in round - highest card of leading suit wins
+      for (const cardDetail of dropCardPlayer) {
+        if (!cardDetail) continue;
 
-      // Check if this is the highest card so far
-      if (cardWeight > highestCardWeight) {
-        highestCardWeight = cardWeight;
-        winningPlayerIndex = playerIndex;
-        // Determine team based on player index (0,2,4... = Team A | 1,3,5... = Team B)
-        winnerTeam = playerIndex % 2 === 0 ? "A" : "B";
+        const [card, playerId] = cardDetail.split("-");
+        if (!card || !playerId) continue;
+
+        const playerIndex = gameObj.players.findIndex(
+          (p: IPlayer) => p && p.playerId === playerId
+        );
+
+        if (playerIndex === -1) continue;
+
+        // Only considering cards of the leading suit
+        if (card.length > 1 && card[1] === firstCardSuit) {
+          const cardWeight = cardToWeightageDict[card.slice(2)] || 0;
+
+          if (cardWeight > highestCardWeight) {
+            highestCardWeight = cardWeight;
+            winningPlayerIndex = playerIndex;
+            winnerTeam = playerIndex % 2 === 0 ? "A" : "B";
+          }
+        }
       }
     }
 
@@ -763,27 +814,17 @@ export class GameCore {
     const totalCardsDistributed = teamACards.length + teamBCards.length;
 
     // Check if all cards have been distributed
-    if (totalCardsDistributed < (MAX_PLAYERS * 8)) {
+    if (totalCardsDistributed < MAX_PLAYERS * 8) {
       return; // Game is not complete yet
-    }
-
-    // Calculate points for each team
-    const pointValues = {
-      "10": 1,
-      "9": 2,
-      "A": 1,
-      "J": 3,
-      "K": 0,
-      "Q": 0,
     }
 
     const calculateTeamPoints = (cards: string[]) => {
       return cards.reduce((total, card) => {
         const cardType = card.slice(2); // Remove suit prefix (e.g., "1HA" -> "A")
-        const points = pointValues[cardType] || 0;
+        const points = cardToWeightagePoints[cardType] || 0;
         return total + points;
       }, 0);
-    }
+    };
 
     const teamAPoints = calculateTeamPoints(teamACards);
     const teamBPoints = calculateTeamPoints(teamBCards);
