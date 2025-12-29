@@ -93,6 +93,15 @@ export const cardToWeightageDict = {
   Q: 0,
 };
 
+export const cardToWeightagePoints = {
+  "10": 1,
+  "9": 2,
+  A: 1,
+  J: 3,
+  K: 0,
+  Q: 0,
+};
+
 export const names = ["A", "9", "10", "J", "Q", "K"];
 
 export const suits = ["1H", "1D", "1E", "1C", "2H", "2D", "2E", "2C"];
