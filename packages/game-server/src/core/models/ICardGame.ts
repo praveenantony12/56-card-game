@@ -21,6 +21,12 @@ export interface ICardGame {
   trumpSuit?: string;
   playerTrumpSuit?: { [playerId: string]: string };
   roundWinnerTeam?: string;
+  finalBid?: number;
+  biddingTeam?: string;
+  biddingPlayer?: string;
+  isGameComplete?: boolean;
+  teamAScore?: number;
+  teamBScore?: number;
 
   // This is to store the card details by userId/token.
   [token: string]: any;

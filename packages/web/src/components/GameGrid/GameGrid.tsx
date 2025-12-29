@@ -92,7 +92,13 @@ class GameGrid extends React.Component<IProps, IState> {
       currentBetPlayerId,
       dropCardPlayer,
       trumpSuit,
-      playerTrumpSuit,
+      isGameComplete,
+      winnerMessage,
+      gameCompleteData,
+      finalBid,
+      biddingTeam,
+      teamAScore,
+      teamBScore
     } = this.store.game;
 
     const { gameId, playerId } = this.store.user;
@@ -134,9 +140,6 @@ class GameGrid extends React.Component<IProps, IState> {
       { symbol: "♣", name: "C", label: "Clubs" }
     ];
 
-    const allPlayersDropped =
-      dropCardPlayer && players && dropCardPlayer.length >= players.length;
-
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
         <Grid.Row centered={true} columns={1}>
@@ -145,6 +148,31 @@ class GameGrid extends React.Component<IProps, IState> {
               {this.renderCards(droppedCards, false, false, dropCardPlayer)}
               {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
                 <div className="round-timer">{this.state.timerRemaining}</div>
+              )}
+              {isGameComplete && winnerMessage && (
+                <div className="game-winner-message" style={{
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: 'rgb(0,0,0,0.8)',
+                  color: 'white',
+                  padding: '20px',
+                  borderRadius: '10px',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  zIndex: 1000,
+                  maxWidth: '400px'
+                }}>
+                  <div>{winnerMessage}</div>
+                  {gameCompleteData && (
+                    <div style={{ marginTop: '10px', fontSize: '14px', fontWeight: 'normal' }}>
+                      <div>Final Bid: {finalBid}</div>
+                      <div>Team A Points: {gameCompleteData.teamAPoints}</div>
+                      <div>Team B Points: {gameCompleteData.teamBPoints}</div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </Grid.Column>
@@ -213,11 +241,15 @@ class GameGrid extends React.Component<IProps, IState> {
                   <Label as="a" basic={true} color="red" pointing="right" style={{ width: "90%", justifyContent: "center" }}>
                     {firstPlayer}'s Team
                   </Label>
-                  <Button color="red">{0 - Number(gameScore)}</Button>
+                  <Button color="red">
+                    {teamAScore !== undefined ? teamAScore : (10 - Number(gameScore))}
+                  </Button>
                 </Button>
                 <Button.Or text="VS" />
                 <Button as="div" labelPosition="right" disabled={gameStarted}>
-                  <Button color="red">{0 + Number(gameScore)}</Button>
+                  <Button color="red">
+                    {teamBScore !== undefined ? teamBScore : (10 - Number(gameScore))}
+                  </Button>
                   <Label as="a" basic={true} color="red" pointing="left" style={{ width: "90%", justifyContent: "center" }}>
                     {lastPlayer}'s Team
                   </Label>
@@ -251,20 +283,9 @@ class GameGrid extends React.Component<IProps, IState> {
                   <Label as="a" basic={true} color="black" pointing="right">
                     Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
                   </Label>
-                  <Button color="black" className="teamAPoints">
-                    0
+                  <Button color={isGameComplete && biddingTeam === "A" ? (gameCompleteData?.biddingTeamAchievedBid ? "green" : "red") : "black"} className="teamAPoints">
+                    {gameCompleteData ? gameCompleteData.teamAPoints : 0}
                   </Button>
-                </Button>
-                <Button as="div" labelPosition="right">
-                  <Label
-                    as="a"
-                    basic={true}
-                    color="black"
-                    onClick={this.clearPoints}
-                    className="showCursor"
-                  >
-                    Reset
-                  </Label>
                 </Button>
               </Button.Group>
               <div className="teamCards teamACards">
@@ -277,20 +298,9 @@ class GameGrid extends React.Component<IProps, IState> {
                   <Label as="a" basic={true} color="black" pointing="right">
                     Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
                   </Label>
-                  <Button color="black" className="teamBPoints">
-                    0
+                  <Button color={isGameComplete && biddingTeam === "B" ? (gameCompleteData?.biddingTeamAchievedBid ? "green" : "red") : "black"} className="teamBPoints">
+                    {gameCompleteData ? gameCompleteData.teamBPoints : 0}
                   </Button>
-                </Button>
-                <Button as="div" labelPosition="right">
-                  <Label
-                    as="a"
-                    basic={true}
-                    color="black"
-                    onClick={this.clearPoints}
-                    className="showCursor"
-                  >
-                    Reset
-                  </Label>
                 </Button>
               </Button.Group>
               <div className="teamCards teamBCards">
@@ -331,13 +341,6 @@ class GameGrid extends React.Component<IProps, IState> {
     );
   }
 
-  private clearPoints = () => {
-    const teamAPointsDiv: any = document.querySelectorAll(".teamAPoints");
-    const teamABointsDiv: any = document.querySelectorAll(".teamBPoints");
-    teamAPointsDiv[0].innerText = 0;
-    teamABointsDiv[0].innerText = 0;
-  };
-
   private updateScore = (event: any) => {
     this.store.updateGameScore(event.target.value);
   };
@@ -367,14 +370,6 @@ class GameGrid extends React.Component<IProps, IState> {
     const cards = Array.from(document.getElementsByClassName("card-clickable"));
     cards.forEach((card) => card.classList.remove("disabled"));
   };
-
-  private handleRoundWinnerButtonClick(teamName: string) {
-    if (teamName === "A") {
-      this.store.deckWonByTeamA();
-    } else {
-      this.store.deckWonByTeamB();
-    }
-  }
 
   private handleTrumpSuitClick(suit: string) {
     this.store.selectTrumpSuit(suit);
@@ -420,10 +415,6 @@ class GameGrid extends React.Component<IProps, IState> {
   }
 
   private handleRestartGameClick = (gameId: string) => {
-    const teamAPointsDiv: any = document.querySelectorAll(".teamAPoints");
-    const teamABointsDiv: any = document.querySelectorAll(".teamBPoints");
-    teamAPointsDiv[0].innerText = "0";
-    teamABointsDiv[0].innerText = "0";
     this.store.restartGame(gameId);
   };
 
@@ -438,7 +429,6 @@ class GameGrid extends React.Component<IProps, IState> {
   };
 
   private calculatePoints = () => {
-    const { trumpSuit } = this.store.game;
     const teamACardsDiv: any = document.querySelectorAll(".teamACards .card");
     const teamBCardsDiv: any = document.querySelectorAll(".teamBCards .card");
     const teamACards = [];

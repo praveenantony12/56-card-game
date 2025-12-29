@@ -110,3 +110,27 @@ export interface ITrumpSuitSelected {
 export interface IRoundWinner {
   roundWinnerTeam: string;
 }
+
+/**
+ * Game complete response model.
+ */
+export interface IGameComplete {
+  isGameComplete: boolean;
+  biddingTeam: string;
+  finalBid: number;
+  teamAPoints: number;
+  teamBPoints: number;
+  winnerMessage: string;
+  biddingTeamAchievedBid: boolean;
+  teamAScore: number;
+  teamBScore: number;
+  scoreResetOccurred: boolean;
+}
+
+/**
+ * Overall team scores response model.
+ */
+export interface ITeamScores {
+  teamAScore: number;
+  teamBScore: number;
+}

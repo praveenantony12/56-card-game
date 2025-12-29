@@ -1,5 +1,6 @@
 import * as common from "@rcg/common";
 import { IDropCardPlayer } from "@rcg/common";
+import { stat } from "fs";
 
 export class Payloads {
   /**
@@ -237,5 +238,30 @@ export class Payloads {
       data,
     };
   }
-}
 
+  /**
+   * Forms response to send the game complete information.
+   * @param gameCompleteData The game complete data
+   */
+  public static sendGameComplete(
+    gameCompleteData: common.IGameComplete
+  ): common.GameActionResponse {
+    return {
+      action: common.MESSAGES.gameComplete,
+      data: gameCompleteData,
+    };
+  }
+
+  /**
+   * Forms response to send the team scores.
+   * @param teamScores The team scores data
+   */
+  public static sendTeamScores(
+    teamScores: common.ITeamScores
+  ): common.GameActionResponse {
+    return {
+      action: common.MESSAGES.teamScores,
+      data: teamScores,
+    };
+  }
+}

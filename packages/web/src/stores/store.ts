@@ -254,7 +254,16 @@ class Store implements IStore {
   }
 
   private initializeStore() {
-    this.gameInfo = {};
+    this.gameInfo = {
+      isGameComplete: false,
+      teamAScore: undefined,
+      teamBScore: undefined,
+      winnerMessage: undefined,
+      gameCompleteData: undefined,
+      finalBid: undefined,
+      biddingTeam: undefined,
+      biddingPlayer: undefined,
+    };
     this.userInfo = {};
     this.userInfo.isSignedIn = false;
   }
@@ -347,6 +356,31 @@ class Store implements IStore {
         this.gameInfo.notification =
           (data as common.IGameAborted).reason ||
           "Something went wrong. Please try again!";
+        break;
+
+      case common.MESSAGES.gameComplete:
+        const gameCompleteData = data as common.IGameComplete;
+        this.gameInfo.isGameComplete = gameCompleteData.isGameComplete;
+        this.gameInfo.finalBid = gameCompleteData.finalBid;
+        this.gameInfo.biddingTeam = gameCompleteData.biddingTeam;
+        this.gameInfo.winnerMessage = gameCompleteData.winnerMessage;
+        this.gameInfo.gameCompleteData = {
+          biddingTeamAchievedBid: gameCompleteData.biddingTeamAchievedBid,
+          teamAPoints: gameCompleteData.teamAPoints,
+          teamBPoints: gameCompleteData.teamBPoints,
+          teamAScore: gameCompleteData.teamAScore,
+          teamBScore: gameCompleteData.teamBScore,
+          scoreResetOccurred: gameCompleteData.scoreResetOccurred,
+        }
+        // Update the team scores
+        this.gameInfo.teamAScore = gameCompleteData.teamAScore;
+        this.gameInfo.teamBScore = gameCompleteData.teamBScore;
+        break;
+
+      case common.MESSAGES.teamScores:
+        const teamScores = data as common.ITeamScores;
+        this.gameInfo.teamAScore = teamScores.teamAScore;
+        this.gameInfo.teamBScore = teamScores.teamBScore;
         break;
 
       default:

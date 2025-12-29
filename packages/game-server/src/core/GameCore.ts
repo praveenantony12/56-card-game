@@ -142,7 +142,24 @@ export class GameCore {
       this.gameStartIndex = (this.gameStartIndex + 1) % this.playersPoolForReGame.length;
     }
 
-    this.startGame(gameId, this.playersPoolForReGame);
+    // Preserve team score before restarting
+    const currentGameObj = this.inMemoryStore.fetchGame(req.gameId);
+    const preserveTeamAScore = currentGameObj?.teamAScore || 10;
+    const preserveTeamBScore = currentGameObj?.teamBScore || 10;
+
+    this.startGame(req.gameId, this.playersPoolForReGame);
+
+    //Restore the preserved team scores after game creation
+    const gameObj = this.inMemoryStore.fetchGame(req.gameId);
+    gameObj.teamAScore = preserveTeamAScore;
+    gameObj.teamBScore = preserveTeamBScore;
+
+    // Calculate gameScore for slider compatibiility (difference from 10-10 baseline)
+    // gameScore represents shifts: positive means Team B is leading, negative means Team A is leading
+    const scoreBaseLine = 10;
+    const teamADiff = preserveTeamAScore - scoreBaseLine;
+    const teamBDiff = preserveTeamBScore - scoreBaseLine;
+    gameObj.gameScore = (teamBDiff - teamADiff).toString();
 
     // Send reset notifications for UI cleanup
     const teamAPayload: GameActionResponse = Payloads.sendTeamACards([]);
@@ -164,11 +181,35 @@ export class GameCore {
     this.ioServer.to(req.gameId).emit("data", response);
 
     // Reset trump suit selection for new game
-    const gameObj = this.inMemoryStore.fetchGame(req.gameId);
     gameObj.dropCardPlayer = [];
     gameObj.trumpSuit = undefined;
     gameObj.playerTrumpSuit = {};
+    gameObj.isGameCompleted = false;
+    gameObj.finalBid = undefined;
+    gameObj.biddingTeam = undefined;
+    gameObj.biddingPlayer = undefined;
     this.inMemoryStore.saveGame(req.gameId, gameObj);
+
+    // Send game completion reset notification to all players
+    const gameCompleteResetData = {
+      isGameComplete: false,
+      biddingTeam: "",
+      finalBid: 0,
+      teamAPoints: 0,
+      teamBPoints: 0,
+      winnerMessage: "",
+      biddingTeamAchievedBid: false,
+      teamAScore: gameObj.teamAScore,
+      teamBScore: gameObj.teamBScore,
+      scoreResetOccurred: false
+    };
+    const gameCompleteResetPayload: GameActionResponse =
+      Payloads.sendGameComplete(gameCompleteResetData);
+    response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      gameCompleteResetPayload
+    );
+    this.ioServer.to(req.gameId).emit("data", response);
 
     // Send bet notification with current starter
     const incrementBetPayload: GameActionResponse = Payloads.sendBetByPlayer(
@@ -189,6 +230,14 @@ export class GameCore {
     response = successResponse(RESPONSE_CODES.gameNotification, trumpSuitPayload);
     this.ioServer.to(req.gameId).emit("data", response);
 
+    // Send updated game score for slider compatibility
+    const gameScorePayload: GameActionResponse = Payloads.sendUpdatedGameScore(gameObj.gameScore);
+    const gameScoreResponse = successResponse(
+      RESPONSE_CODES.gameNotification,
+      gameScorePayload
+    );
+    this.ioServer.to(req.gameId).emit("data", gameScoreResponse);
+
     this.dropCardPlayer = [];
   }
 
@@ -204,6 +253,21 @@ export class GameCore {
     }
 
     const currentGameIns = new Game(this.inMemoryStore, gameId, card, token);
+
+    // Set default final bid if not set yet (first card drop indicates game has started)
+    const gameObject = this.inMemoryStore.fetchGame(gameId);
+    if (!gameObject.finalBid) {
+      gameObject.finalBid = parseInt(gameObject.currentBet) || 28;
+      gameObject.biddingPlayer = gameObject.playerWithCurrentBet;
+
+      // Determine which team the bidding player belongs to
+      const playerIndex = gameObject.players.findIndex(
+        p => p.playerId === gameObject.playerWithCurrentBet
+      );
+      gameObject.biddingTeam = (playerIndex % 2 === 0) ? "A" : "B";
+
+      this.inMemoryStore.saveGame(gameId, gameObject);
+    }
 
     // This is possible in only hacky way of sending rather than from the UI.
     // So softly deny it and don't operate on this.
@@ -275,6 +339,20 @@ export class GameCore {
     );
     gameObj.currentBet = req.playerBet;
     gameObj.playerWithCurrentBet = player.playerId;
+
+    // Check if this is the final bid (when all players have had a chance to bid)
+    // Store the final bid and bidding team info
+    if (parseInt(req.playerBet) >= 28) {
+      gameObj.finalBid = parseInt(req.playerBet);
+      gameObj.biddingPlayer = player.playerId;
+
+      // Determine which team the bidding player belongs to
+      const playerIndex = gameObj.players.findIndex(
+        p => p.playerId === player.playerId
+      );
+      gameObj.biddingTeam = (playerIndex % 2 === 0) ? "A" : "B";
+    }
+
     const IncrementBetByPlayerPayload: GameActionResponse = Payloads.sendBetByPlayer(
       req.playerBet,
       player.playerId
@@ -301,6 +379,14 @@ export class GameCore {
   public onUpdateGameScore(req: UpdateGameScoreRequestPayload, cb: Function) {
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
     gameObj.gameScore = req.gameScore;
+
+    // Update team scores based on teamScore slider value
+    // gameScore represents the differential: Team A gets (10 - gameScore), Team B gets (10 + gameScore)
+    const scoreBaseLine = 10;
+    const gameScoreNum = parseInt(req.gameScore) || 0;
+    gameObj.teamAScore = scoreBaseLine - gameScoreNum;
+    gameObj.teamBScore = scoreBaseLine + gameScoreNum;
+
     const UpdateGameScorePayload: GameActionResponse = Payloads.sendUpdatedGameScore(
       req.gameScore
     );
@@ -309,6 +395,28 @@ export class GameCore {
       UpdateGameScorePayload
     );
     this.ioServer.to(req.gameId).emit("data", response);
+
+    // Send team scores update so UI displays are in sync
+    const gameCompleteResetData = {
+      isGameComplete: false,
+      biddingTeam: "",
+      finalBid: 0,
+      teamAPoints: 0,
+      teamBPoints: 0,
+      winnerMessage: "",
+      biddingTeamAchievedBid: false,
+      teamAScore: gameObj.teamAScore,
+      teamBScore: gameObj.teamBScore,
+      scoreResetOccurred: false
+    };
+
+    const gameCompleteResetPayload: GameActionResponse = Payloads.sendGameComplete(gameCompleteResetData);
+    response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      gameCompleteResetPayload
+    );
+    this.ioServer.to(req.gameId).emit("data", response);
+
     this.inMemoryStore.saveGame(req.gameId, gameObj);
   }
 
@@ -370,6 +478,9 @@ export class GameCore {
 
     // Notify the next player (winner of this round) that it's their turn
     this.notifyTurn(req.gameId);
+
+    // Check if game is complete after cards are assigned
+    this.checkGameCompletion(req.gameId);
   }
 
   /**
@@ -431,6 +542,9 @@ export class GameCore {
 
     // Notify the next player (winner of this round) that it's their turn
     this.notifyTurn(req.gameId);
+
+    // Check if game is complete after cards are assigned
+    this.checkGameCompletion(req.gameId);
   }
 
   /**
@@ -635,6 +749,152 @@ export class GameCore {
   }
 
   /**
+   * Check if the game is complete and determines the winner based on bid achievement.
+   * @param gameId The game id.
+   */
+  private checkGameCompletion(gameId: string) {
+    const gameObj = this.inMemoryStore.fetchGame(gameId);
+    if (!gameObj || gameObj.isGameCompleted) return;
+
+    const teamACards = gameObj.teamACards || [];
+    const teamBCards = gameObj.teamBCards || [];
+
+    // Calculate total cards distributed
+    const totalCardsDistributed = teamACards.length + teamBCards.length;
+
+    // Check if all cards have been distributed
+    if (totalCardsDistributed < (MAX_PLAYERS * 8)) {
+      return; // Game is not complete yet
+    }
+
+    // Calculate points for each team
+    const pointValues = {
+      "10": 1,
+      "9": 2,
+      "A": 1,
+      "J": 3,
+      "K": 0,
+      "Q": 0,
+    }
+
+    const calculateTeamPoints = (cards: string[]) => {
+      return cards.reduce((total, card) => {
+        const cardType = card.slice(2); // Remove suit prefix (e.g., "1HA" -> "A")
+        const points = pointValues[cardType] || 0;
+        return total + points;
+      }, 0);
+    }
+
+    const teamAPoints = calculateTeamPoints(teamACards);
+    const teamBPoints = calculateTeamPoints(teamBCards);
+
+    // Determine if bidding team achieved their bid
+    const finalBid = gameObj.finalBid || 28;
+    const biddingTeam = gameObj.biddingTeam || "A";
+    const biddingTeamPoints = biddingTeam === "A" ? teamAPoints : teamBPoints;
+    const biddingTeamAchievedBid = biddingTeamPoints >= finalBid;
+
+    // Update team scores using the tiered scoring system
+    let teamAScoreChange = 0;
+    let teamBScoreChange = 0;
+    let scoreResetOccurred = false;
+
+    //Determine score change based on bid range
+    let winPoinsts, losePoints;
+    if (finalBid >= 28 && finalBid <= 39) {
+      winPoinsts = 1; losePoints = -2;
+    } else if (finalBid >= 40 && finalBid <= 47) {
+      winPoinsts = 2; losePoints = -3;
+    } else if (finalBid >= 48 && finalBid <= 57) {
+      winPoinsts = 3; losePoints = -4;
+    } else if (finalBid === 56) {
+      winPoinsts = 4; losePoints = -5;
+    } else {
+      // Default fallback for any unexpected bid values
+      winPoinsts = 1; losePoints = -2;
+    }
+
+    if (biddingTeamAchievedBid) {
+      // Bidding team achieved their bid: they get winPoinsts, other team gets -winPoinsts
+      if (biddingTeam === "A") {
+        teamAScoreChange = winPoinsts;
+        teamBScoreChange = -winPoinsts;
+      } else {
+        teamBScoreChange = winPoinsts;
+        teamAScoreChange = -winPoinsts;
+      }
+    } else {
+      // Bidding team failed to achieve their bid: they losePoints, other team gets -losePoints
+      if (biddingTeam === "A") {
+        teamAScoreChange = losePoints;
+        teamBScoreChange = -losePoints;
+      } else {
+        teamBScoreChange = losePoints;
+        teamAScoreChange = -losePoints;
+      }
+    }
+
+    // Apply score changes
+    const newTeamAScore = (gameObj.teamAScore || 10) + teamAScoreChange;
+    const newTeamBScore = (gameObj.teamBScore || 10) + teamBScoreChange;
+
+    // Check for negative scores and reset if needed
+    let winnerMessage;
+    const biddingPlayerName = gameObj.biddingPlayer || "Unknown Player";
+
+    if (newTeamAScore < 0 || newTeamBScore < 0) {
+      // Reset scores to 10-10
+      gameObj.teamAScore = 10;
+      gameObj.teamBScore = 10;
+      scoreResetOccurred = true;
+
+      if (biddingTeamAchievedBid) {
+        winnerMessage = `${biddingPlayerName}'s team wins! They achieved their bid of ${finalBid} points with ${biddingTeamPoints} points. Score reset to 10-10 due to negative score.`;
+      } else {
+        winnerMessage = `${biddingPlayerName}'s team loses! They failed to achieve their bid of ${finalBid} points with only ${biddingTeamPoints} points. Score reset to 10-10 due to negative score.`;
+      }
+    } else {
+      // Normal score update
+      gameObj.teamAScore = newTeamAScore;
+      gameObj.teamBScore = newTeamBScore;
+
+      if (biddingTeamAchievedBid) {
+        winnerMessage = `${biddingPlayerName}'s team wins! They achieved their bid of ${finalBid} points with ${biddingTeamPoints} points.`;
+      } else {
+        winnerMessage = `${biddingPlayerName}'s team loses! They failed to achieve their bid of ${finalBid} points with only ${biddingTeamPoints} points.`;
+      }
+    }
+
+    // Prepare game completion data
+    const gameCompleteData = {
+      isGameComplete: true,
+      biddingTeam,
+      finalBid,
+      teamAPoints,
+      teamBPoints,
+      winnerMessage,
+      biddingTeamAchievedBid,
+      teamAScore: gameObj.teamAScore,
+      teamBScore: gameObj.teamBScore,
+      scoreResetOccurred: scoreResetOccurred
+    };
+
+    // Save game state
+    this.inMemoryStore.saveGame(gameId, gameObj);
+
+    // Send game completion notification to all players
+    const gameCompletePayload: GameActionResponse = Payloads.sendGameComplete(
+      gameCompleteData
+    );
+    const gameCompletionResponse = successResponse(
+      RESPONSE_CODES.gameNotification,
+      gameCompletePayload
+    );
+
+    this.ioServer.to(gameId).emit("data", gameCompletionResponse);
+  }
+
+  /**
    * Send the dropped card to all game players.
    * @param gameId The game id.
    * @param cards The cards dropped.
@@ -720,7 +980,10 @@ export class GameCore {
     game["dropDetails"] = [];
     game["dropCardPlayer"] = [];
     game["currentBet"] = "27";
-    game["playerWithCurrentBet"] = players[starterIndex].playerId;
+    game["playerWithCurrentBet"] = players[starterIndex]?.playerId;
+    game["teamAScore"] = 10;
+    game["teamBScore"] = 10;
+    game["isGameCompleted"] = false;
 
     const cards: string[][] = this.deck.getCardsForGame();
     const sortedCards = cards.map((handCards) =>

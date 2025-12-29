@@ -27,6 +27,8 @@ export const MESSAGES = {
   penality: "PENALITY",
   playerInfo: "PLAYER_INFO",
   gameAborted: "GAME_ABORTED",
+  gameComplete: "GAME_COMPLETE",
+  teamScores: "TEAM_SCORES",
   selectTrumpSuit: "SELECT_TRUMP_SUIT",
   trumpSuitSelected: "TRUMP_SUIT_SELECTED",
 };

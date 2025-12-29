@@ -21,4 +21,19 @@ export interface IGame {
   trumpSuit?: string;
   playerTrumpSuit?: { [playerId: string]: string };
   roundWinnerTeam?: string;
+  finalBid?: number;
+  biddingTeam?: string;
+  biddingPlayer?: string;
+  isGameComplete?: boolean;
+  teamAScore?: number;
+  teamBScore?: number;
+  winnerMessage?: string;
+  gameCompleteData?: {
+    biddingTeamAchievedBid: boolean;
+    teamAPoints: number;
+    teamBPoints: number;
+    teamAScore: number;
+    teamBScore: number;
+    scoreResetOccurred: boolean;
+  }
 }
