@@ -254,19 +254,60 @@ export class GameCore {
 
     const currentGameIns = new Game(this.inMemoryStore, gameId, card, token);
 
-    // Set default final bid if not set yet (first card drop indicates game has started)
+    // Set default bid and trump final bid if not set yet (first card drop indicates game has started)
     const gameObject = this.inMemoryStore.fetchGame(gameId);
-    if (!gameObject.finalBid) {
-      gameObject.finalBid = parseInt(gameObject.currentBet) || 28;
-      gameObject.biddingPlayer = gameObject.playerWithCurrentBet;
+    const isFirstCardOfGame = (!gameObject.teamACards || gameObject.teamACards.length === 0) &&
+      (!gameObject.teamBCards || gameObject.teamBCards.length === 0) &&
+      (!gameObject.droppedCards || gameObject.droppedCards.length === 0);
+
+    if (isFirstCardOfGame && !gameObject.finalBid) {
+      // Sets default to 28
+      gameObject.finalBid = 28;
+      gameObject.currentBet = "28";
+
+      // Set bidding player to the one who is dropping the first card (starting player)
+      gameObject.biddingPlayer = playerId;
+      gameObject.playerWithCurrentBet = playerId;
+
 
       // Determine which team the bidding player belongs to
       const playerIndex = gameObject.players.findIndex(
-        p => p.playerId === gameObject.playerWithCurrentBet
+        p => p.playerId === playerId
       );
       gameObject.biddingTeam = (playerIndex % 2 === 0) ? "A" : "B";
 
+      // Set default trump to "Noes" if not already set
+      if (!gameObject.trumpSuit) {
+        gameObject.trumpSuit = "N";
+        if (!gameObject.playerTrumpSuit) {
+          gameObject.playerTrumpSuit = {};
+        }
+        gameObject.playerTrumpSuit[playerId] = "N";
+      }
+
       this.inMemoryStore.saveGame(gameId, gameObject);
+
+      // Notify all players about the default trump selection
+      const trumpSuitPayload: GameActionResponse = Payloads.sendTrumpSuitSelected(
+        gameObject.playerTrumpSuit,
+        gameObject.trumpSuit
+      );
+      const trumpResponse = successResponse(
+        RESPONSE_CODES.gameNotification,
+        trumpSuitPayload
+      );
+      this.ioServer.to(req.gameId).emit("data", trumpResponse);
+
+      // Notify all players about the default bet selection
+      const bidPayload = Payloads.sendBetByPlayer(
+        gameObject.currentBet,
+        playerId
+      );
+      const bidResponse = successResponse(
+        RESPONSE_CODES.gameNotification,
+        bidPayload
+      );
+      this.ioServer.to(req.gameId).emit("data", bidResponse);
     }
 
     // This is possible in only hacky way of sending rather than from the UI.

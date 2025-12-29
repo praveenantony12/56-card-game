@@ -97,6 +97,7 @@ class GameGrid extends React.Component<IProps, IState> {
       gameCompleteData,
       finalBid,
       biddingTeam,
+      biddingPlayer,
       teamAScore,
       teamBScore
     } = this.store.game;
@@ -188,10 +189,44 @@ class GameGrid extends React.Component<IProps, IState> {
             <Grid.Column textAlign="center" mobile={16} tablet={16} computer={16} style={{ display: "flex", alignItems: "center", flexDirection: "column" }}>
               <Button.Group fluid={true} style={{ width: "25%", display: "block" }}>
                 {(() => {
-                  const label = currentBet && currentBet > "27"
-                    ? `${currentBetPlayerId} bids ${suits.find(suit => suit.name === (trumpSuit || "N"))?.label} ${suits.find(suit => suit.name === (trumpSuit || "N"))?.symbol}`
-                    : "No bids yet";
-                  const betValue = currentBet && currentBet > "27" ? currentBet : "?";
+                  // Check for active bid or fallback to final bid
+                  const hasCurrentBid = currentBet && parseInt(currentBet) >= 28 && currentBetPlayerId;
+                  const hasFinalBid = !hasCurrentBid && finalBid && finalBid >= 28;
+
+                  // Try to get player name from various sources
+                  let playerName = "";
+                  if (hasCurrentBid) {
+                    playerName = currentBetPlayerId;
+                  } else if (hasFinalBid) {
+                    if (biddingPlayer) {
+                      playerName = biddingPlayer;
+                    } else if (biddingTeam) {
+                      // Fallback to first player in bidding team
+                      const teamPlayers = biddingTeam === "A"
+                        ? [firstPlayer, thirdPlayer, fifthPlayer]
+                        : [secondPlayer, fourthPlayer, lastPlayer];
+                      playerName = teamPlayers[0] || "";
+                    }
+                  }
+
+                  const bidValue = hasCurrentBid ? currentBet : (hasFinalBid ? finalBid.toString() : "?");
+                  const suitInfo = suits.find(s => s.name === (trumpSuit || "N"));
+
+                  // Handle suit display - for Noes, just show "Noes", for others show "label sumbol"
+                  let suitDisplay = "";
+                  if (suitInfo) {
+                    if (suitInfo.name === "N") {
+                      suitDisplay = "Noes";
+                    } else {
+                      suitDisplay = `${suitInfo.label} ${suitInfo.symbol}`;
+                    }
+                  }
+
+                  const label = (hasCurrentBid || hasFinalBid) && playerName
+                    ? `${playerName}'s bids (${suitDisplay})`
+                    : "No Bids Yet";
+
+                  const betValue = (hasCurrentBid || hasFinalBid) ? bidValue : "?";
 
                   return (
                     <Button as="div" className="bidStatus" labelPosition="left" style={{ width: "100%" }} disabled={gameStarted}>
