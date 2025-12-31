@@ -194,7 +194,7 @@ export class GameCore {
           requestingSocket: socket,
           requestTime: new Date(),
           approvals: [],
-          requiredApprovals: activePlayers.length
+          requiredApprovals: 1 // Only need one approval
         };
 
         //Notify other players about the reconnection request
@@ -268,9 +268,9 @@ export class GameCore {
         delete reconnectedGame.pausedAt;
         this.inMemoryStore.saveGame(gameId, reconnectedGame);
 
-        // Notify all players that game is resumed const resume 
+        // Notify all players that game is resumed
         const resumePayload = Payloads.sendGameResumed(
-          `${playerId} reconnected.Game resumed!`
+          `${playerId} reconnected. Game resumed!`
         );
         const resumeResponse = successResponse(
           RESPONSE_CODES.gameNotification,
@@ -286,7 +286,7 @@ export class GameCore {
           RESPONSE_CODES.gameNotification,
           reconnectPayload
         );
-        socket.to(gameId).emit("data", reconnectResponse);
+        this.ioServer.to(gameId).emit("data", reconnectResponse);
       }
 
       // Send current game state to reconnected player
@@ -448,16 +448,28 @@ export class GameCore {
 
     requestingSocket.emit("data", successResponse(RESPONSE_CODES.reconnectSuccess, gameState))
 
-    // Notify all other players that the player has reconnected 
-    this.ioServer?.to(gameId).emit("data",
-      successResponse(RESPONSE_CODES.gameNotification, {
-        action: "player_reconnected",
-        data: {
-          playerId: playerId,
-          playerName: playerToReconnect.playerId // Using playerId as display name
-        }
-      })
-    );
+    // Check if the game should be resumed
+    const connectedPlayersCount = game.players.filter((p: IPlayer) => !p.isDisconnected).length;
+
+    if (game.gamePaused && connectedPlayersCount >= MAX_PLAYERS) {
+      // Resume the game
+      game.gamePaused = false;
+      delete game.gamePausedAt;
+
+      // Notify all players that the game has resumed
+      const resumePayload = Payloads.sendGameResumed(
+        `${playerId} has reconnected. Game resumed!`
+      );
+      const resumeResponse = successResponse(RESPONSE_CODES.gameNotification, resumePayload);
+      this.ioServer?.to(gameId).emit("data", resumeResponse);
+    }
+
+    // Notify all players that the player has reconnected
+    const reconnectPayload = Payloads.sendPlayerReconnected(
+      `${playerId} has successfully reconnected to the game!`
+    )
+    const reconnectResponse = successResponse(RESPONSE_CODES.gameNotification, reconnectPayload);
+    this.ioServer.to(gameId).emit("data", reconnectResponse);
   }
 
 
@@ -1621,9 +1633,17 @@ export class GameCore {
       game.gamePaused = true;
       game.pausedAt = new Date();
 
-      // Notify remaining players
+      // First notify about the spcific player disconnection
+      const disconnectedPayload = Payloads.sendPlayerDisconnected(
+        `${playerId} has disconnected from the game`
+      );
+
+      const disconnectResponse = successResponse(RESPONSE_CODES.gameNotification, disconnectedPayload);
+      this.ioServer.to(gameId).emit("data", disconnectResponse);
+
+      //  then notify about the pause
       const pausePayload = Payloads.sendGamePaused(
-        `$(playerId) disconnected.Game paused.Waiting for reconnection...`
+        `${playerId} disconnected. Game paused. Waiting for reconnection...`
       );
 
       const pauseResponse = successResponse(RESPONSE_CODES.gameNotification, pausePayload);

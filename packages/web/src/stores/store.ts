@@ -154,7 +154,6 @@ class Store implements IStore {
         playerId,
         this.userInfo.playerId as string
       );
-      this.clearNotifications();
     } catch (error) {
       const errorMessage = typeof error === "string" ? error :
         (error as any)?.message || "Failed to approve reconnection";
@@ -169,7 +168,6 @@ class Store implements IStore {
         playerId,
         this.userInfo.playerId as string
       );
-      this.clearNotifications();
     } catch (error) {
       const errorMessage = typeof error === "string" ? error :
         (error as any)?.message || "Failed to deny reconnection";
@@ -538,6 +536,33 @@ class Store implements IStore {
         // Handle player reconnected notificaiton
         const reconnectedPlayerData = data as any;
         this.gameInfo.notification = `Player ${reconnectedPlayerData.playerName} has reconnected to the game`;
+        break;
+
+      case common.MESSAGES.playerReconnected:
+        // Handle player reconnected notificaiton from server
+        const playerReconnectedData = data as any;
+        this.gameInfo.notification = playerReconnectedData.message || "A player has successfully reconnected to the game";
+        break;
+
+      case common.MESSAGES.gamePaused:
+        // Handle game paused notification (when a player disconnects)
+        const pausedData = data as any;
+        this.gameInfo.notification = pausedData.message || "Game has been paused due to player disconnection";
+        this.gameInfo.gamePaused = true;
+        break;
+
+      case common.MESSAGES.gameResumed:
+        // Handle game resumed notification (when all players are back)
+        const resumeData = data as any;
+        this.gameInfo.notification = resumeData.message || "Game has been resumed";
+        this.gameInfo.gamePaused = true;
+        break;
+
+      case common.MESSAGES.playerDisconnected:
+        // Handle player disconnection notificaiton
+        const disconnectionData = data as any;
+        this.gameInfo.notification = disconnectionData.message || "A player has disconnected";
+        this.gameInfo.gamePaused = true;
         break;
 
       case common.MESSAGES.gameComplete:
