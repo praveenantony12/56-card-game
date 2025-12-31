@@ -408,11 +408,11 @@ class Store implements IStore {
     // Handle special response codes that don't go through action based routing
     const responseCode = (response as common.SuccessResponse).code;
 
-    if (responseCode === "RESPONSE_SUCCESS") {
+    if (responseCode === "RESPONSE_SUCCESS" || responseCode === "RECONNECT_SUCCESS") {
       const payload = (response as common.SuccessResponse).payload;
 
       // Update user info from payload
-      this.userInfo = (response as common.SuccessResponse).payload;
+      this.userInfo = { ...this.userInfo, ...(response as common.SuccessResponse).payload };
       this.userInfo.isSignedIn = true;
       this.gameInfo.isPendingReconnection = false;
 
@@ -441,10 +441,10 @@ class Store implements IStore {
         }
       }
 
-      // Set canStateGame if we have cards (indicating the game is in progress)
+      // Set canStartGame if we have cards (indicating the game is in progress)
       if (payload && payload.cards) {
-        this.gameInfo.cards = payload.cards,
-          this.gameInfo.canStartGame = true;
+        this.gameInfo.cards = payload.cards;
+        this.gameInfo.canStartGame = true;
       }
 
       return;
