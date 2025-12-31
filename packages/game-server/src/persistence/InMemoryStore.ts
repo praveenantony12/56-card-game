@@ -60,4 +60,11 @@ export class InMemoryStore {
   public get count(): number {
     return Object.keys(this.store).length;
   }
+
+  /**
+   * Get all game IDs in the store.
+   */
+  public getAllGameIds(): string[] {
+    return Object.keys(this.store);
+  }
 }

@@ -1,7 +1,7 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
 
-import { Button, Form, Input, Menu } from "semantic-ui-react";
+import { Button, Form, Input, Menu, Message, Icon } from "semantic-ui-react";
 import { IStore } from "../../stores/IStore";
 
 import "./header.css";
@@ -26,11 +26,13 @@ class Header extends React.Component<IProps, {}> {
   public render() {
     return (
       <Menu
+        color="orange"
+        inverted
         attached={true}
         size="small"
         className={this.store.user.isSignedIn ? "hide" : "show"}
       >
-        <Menu.Item>
+        <Menu.Item active={true}>
           <h5>56</h5>
         </Menu.Item>
 
@@ -56,12 +58,25 @@ class Header extends React.Component<IProps, {}> {
   };
 
   private renderMenus = () => {
+    if (this.store.isAttemptingReconnection) {
+      return this.reconnectingMessage();
+    }
+
     if (!this.store.user.isSignedIn) {
       return this.signInButton();
     }
 
     return this.leaveGameButton();
   };
+
+  private reconnectingMessage = () => {
+    <Menu.Item>
+      <Message info>
+        <Icon name="circle notched" loading={true} />
+        Reconnecting to the game...
+      </Message>
+    </Menu.Item>
+  }
 
   private signInButton = () => (
     <Menu.Item>

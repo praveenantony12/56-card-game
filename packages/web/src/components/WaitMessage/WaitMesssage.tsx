@@ -25,6 +25,18 @@ class WaitMesssage extends React.Component<IProps, {}> {
   }
 
   public render() {
+    if (this.store.isPendingReconnectionApproval) {
+      return (
+        <Message icon={true} info>
+          <Icon name="clock outline" />
+          <Message.Content>
+            <Message.Header>Waiting for approval</Message.Header>
+            Your reconnection request has been sent to other players for approval.
+          </Message.Content>
+        </Message>
+      );
+    }
+
     return (
       <Message icon={true} hidden={!this.canShowWaitMessage}>
         <Icon name="circle notched" loading={true} />

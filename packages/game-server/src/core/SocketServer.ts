@@ -2,6 +2,7 @@ import {
   MESSAGES,
   Request,
   SignInRequest,
+  ReconnectRequestPayload,
   DropCardRequestPayload,
   IncrementBetByPlayerRequestPayload,
   UpdateGameScoreRequestPayload,
@@ -83,6 +84,39 @@ export class SocketServer {
         await this.gameCore.addPlayerToGamePool(socket, userId, cb);
         break;
 
+      case MESSAGES.reconnect:
+        const reconnectRequest = payload as ReconnectRequestPayload;
+        await this.gameCore.reconnectPlayerToGame(
+          socket,
+          reconnectRequest.playerId,
+          cb,
+          reconnectRequest.token,
+          reconnectRequest.gameId
+        )
+        break;
+
+      case MESSAGES.reconnectApprove:
+        const approveRequest = payload as any;
+        await this.gameCore.approveReconnection(
+          socket,
+          approveRequest.gameId,
+          approveRequest.playerId,
+          approveRequest.approvingPlayerId,
+          cb
+        );
+        break;
+
+      case MESSAGES.reconnectDeny:
+        const denyRequest = payload as any;
+        await this.gameCore.denyReconnection(
+          socket,
+          denyRequest.gameId,
+          denyRequest.playerId,
+          denyRequest.denyingPlayerId,
+          cb
+        );
+        break;
+
       case MESSAGES.selectPlayer:
         const selectPlayerRequest = payload as SelectPlayerRequestPayload;
         this.gameCore.onSelectPlayer(selectPlayerRequest, cb);
@@ -139,7 +173,7 @@ export class SocketServer {
 
   /**
    * The handler gets called on socket disconnect.
-   * Can be used to close or clean gracefully when required.
+   * Now handls graceful disconnection instead of aborting the game
    * @param socket The socket instance.
    */
   private onDisconnectHandler(socket: IOSocket) {
@@ -147,9 +181,19 @@ export class SocketServer {
 
     const { gameInfo } = socket as any;
 
-    if (gameInfo) {
+    if (gameInfo && gameInfo.gameId && gameInfo.playerId) {
       LoggerService.log("Disconnected", `Player ID - ${gameInfo.playerId}`);
-      this.gameCore.abortGame((socket as any).gameInfo.gameId);
+
+      // Use graceful disconnection instead of aborting the game
+      this.gameCore.handlePlayerDisconnection(
+        gameInfo.gameId,
+        gameInfo.playerId,
+        socket.id
+      );
+    } else {
+      LoggerService.log(
+        "Disconnected", "Player was not in active game"
+      );
     }
   }
 }

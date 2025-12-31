@@ -6,9 +6,10 @@ export interface IGame {
   teamBCards?: string[];
   tableCards?: string[];
   currentBet?: string;
+  currentTurn?: string;
   gameScore?: string;
   currentBetPlayerId?: string;
-  notification?: string;
+  notification?: string | any;
   canStartGame?: boolean;
   yourTurn?: boolean;
   gameOver?: boolean;
@@ -28,6 +29,8 @@ export interface IGame {
   teamAScore?: number;
   teamBScore?: number;
   winnerMessage?: string;
+  isPendingReconnection?: boolean;
+  gamePaused?: boolean;
   gameCompleteData?: {
     biddingTeamAchievedBid: boolean;
     teamAPoints: number;

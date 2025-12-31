@@ -5,7 +5,10 @@ import {
   dropCardPayload,
   incrementBetByPlayerPayload,
   loginPayload,
+  reconnectPayload,
   pingPayload,
+  reconnectApprovePayload,
+  reconnectDenyPayload,
   ResponseType,
   restartGamePayload,
   selectPlayerPayload,
@@ -18,7 +21,8 @@ import * as io from "socket.io-client";
 
 const ifDevelopment = process.env.NODE_ENV === "development";
 const connection = ifDevelopment
-  ? "http://localhost:4500/" //"http://75.177.132.239:90" 
+  // ? "http://24.211.235.185:90" 
+  ? "http://localhost:4500/"
   : // "http://192.168.1.220:4500/"
   // "http://localhost:4500/"
   document.location.protocol + "//" + document.location.host;
@@ -48,6 +52,36 @@ class GameService {
    */
   public signIn(userId: string): Promise<any> {
     return this.sendRequest(loginPayload(userId));
+  }
+
+  /**
+   * Reconnect to an existing game.
+   * @param playerId The player id.
+   * @param token The token.
+   * @param gameId The game id.
+   */
+  public reconnect(playerId: string, token?: string, gameId?: string): Promise<any> {
+    return this.sendRequest(reconnectPayload(playerId, token, gameId));
+  }
+
+  /**
+   * Approve for a reconnection request.
+   * @param gameId The game id.
+   * @param playerId The playerId id requesting connection.
+   * @param approvingPlayerId The Id of player giving approval.
+   */
+  public approveReconnection(gameId: string, playerId: string, approvingPlayerId: string): Promise<any> {
+    return this.sendRequest(reconnectApprovePayload(gameId, playerId, approvingPlayerId));
+  }
+
+  /**
+   * Deny a reconnection request.
+   * @param gameId The game id.
+   * @param playerId The playerId id requesting connection.
+   * @param denyingPlayerId The Id of player denying approval.
+   */
+  public denyReconnection(gameId: string, playerId: string, denyingPlayerId: string): Promise<any> {
+    return this.sendRequest(reconnectDenyPayload(gameId, playerId, denyingPlayerId));
   }
 
   /**
@@ -199,11 +233,20 @@ class GameService {
           return;
         }
 
-        if (result.type === ResponseType.error) {
-          reject(result.message);
+        // Handle specific success responses that should not be treated as errors
+        if (result.code === "RECONNECT_PENDING_APPROVAL" ||
+          result.code === "RECONNECT_APPROVED" ||
+          result.code === "RECONNECT_DENIED") {
+          resolve(result);
+          return;
         }
 
-        resolve(result.payload || true);
+        if (result.type === ResponseType.error) {
+          reject(result.message);
+          return;
+        }
+
+        resolve(result.payload || result || true);
       });
     });
   }

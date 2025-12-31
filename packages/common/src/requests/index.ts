@@ -5,6 +5,7 @@ export * from "./UpdateGameScoreRequestPayload";
 export * from "./DropCardByPlayerRequestPayload";
 export * from "./DeckWonByTeamARequestPayload";
 export * from "./DeckWonByTeamBRequestPayload";
+export * from "./ReconnectRequestPayload";
 export * from "./TableCardsRequestPayload";
 export * from "./SelectPlayerRequestPayload";
 export * from "./RestartGameRequestPayload";

@@ -6,4 +6,7 @@ export interface IPlayer {
   socketId: string;
   playerId: string;
   gameId: string;
+  isDisconnected?: boolean;
+  disconnectedAt?: Date;
+  lastActivity?: Date;
 }

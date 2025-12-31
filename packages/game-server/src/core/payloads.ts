@@ -264,4 +264,56 @@ export class Payloads {
       data: teamScores,
     };
   }
+
+  /**
+   * Forms response to notify player reconnection.
+   * @param message The reconnection message
+   */
+  public static sendPlayerReconnected(
+    message: string
+  ): common.GameActionResponse {
+    return {
+      action: common.MESSAGES.playerReconnected,
+      data: { message },
+    };
+  }
+
+  /**
+   * Forms response to notify player disconnection.
+   * @param message The disconnection message
+   */
+  public static sendPlayerDisconnected(
+    message: string
+  ): common.GameActionResponse {
+    return {
+      action: common.MESSAGES.playerDisconnected,
+      data: { message },
+    };
+  }
+
+  /**
+   * Forms response to notify game paused.
+   * @param message The game paused message
+   */
+  public static sendGamePaused(
+    message: string
+  ): common.GameActionResponse {
+    return {
+      action: common.MESSAGES.gamePaused,
+      data: { message },
+    };
+  }
+
+  /**
+   * Forms response to notify game resumed.
+   * @param message The game resumed message
+   */
+  public static sendGameResumed(
+    message: string
+  ): common.GameActionResponse {
+    return {
+      action: common.MESSAGES.gameResumed,
+      data: { message },
+    };
+  }
 }

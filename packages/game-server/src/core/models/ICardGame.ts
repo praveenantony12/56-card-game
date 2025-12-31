@@ -27,6 +27,11 @@ export interface ICardGame {
   isGameComplete?: boolean;
   teamAScore?: number;
   teamBScore?: number;
+  disconnectedPlayers?: { [playerId: string]: IPlayer };
+  pendingConnections?: { [playerId: string]: IPlayer };
+  gameCreatedAt?: Date;
+  gamePausedAt?: boolean;
+  pausedAt?: Date;
 
   // This is to store the card details by userId/token.
   [token: string]: any;

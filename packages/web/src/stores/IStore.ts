@@ -6,7 +6,13 @@ export interface IStore {
 
   user: IUser;
 
+  isAttemptingReconnection: boolean
+
+  isPendingReconnectionApproval: boolean;
+
   signIn(userId: string): Promise<any>;
+
+  reconnect(): Promise<any>;
 
   dropCard(card: string): Promise<any>;
 
@@ -23,6 +29,10 @@ export interface IStore {
   selectTrumpSuit(trumpSuit: string): Promise<any>;
 
   restartGame(gameId: string): Promise<any>;
+
+  approveReconnection(playerId: string): Promise<void>;
+
+  denyReconnection(playerId: string): Promise<void>;
 
   ping(): Promise<void>;
 

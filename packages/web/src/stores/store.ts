@@ -1,5 +1,5 @@
 import * as common from "@rcg/common";
-import { computed, observable } from "mobx";
+import { computed, observable, ObservableMap } from "mobx";
 import { persist } from "mobx-persist";
 
 import GameService from "../services/GameService";
@@ -17,10 +17,33 @@ class Store implements IStore {
   private userInfo: IUser = {};
 
   private gameService: GameService;
+  @observable private isReconnecting: boolean = false;
 
   constructor() {
     this.gameService = new GameService(this.subscribeToNotifications);
     this.initializeStore();
+    // Attempt automatic reconnection after initialization
+    this.attemptAutoReconnection();
+  }
+
+  private async attemptAutoReconnection() {
+    // Give some time for mobx-persist to restore the persisted data
+    setTimeout(async () => {
+      if (this.userInfo.token &&
+        this.userInfo.gameId &&
+        this.userInfo.playerId &&
+        !this.userInfo.isSignedIn) {
+        this.isReconnecting = true;
+        try {
+          await this.reconnect();
+        } catch (error) {
+          // Clear stale session data
+          this.initializeStore();
+        } finally {
+          this.isReconnecting = false;
+        }
+      }
+    }, 1000);
   }
 
   @computed
@@ -31,6 +54,16 @@ class Store implements IStore {
   @computed
   public get game() {
     return this.gameInfo;
+  }
+
+  @computed
+  public get isAttemptingReconnection() {
+    return this.isReconnecting;
+  }
+
+  @computed
+  public get isPendingReconnectionApproval() {
+    return this.gameInfo.isPendingReconnection || false;
   }
 
   public async ping() {
@@ -45,12 +78,102 @@ class Store implements IStore {
   public async signIn(userId: string) {
     this.clearNotifications();
 
+    // Check if we have existing session data and should reconnect instead
+    if (this.userInfo.token && this.userInfo.gameId && this.userInfo.playerId) {
+      try {
+        await this.reconnect();
+        return; // Successfully reconnected
+      } catch (error) {
+        // Clear existing session data and proceed with fresh login
+        this.initializeStore();
+      }
+    }
+
     try {
       const userInfo = await this.gameService.signIn(userId);
       this.userInfo = userInfo;
       this.userInfo.isSignedIn = true;
     } catch (error) {
-      this.gameInfo.error = error;
+      // Convert error object to string if necessary
+      const errorMessage = typeof error === "string" ? error :
+        (error as any)?.message || JSON.stringify(error) ||
+        "Unknown sign in error";
+      this.gameInfo.error = errorMessage;
+    }
+  }
+
+  public async reconnect() {
+    if (!this.userInfo.token ||
+      !this.userInfo.gameId ||
+      !this.userInfo.playerId) {
+      throw new Error("Missing session data for reconnection");
+    }
+
+    this.clearNotifications();
+
+    try {
+      const response = await this.gameService.reconnect(
+        this.userInfo.playerId,
+        this.userInfo.token,
+        this.userInfo.gameId
+      );
+
+      // Check if this is a pending approval response
+      if (response && response.code === "RECONNECT_PENDING_APPROVAL") {
+        this.gameInfo.notification = response.payload?.message || "Reconnection request sent to other players for approval";
+        this.gameInfo.isPendingReconnection = true;
+        return; // Don't mark as signed in yet
+      }
+
+      // Check if this is a successful reconnection
+      if (response && response.code === "RECONNECT_SUCCESS") {
+        this.userInfo = { ...this.userInfo, ...response.payload };
+        this.userInfo.isSignedIn = true;
+        this.gameInfo.isPendingReconnection = false;
+        return;
+      }
+
+      // Update with fresh data from server for successful connection
+      this.userInfo = { ...this.userInfo, ...response };
+      this.userInfo.isSignedIn = true;
+      this.gameInfo.isPendingReconnection = false;
+    } catch (error) {
+      // Convert error object to string if necessary
+      const errorMessage = typeof error === "string" ? error :
+        (error as any)?.message || JSON.stringify(error) ||
+        "Unknown sign in error";
+      this.gameInfo.error = errorMessage;
+      throw new Error(errorMessage);
+    }
+  }
+
+  public async approveReconnection(playerId: string): Promise<void> {
+    try {
+      await this.gameService.approveReconnection(
+        this.userInfo.gameId as string,
+        playerId,
+        this.userInfo.playerId as string
+      );
+      this.clearNotifications();
+    } catch (error) {
+      const errorMessage = typeof error === "string" ? error :
+        (error as any)?.message || "Failed to approve reconnection";
+      this.gameInfo.error = errorMessage;
+    }
+  }
+
+  public async denyReconnection(playerId: string): Promise<void> {
+    try {
+      await this.gameService.denyReconnection(
+        this.userInfo.gameId as string,
+        playerId,
+        this.userInfo.playerId as string
+      );
+      this.clearNotifications();
+    } catch (error) {
+      const errorMessage = typeof error === "string" ? error :
+        (error as any)?.message || "Failed to deny reconnection";
+      this.gameInfo.error = errorMessage;
     }
   }
 
@@ -282,6 +405,51 @@ class Store implements IStore {
       return;
     }
 
+    // Handle special response codes that don't go through action based routing
+    const responseCode = (response as common.SuccessResponse).code;
+
+    if (responseCode === "RESPONSE_SUCCESS") {
+      const payload = (response as common.SuccessResponse).payload;
+
+      // Update user info from payload
+      this.userInfo = (response as common.SuccessResponse).payload;
+      this.userInfo.isSignedIn = true;
+      this.gameInfo.isPendingReconnection = false;
+
+      // Extract nested game state and update gameInfo
+      if (payload && payload.gameState) {
+        const gameState = payload.gameState;
+        this.gameInfo = {
+          ...this.gameInfo,
+          players: gameState.players || [],
+          currentPlayerId: gameState.currentPlayerId, // include current player Id
+          droppedCards: gameState.droppedCards || [],
+          dropCardPlayer: gameState.dropCardPlayer || [],
+          teamACards: gameState.teamACards || [],
+          teamBCards: gameState.teamBCards || [],
+          currentBet: gameState.currentBet,
+          gameScore: gameState.gameScore || {},
+          trumpSuit: gameState.trumpSuit,
+          currentTurn: gameState.currentTurn,
+          finalBid: gameState.finalBid,
+          biddingTeam: gameState.biddingTeam,
+          biddingPlayer: gameState.biddingPlayer,
+          isGameComplete: gameState.isGameComplete || false,
+          teamAScore: gameState.teamAScore || 0,
+          teamBScore: gameState.teamBScore || 0,
+          gamePaused: gameState.gamePaused || false,
+        }
+      }
+
+      // Set canStateGame if we have cards (indicating the game is in progress)
+      if (payload && payload.cards) {
+        this.gameInfo.cards = payload.cards,
+          this.gameInfo.canStartGame = true;
+      }
+
+      return;
+    }
+
     const payload = (response as common.SuccessResponse).payload || {};
     const { action = "", data = {} } = payload as common.GameActionResponse;
 
@@ -358,6 +526,20 @@ class Store implements IStore {
           "Something went wrong. Please try again!";
         break;
 
+      case "reconnection_request":
+        // Handle reconnection request notificaiton
+        this.gameInfo.notification = {
+          action: "reconnection_request",
+          data: data
+        };
+        break;
+
+      case "player_reconnected":
+        // Handle player reconnected notificaiton
+        const reconnectedPlayerData = data as any;
+        this.gameInfo.notification = `Player ${reconnectedPlayerData.playerName} has reconnected to the game`;
+        break;
+
       case common.MESSAGES.gameComplete:
         const gameCompleteData = data as common.IGameComplete;
         this.gameInfo.isGameComplete = gameCompleteData.isGameComplete;
@@ -384,7 +566,7 @@ class Store implements IStore {
         break;
 
       default:
-        console.log("Default case. Shouldn't hit this");
+        console.log("Default case. Shouldn't hit this. Action:", action, "Data:", data);
         break;
     }
   };

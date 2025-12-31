@@ -39,6 +39,15 @@ export class GameCore {
   roundTimers: { [gameId: string]: NodeJS.Timeout } = {};
   gameStartIndex: number = 0; // Track which player starts the game
 
+  // Reconnection system
+  private disconnectTimeouts: {
+    [gameId: string]: {
+      [playerId: string]: NodeJS.Timeout
+    };
+  } = {};
+  private readonly DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly GAME_ABANDON_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
   /**
    * Initializes a new instance of the class Game.
    * @param ioServer The ioServer instance.
@@ -70,6 +79,23 @@ export class GameCore {
       }
       if (!playerId || typeof playerId !== "string") {
         throw new Error("Invalid player ID");
+      }
+
+      // Check if this player is reconnecting to an existing game
+      const allGameIds = this.inMemoryStore.getAllGameIds();
+      for (const gameId of allGameIds) {
+        const game = this.inMemoryStore.fetchGame(gameId);
+        if (game && game.disconnectedPlayers && game.disconnectedPlayers[playerId]) {
+          // Player is reconnecting - use reconnection flow instead
+          const disconnectedPlayer = game.disconnectedPlayers[playerId];
+          return this.reconnectPlayerToGame(
+            socket,
+            playerId,
+            cb,
+            disconnectedPlayer.token,
+            gameId
+          );
+        }
       }
 
       this.checkValidityAndThrowIfInValid(playerId, socket.id);
@@ -105,6 +131,335 @@ export class GameCore {
       cb(null, errorResponse(RESPONSE_CODES.loginFailed, error && error.message ? error.message : "Unknown error"));
     }
   }
+
+  /** 
+   * Handles player reconnection to an existing game.
+   * @param socket The socket instance
+   * @param playerId The player id
+   * @param token Optional previous session token
+   * @param gameId Optional game id to reconnect to
+   * @param cb The callback after the action is done.
+   */
+  public async reconnectPlayerToGame(
+    socket: IOSocket,
+    playerId: string,
+    cb: Function,
+    token?: string,
+    gameId?: string
+  ) {
+    try {
+      // Validate inputs
+      if (!socket || !socket.id) {
+        throw new Error("Invalid socket");
+      }
+      if (!playerId || typeof playerId != "string") {
+        throw new Error("Invalid player ID");
+      }
+      let reconnectedGame: GameModel | null = null;
+      let playerToReconnect: IPlayer | null = null;
+
+      // Try to find the game and player to reconnect
+      if (gameId) {
+        const game = this.inMemoryStore.fetchGame(gameId);
+        if (game && game.disconnectedPlayers && game.disconnectedPlayers[playerId]) {
+          playerToReconnect = game.disconnectedPlayers[playerId];
+          reconnectedGame = game;
+        }
+      }
+
+      // If not found by gameld, search through all games
+      if (!playerToReconnect) {
+        // Note: This is a simplified search. In production, you'd want a more efficient way
+        // to index games by player for faster lookup
+        console.log("Searching for disconnected player $(playerId) across all games");
+      }
+
+      if (!playerToReconnect || !reconnectedGame || !gameId) {
+        throw new Error("No disconnected player found to reconnect");
+      }
+
+      // Check if there are other active players who need to approve the reconnection
+      const activePlayers = reconnectedGame.players.filter(
+        (p: IPlayer) => !p.isDisconnected && p.playerId != playerId
+      );
+
+      if (activePlayers.length > 0) {
+        // Store the pending reconnection request 
+        if (!reconnectedGame.pendingReconnections) {
+          reconnectedGame.pendingReconnections = {};
+        }
+
+        reconnectedGame.pendingReconnections[playerId] = {
+          playerToReconnect,
+          requestingSocket: socket,
+          requestTime: new Date(),
+          approvals: [],
+          requiredApprovals: activePlayers.length
+        };
+
+        //Notify other players about the reconnection request
+        const reconnectionRequest = {
+          playerId: playerId,
+          playerName: playerToReconnect.playerId, // Using playerId as display name
+          gameId: gameId
+        };
+
+        activePlayers.forEach((player: IPlayer) => {
+          this.ioServer?.to(player.socketId).emit("data", {
+            success: true,
+            code: RESPONSE_CODES.gameNotification,
+            payload: {
+              action: "reconnection_request",
+              data: reconnectionRequest
+            }
+          });
+        });
+
+        // Send pending approval response to reconnecting player 
+        cb(null, successResponse(RESPONSE_CODES.reconnectPendingApproval, {
+          message: "Reconnection request sent to other players for approval",
+          gameld: gameId
+        }));
+        return;
+      }
+
+      // No other players, allow immediate reconnection
+
+      // Update player with new socket
+
+      playerToReconnect.socketId = socket.id;
+      playerToReconnect.isDisconnected = false;
+      playerToReconnect.lastActivity = new Date();
+      delete playerToReconnect.disconnectedAt;
+
+      // Update the players array
+      const playerIndex = reconnectedGame.players.findIndex(
+        (p: IPlayer) => p.playerId = playerId
+      );
+
+      if (playerIndex == -1) {
+        (reconnectedGame.players as any)[playerIndex] = playerToReconnect;
+      }
+
+      // Remove from disconnected players
+      delete reconnectedGame.disconnectedPlayers![playerId];
+
+      // Clear disconnect timeout
+      if (this.disconnectTimeouts[gameId] && this.disconnectTimeouts[gameId][playerId]) {
+        clearTimeout(this.disconnectTimeouts[gameId][playerId]);
+        delete this.disconnectTimeouts[gameId][playerId];
+      }
+
+      // Add socket to game room
+      socket.join(gameId);
+      (socket as any).gameinfo = playerToReconnect;
+
+      // Save updated game
+      this.inMemoryStore.saveGame(gameId, reconnectedGame);
+
+
+      // Check if game was paused and can be resumed
+      const connectedPlayersCount = reconnectedGame.players.filter(
+        (p: IPlayer) => !p.isDisconnected
+      ).length;
+
+      if (reconnectedGame.gamePaused && connectedPlayersCount === MAX_PLAYERS) {
+        reconnectedGame.gamePaused = false;
+        delete reconnectedGame.pausedAt;
+        this.inMemoryStore.saveGame(gameId, reconnectedGame);
+
+        // Notify all players that game is resumed const resume 
+        const resumePayload = Payloads.sendGameResumed(
+          `${playerId} reconnected.Game resumed!`
+        );
+        const resumeResponse = successResponse(
+          RESPONSE_CODES.gameNotification,
+          resumePayload
+        );
+        this.ioServer.to(gameId).emit("data", resumeResponse);
+      } else {
+        // Notify other players about reconnection 
+        const reconnectPayload = Payloads.sendPlayerReconnected(
+          `${playerId} has reconnected to the game.`
+        );
+        const reconnectResponse = successResponse(
+          RESPONSE_CODES.gameNotification,
+          reconnectPayload
+        );
+        socket.to(gameId).emit("data", reconnectResponse);
+      }
+
+      // Send current game state to reconnected player
+      const gameStatePayload = this.buildGameStateForPlayer(
+        reconnectedGame,
+        playerToReconnect
+      );
+      cb(null, successResponse(RESPONSE_CODES.loginSuccess, gameStatePayload));
+
+      // Refresh game state for all players 
+      this.refreshGameStateForAllPlayers(gameId);
+    } catch (error) {
+      console.error("Reconnection error:", error);
+      cb(errorResponse(RESPONSE_CODES.error, (error as Error).message));
+    }
+  }
+
+
+  /**
+  * Approve a reconnection request
+  * @param socket The socket of the approving player
+  * @param gameld The game ID
+  * @param playerId The ID of the player to reconnect
+  * @param approvingPlayerId The ID of the player giving approval
+  * @param cb The callback function
+  */
+  public async approveReconnection(
+    socket: IOSocket,
+    gameId: string,
+    playerId: string,
+    approvingPlayerId: string,
+    cb: Function
+  ) {
+    try {
+
+      const game = this.inMemoryStore.fetchGame(gameId);
+      if (!game || !game.pendingReconnections || !game.pendingReconnections[playerId]) {
+        throw new Error("No pending reconnection request found");
+
+      }
+
+      const pendingRequest = game.pendingReconnections[playerId];
+
+      // Add approval
+      if (!pendingRequest.approvals.includes(approvingPlayerId)) {
+        pendingRequest.approvals.push(approvingPlayerId);
+      }
+
+      // Check if we have enough approvals
+      if (pendingRequest.approvals.length >= pendingRequest.requiredApprovals) {
+        // Complete the reconnection
+
+        await this.completeReconnection(gameId, game, playerId, pendingRequest);
+
+        cb(null, successResponse(RESPONSE_CODES.reconnectApproved, {
+          message: "Player reconnection approved and completed"
+        }));
+      } else {
+
+        cb(null, successResponse(RESPONSE_CODES.success, {
+          message: `Approval recorded.$(pendingRequest.approvals.length) / ${pendingRequest.requiredApprovals} approvals recieved`
+        }));
+      }
+    } catch (error) {
+      cb(null, errorResponse(RESPONSE_CODES.error, (error as Error).message));
+    }
+  }
+
+  /**
+   * Deny a reconnection request
+   * @param socket The socket of the denying player
+   * @param gameld The game ID
+   * @param playerId The ID of the player requesting reconnection
+   * @param denyingPlayerId The ID of the player denying
+   * @param co The callback function
+   */
+  public async denyReconnection(
+    socket: IOSocket,
+    gameId: string,
+    playerId: string,
+    denyingPlayerId: string,
+    cb: Function
+  ) {
+    try {
+      const game = this.inMemoryStore.fetchGame(gameId);
+      if (!game || !game.pendingReconnections || !game.pendingReconnections[playerId]) {
+        throw new Error("No pending reconnection request found");
+      }
+
+      const pendingRequest = game.pendingReconnections(playerId);
+
+      // Notify the requesting player that reconnection was denied 
+      pendingRequest.requestingSocket.emit("data", errorResponse(RESPONSE_CODES.reconnectDenied,
+        `Reconnection denied by ${denyingPlayerId}`));
+
+      // Clean up the pending request
+      delete game.pendingReconnections[playerId];
+
+      cb(null, successResponse(RESPONSE_CODES.success, {
+        message: "Reconnection request denied"
+      }));
+
+    } catch (error) {
+      cb(null, errorResponse(RESPONSE_CODES.error, (error as Error).message));
+    }
+  }
+
+  /**
+   * Complete a reconnection after approval
+   * @param gameId The game ID
+   * @param game The game instance
+   * @param playerId The ID of the player requesting reconnection
+   * @param pendingRequest The pending request data
+   */
+  private async completeReconnection(
+    gameId: string,
+    game: GameModel,
+    playerId: string,
+    pendingRequest: any
+  ) {
+    const { playerToReconnect, requestingSocket } = pendingRequest;
+
+    //Update player with new socket
+    playerToReconnect.socketId = requestingSocket.id;
+    playerToReconnect.isDisconnected = false;
+    playerToReconnect.lastActivity = new Date();
+    delete playerToReconnect.disconnectedAt;
+
+    // Update the players array
+    const playerIndex = game.players.findIndex(
+      (p: IPlayer) => p.playerId === playerId
+    );
+
+    if (playerIndex !== -1) {
+      (game.players as any)[playerIndex] = playerToReconnect;
+    }
+
+    // Remove from disconnected players 
+    delete game.disconnectedPlayers![playerId];
+
+    // Clear disconnect timeout
+    if (this.disconnectTimeouts[gameId] && this.disconnectTimeouts[gameId][playerId]) {
+      clearTimeout(this.disconnectTimeouts[gameId][playerId]);
+      delete this.disconnectTimeouts[gameId][playerId];
+    }
+
+    // Clean up pending request
+    delete game.pendingReconnections[playerId];
+
+    // Save updated game state
+    this.inMemoryStore.saveGame(gameId, game);
+
+    // Join the reconnecting player to the game room (use consistent room format) 
+    requestingSocket.join(gameId);
+    (requestingSocket as any).gameInfo = playerToReconnect;
+
+    // Build and send the current game state to the reconnected player 
+    const gameState = this.buildGameStateForPlayer(game, playerToReconnect);
+
+    requestingSocket.emit("data", successResponse(RESPONSE_CODES.reconnectSuccess, gameState))
+
+    // Notify all other players that the player has reconnected 
+    this.ioServer?.to(gameId).emit("data",
+      successResponse(RESPONSE_CODES.gameNotification, {
+        action: "player_reconnected",
+        data: {
+          playerId: playerId,
+          playerName: playerToReconnect.playerId // Using playerId as display name
+        }
+      })
+    );
+  }
+
 
   /**
    * Starts the game.
@@ -697,6 +1052,14 @@ export class GameCore {
    * @param gameId The game id.
    */
   public abortGame(gameId: string) {
+    // Cleanup disconnection timeouts
+    if (this.disconnectTimeouts[gameId]) {
+      Object.values(this.disconnectTimeouts[gameId]).forEach(timeOut => {
+        clearTimeout(timeOut);
+      });
+      delete this.disconnectTimeouts[gameId];
+    }
+
     this.inMemoryStore.deleteGame(gameId);
 
     if (this.currentGameId === gameId) {
@@ -704,11 +1067,13 @@ export class GameCore {
     }
 
     const payload: GameActionResponse = Payloads.sendGameAborted(
-      "The player(s) disconnected from the game pool. So we aborted the game. Please sign in again to play."
+      "The game has been aborted. Please sign in again to play."
     );
 
     const response = successResponse(RESPONSE_CODES.gameNotification, payload);
     this.ioServer.to(gameId).emit("data", response);
+
+    console.log(`Game ${gameId} aborted and cleanup completed`)
   }
 
   /**
@@ -1067,6 +1432,11 @@ export class GameCore {
     game["teamBScore"] = 10;
     game["isGameCompleted"] = false;
 
+    // Add new fields for reconnect support
+    game["disconnectedPlayers"] = {};
+    game["gameCreatedAt"] = new Date();
+    game["gamePaused"] = false;
+
     const cards: string[][] = this.deck.getCardsForGame();
     const sortedCards = cards.map((handCards) =>
       this.deck.sortCards(handCards)
@@ -1074,6 +1444,10 @@ export class GameCore {
 
     for (let idx in players) {
       const player: IPlayer = players[idx];
+      // Initialize reconnection fields
+      player.isDisconnected = false;
+      player.lastActivity = new Date();
+
       game["players"].push(player);
       game[player.token] = sortedCards[idx];
     }
@@ -1149,6 +1523,187 @@ export class GameCore {
 
     if (this.inMemoryStore.count === 100) {
       this.reachedMaxLoad = true;
+    }
+  }
+
+  /**
+   * Builds complete game state for a player during reconnection
+   * @param game The game instance
+   * @param player The player instance
+   */
+  private buildGameStateForPlayer(game: GameModel, player: IPlayer): any {
+    const playerCards = game[player.token] || [];
+    const currentPlayer = game.currentTurn !== undefined ? game.players[game.currentTurn] : null;
+
+    return {
+      ...player,
+      cards: playerCards,
+      gameState: {
+        players: game.players.map((p: IPlayer) => p.playerId), // Send just player IDs as strings
+        currentPlayerId: currentPlayer ? currentPlayer.playerId : null,
+        droppedCards: game.droppedCards || [],
+        dropCardPlayer: game.dropCardPlayer || [], // Include card-player mapping
+        teamACards: game.teamACards || [],
+        teamBCards: game.teamBCards || [],
+        currentBet: game.currentBet,
+        gameScore: game.gamescore, trumpSuit: game.trumpSuit,
+        currentTurn: game.currentTurn,
+        finalBid: game.finalfid,
+        biddingTeam: game.biddingTeam,
+        biddingPlayer: game.biddingPlayer,
+        isGameComplete: game.isGameComplete,
+        teamAScore: game.teamAScore,
+        teamBScore: game.teamBScore,
+        gamePaused: game.gamePaused
+      }
+    }
+  }
+
+  /**
+   * Refreshes game state for all connected players in a game
+   * @param gameld The game id
+   */
+  private refreshGameStateForAllPlayers(gameId: string): void {
+    const game = this.inMemoryStore.fetchGame(gameId);
+    if (!game) return;
+
+    const connectedPlayers = game.players.filter((p: IPlayer) => !p.isDisconnected);
+
+    connectedPlayers.forEach((player: IPlayer) => {
+      const gameStatePayload = this.buildGameStateForPlayer(game, player);
+      const response = successResponse(RESPONSE_CODES.gameRefresh, gameStatePayload);
+      this.ioServer.to(player.socketId).emit("data", response);
+    });
+  }
+
+  /**
+   * Handle player disconnection gracefully
+   * @param gameld The game id
+   * @param playerId The player id
+   * @param socketId The socket id
+   */
+  public handlePlayerDisconnection(gameId: string, playerId: string, socketId: string): void {
+    const game = this.inMemoryStore.fetchGame(gameId);
+    if (!game) {
+      console.log("Game 5(gameId) not found for disconnection");
+      return;
+
+    }
+
+    // Find and mark player as disconnected
+    const playerIndex = game.players.findIndex(
+      (p: IPlayer) => p.playerId === playerId && p.socketId === socketId
+    );
+
+    if (playerIndex === -1) {
+      console.log('Player (playerId) not found in game s(gameId}');
+      return;
+    }
+
+    const player = (game.players as any)[playerIndex];
+    player.isDisconnected = true;
+    player.disconnectedAt = new Date();
+
+    // Initialize disconnectedPlayers if not exists 
+    if (!game.disconnectedPlayers) {
+      game.disconnectedPlayers = {};
+    }
+
+    // Move player to disconnected players tracking 
+    game.disconnectedPlayers[playerId] = { ...player };
+
+    // Check if game should be paused
+    const connectedPlayersCount = game.players.filter(
+      (p: IPlayer) => !p.isDisconnected
+    ).length;
+
+    if (connectedPlayersCount < MAX_PLAYERS) {
+      game.gamePaused = true;
+      game.pausedAt = new Date();
+
+      // Notify remaining players
+      const pausePayload = Payloads.sendGamePaused(
+        `$(playerId) disconnected.Game paused.Waiting for reconnection...`
+      );
+
+      const pauseResponse = successResponse(RESPONSE_CODES.gameNotification, pausePayload);
+      this.ioServer.to(gameId).emit("data", pauseResponse);
+    }
+
+
+    // Set timeout for permanent removal 
+    this.setDisconnectTimeout(gameId, playerId);
+
+    // Save updated game
+    this.inMemoryStore.saveGame(gameId, game);
+
+    console.log(`Player ${playerId} marked as disconnected in game ${gameId}`);
+  }
+
+  /**
+   * Set timeout for player disconnection
+   * @param gameId The game id
+   * @param playerId The player id
+   */
+  private setDisconnectTimeout(gameId: string, playerId: string): void {
+    if (!this.disconnectTimeouts[gameId]) {
+      this.disconnectTimeouts[gameId] = {};
+    }
+    // Clear existing timeout if any
+
+    if (this.disconnectTimeouts[gameId][playerId]) {
+      clearTimeout(this.disconnectTimeouts[gameId][playerId]);
+    }
+
+    // Set new timeout
+    this.disconnectTimeouts[gameId][playerId] = setTimeout(() => {
+      this.handlePermanentPlayerRemoval(gameId, playerId);
+    }, this.DISCONNECT_TIMEOUT_MS);
+
+    console.log(
+      `Disconnect timeout set for player ${playerId} in game ${gameId} (${this.DISCONNECT_TIMEOUT_MS / 1000}s)`
+    );
+  }
+
+  /**
+   * Handle permanent player removal after timeout
+   * @param gameId The game id
+   * @param playerId The player id
+   * */
+  private handlePermanentPlayerRemoval(gameId: string, playerId: string): void {
+    console.log(`Permanently removing player ${playerId} from game ${gameId}`);
+
+    const game = this.inMemoryStore.fetchGame(gameId);
+
+    if (!game) return;
+
+    // Remove from disconnected players 
+    if (game.disconnectedPlayers && game.disconnectedPlayers[playerId]) {
+      delete game.disconnectedPlayers[playerId];
+    }
+
+    // Clean up timeout
+    if (this.disconnectTimeouts[gameId] && this.disconnectTimeouts[gameId][playerId]) {
+      delete this.disconnectTimeouts[gameId][playerId];
+    }
+
+    // Check if game should be aborted
+    const totalConnectedPlayers = game.players.filter((p: IPlayer) => p.isDisconnected).length;
+    const totalDisconnectedPlayers = Object.keys(game.disconnectedPlayers || {}).length;
+
+    if (totalConnectedPlayers + totalDisconnectedPlayers < 3) { // Minimum players needed
+      // Not enough players to continue abort game
+      this.abortGame(gameId);
+    } else {
+      //Notify remaining players
+      const removalPayload = Payloads.sendGameAborted(
+        `${playerId} has been removed due to prolonged disconnection.`
+      );
+
+      const removalResponse = successResponse(RESPONSE_CODES.gameNotification, removalPayload);
+      this.ioServer.to(gameId).emit("data", removalResponse);
+
+      this.inMemoryStore.saveGame(gameId, game);
     }
   }
 }
