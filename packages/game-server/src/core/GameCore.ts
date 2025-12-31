@@ -514,6 +514,14 @@ export class GameCore {
     const preserveTeamAScore = currentGameObj?.teamAScore || 10;
     const preserveTeamBScore = currentGameObj?.teamBScore || 10;
 
+    // Update socket IDs from current game state to handle reconnected players
+    if (currentGameObj && currentGameObj.players) {
+      this.playersPoolForReGame = currentGameObj.players.filter(p => !p.isDisconnected).map(player => ({
+        ...player,
+        // Ensure we have the most current socket ID for each player
+      }))
+    }
+
     this.startGame(req.gameId, this.playersPoolForReGame);
 
     //Restore the preserved team scores after game creation
@@ -1394,7 +1402,14 @@ export class GameCore {
       RESPONSE_CODES.gameNotification,
       payload
     );
-    this.ioServer.sockets.connected[socketId].emit("data", recieveCards);
+
+    // Check if socket exists before emitting
+    const socket = this.ioServer.sockets.connected[socketId];
+    if (socket) {
+      socket.emit("data", recieveCards);
+    } else {
+      console.warn(`Socket ${socketId} not found. Player might be disconnected.`);
+    }
   }
 
   /**
@@ -1582,9 +1597,15 @@ export class GameCore {
     const connectedPlayers = game.players.filter((p: IPlayer) => !p.isDisconnected);
 
     connectedPlayers.forEach((player: IPlayer) => {
-      const gameStatePayload = this.buildGameStateForPlayer(game, player);
-      const response = successResponse(RESPONSE_CODES.gameRefresh, gameStatePayload);
-      this.ioServer.to(player.socketId).emit("data", response);
+      // Verify socket still exists before sending data
+      const socket = this.ioServer.sockets.connected[player.socketId];
+      if (socket) {
+        const gameStatePayload = this.buildGameStateForPlayer(game, player);
+        const response = successResponse(RESPONSE_CODES.gameRefresh, gameStatePayload);
+        this.ioServer.to(player.socketId).emit("data", response);
+      } else {
+        console.warn(`Socket ${player.socketId} not found for ${player.playerId}. Skipping state refresh`);
+      }
     });
   }
 
@@ -1657,7 +1678,7 @@ export class GameCore {
     // Save updated game
     this.inMemoryStore.saveGame(gameId, game);
 
-    console.log(`Player ${playerId} marked as disconnected in game ${gameId}`);
+    console.log(`${playerId} marked as disconnected in game ${gameId}`);
   }
 
   /**
@@ -1681,7 +1702,7 @@ export class GameCore {
     }, this.DISCONNECT_TIMEOUT_MS);
 
     console.log(
-      `Disconnect timeout set for player ${playerId} in game ${gameId} (${this.DISCONNECT_TIMEOUT_MS / 1000}s)`
+      `Disconnect timeout set for ${playerId} in game ${gameId} (${this.DISCONNECT_TIMEOUT_MS / 1000}s)`
     );
   }
 
@@ -1691,7 +1712,7 @@ export class GameCore {
    * @param playerId The player id
    * */
   private handlePermanentPlayerRemoval(gameId: string, playerId: string): void {
-    console.log(`Permanently removing player ${playerId} from game ${gameId}`);
+    console.log(`Permanently removing ${playerId} from game ${gameId}`);
 
     const game = this.inMemoryStore.fetchGame(gameId);
 

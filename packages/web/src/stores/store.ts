@@ -535,7 +535,7 @@ class Store implements IStore {
       case "player_reconnected":
         // Handle player reconnected notificaiton
         const reconnectedPlayerData = data as any;
-        this.gameInfo.notification = `Player ${reconnectedPlayerData.playerName} has reconnected to the game`;
+        this.gameInfo.notification = `${reconnectedPlayerData.playerName} has reconnected to the game`;
         break;
 
       case common.MESSAGES.playerReconnected:

@@ -12,7 +12,7 @@ export class MockPlayer {
     private onDataSocketListener: (
       data: SuccessResponse,
       cb: any
-    ) => any = () => {}
+    ) => any = () => { }
   ) {
     this.ioClient = Socket.openClientConnection();
     this.ioClient.on("data", this.onDataSocketListener);
@@ -25,7 +25,7 @@ export class MockPlayer {
     );
 
     if (response.code !== RESPONSE_CODES.loginSuccess) {
-      throw Error(`Player ${this.name} failed`);
+      throw Error(`Player ${this.name} login failed`);
     }
 
     this.player = response.payload;
@@ -38,7 +38,7 @@ export class MockPlayer {
       Socket.sendData(this.ioClient, loginPayload(this.name))
         .then((response: SuccessResponse) => {
           if (response.code !== RESPONSE_CODES.loginSuccess) {
-            throw Error(`Player ${this.name} failed`);
+            throw Error(`Player ${this.name} login failed`);
           }
           this.player = response.payload;
           resolve();
