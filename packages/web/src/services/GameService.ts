@@ -1,4 +1,5 @@
 import {
+  addBotsPayload,
   deckWonByTeamAPayload,
   deckWonByTeamBPayload,
   dropCardByPlayerPayload,
@@ -49,9 +50,10 @@ class GameService {
   /**
    * Sign in to the game.
    * @param userId The user id.
+   * @param gameId Optional game id for joining existing game.
    */
-  public signIn(userId: string): Promise<any> {
-    return this.sendRequest(loginPayload(userId));
+  public signIn(userId: string, gameId?: string): Promise<any> {
+    return this.sendRequest(loginPayload(userId, gameId));
   }
 
   /**
@@ -82,6 +84,16 @@ class GameService {
    */
   public denyReconnection(gameId: string, playerId: string, denyingPlayerId: string): Promise<any> {
     return this.sendRequest(reconnectDenyPayload(gameId, playerId, denyingPlayerId));
+  }
+
+  /**
+  * Add bots to the current game.
+  * @param botcount The number of bots to add (1-5).
+  * @param gameId The game id.
+  * @param startImmediately Whether to start immediately or wait for more players
+  */
+  public addBots(botcount: number, gameId: string, startImmediately?: boolean): Promise<any> {
+    return this.sendRequest(addBotsPayload(botcount, gameId, startImmediately));
   }
 
   /**

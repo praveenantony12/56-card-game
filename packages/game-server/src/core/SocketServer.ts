@@ -11,6 +11,7 @@ import {
   SelectPlayerRequestPayload,
   SelectTrumpSuitRequestPayload,
   RestartGameRequestPayload,
+  AddBotsRequestPayload,
   // TableCardsRequestPayload
 } from "@rcg/common";
 import { GameCore } from "../core/GameCore";
@@ -80,8 +81,13 @@ export class SocketServer {
         break;
 
       case MESSAGES.login:
-        const userId = (payload as SignInRequest).userId;
-        await this.gameCore.addPlayerToGamePool(socket, userId, cb);
+        const loginRequest = (payload as SignInRequest);
+        await this.gameCore.addPlayerToGamePool(socket, loginRequest.userId, loginRequest.gameId, cb);
+        break;
+
+      case MESSAGES.addBots:
+        const addBotsRequest = payload as AddBotsRequestPayload;
+        await this.gameCore.onAddBots(addBotsRequest, cb);
         break;
 
       case MESSAGES.reconnect:

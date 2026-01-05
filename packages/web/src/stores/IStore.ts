@@ -14,6 +14,8 @@ export interface IStore {
 
   reconnect(): Promise<any>;
 
+  addBots(botCount: number, startImmediately?: boolean): Promise<any>
+
   dropCard(card: string): Promise<any>;
 
   deckWonByTeamA(): Promise<any>;
@@ -35,6 +37,8 @@ export interface IStore {
   denyReconnection(playerId: string): Promise<void>;
 
   ping(): Promise<void>;
+
+  hideBotSelection(): void;
 
   leaveGame(): void;
 

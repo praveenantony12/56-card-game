@@ -90,9 +90,28 @@ class Store implements IStore {
     }
 
     try {
-      const userInfo = await this.gameService.signIn(userId);
+      // For joining existing games, pass the game ID to the player
+      const gameIdParam = this.gameInfo.gameMode === 'join' ? this.gameInfo.gameIdToJoin : undefined;
+      const userInfo = await this.gameService.signIn(userId, gameIdParam);
+
       this.userInfo = userInfo;
       this.userInfo.isSignedIn = true;
+
+      // Handle game creator status and shared game ID from the direct response
+      if (userInfo.isGameCreator !== undefined) {
+        this.gameInfo.isGameCreator = userInfo.isGameCreator;
+        if (userInfo.isGameCreator && userInfo.gameId) {
+          this.gameInfo.sharedGameId = userInfo.gameId;
+          this.gameInfo.showBotSelection = true;
+        } else {
+          this.gameInfo.showBotSelection = false;
+        }
+      } else {
+        // Fallback: Only show bot seleciton for game creators (old logic)
+        if (this.gameInfo.isGameCreator) {
+          this.gameInfo.showBotSelection = true;
+        }
+      }
     } catch (error) {
       // Convert error object to string if necessary
       const errorMessage = typeof error === "string" ? error :
@@ -171,6 +190,28 @@ class Store implements IStore {
     } catch (error) {
       const errorMessage = typeof error === "string" ? error :
         (error as any)?.message || "Failed to deny reconnection";
+      this.gameInfo.error = errorMessage;
+    }
+  }
+
+  public async addbots(botCount: number, startImmediately?: boolean) {
+    const { gameId } = this.userInfo;
+    this.clearNotifications();
+    try {
+      const response: common.SuccessResponse = await this.gameService.addBots(
+        botCount,
+        gameId as string,
+        startImmediately
+      );
+
+      if (response.code === common.RESPONSE_CODES.loginSuccess) {
+        // Bot selection successful, hide the selection UI this.gameInfo.show@otSelection = false;
+        this.gameInfo.notification = response.payload?.message || `Game started with ${botCount} bot players`;
+      }
+    } catch (error) {
+      const errorMessage = typeof error === "string" ? error :
+        (error as any)?.message || JSON.stringify(error) ||
+        "Failed to add bots";
       this.gameInfo.error = errorMessage;
     }
   }
@@ -374,6 +415,10 @@ class Store implements IStore {
     this.gameInfo.notification = "";
   }
 
+  public hideBotSelection(): void {
+    this.gameInfo.showBotSelection = false;
+  }
+
   private initializeStore() {
     this.gameInfo = {
       isGameComplete: false,
@@ -384,6 +429,12 @@ class Store implements IStore {
       finalBid: undefined,
       biddingTeam: undefined,
       biddingPlayer: undefined,
+      showBotSelection: false,
+      gameMode: null,
+      gameIdToJoin: undefined,
+      isGameCreator: false,
+      sharedGameId: undefined,
+      showGameModeSelection: true
     };
     this.userInfo = {};
     this.userInfo.isSignedIn = false;
@@ -394,7 +445,7 @@ class Store implements IStore {
   ) => {
     this.clearNotifications();
 
-    console.log(response);
+    console.log('[STORE] Recieved response:', response);
 
     const error = (response as common.ErrorResponse).message;
 
@@ -405,14 +456,33 @@ class Store implements IStore {
 
     // Handle special response codes that don't go through action based routing
     const responseCode = (response as common.SuccessResponse).code;
+    console.log('[STORE] Response Code:', responseCode);
 
-    if (responseCode === "RESPONSE_SUCCESS" || responseCode === "RECONNECT_SUCCESS") {
+    if (responseCode === "RESPONSE_SUCCESS" || responseCode === "RECONNECT_SUCCESS" || responseCode === "LOGIN_SUCCESS") {
       const payload = (response as common.SuccessResponse).payload;
+      console.log('[STORE] Login response payload:', payload);
 
       // Update user info from payload
       this.userInfo = { ...this.userInfo, ...(response as common.SuccessResponse).payload };
       this.userInfo.isSignedIn = true;
       this.gameInfo.isPendingReconnection = false;
+
+      // Handle game creator status and shared game ID
+      if (payload.isGameCreator !== undefined) {
+        this, this.gameInfo.isGameCreator = payload.isGameCreator;
+        if (payload.isGameCreator && payload.gameId) {
+          this.gameInfo.sharedGameId = payload.gameId;
+          // Show bot seelction for game creators
+          this.gameInfo.showBotSelection = false;
+          console.log(`[STORE] Game Creator set up - Game ID: ${payload.gameId}, showing bot selection`);
+        } else {
+          // Joiners wait for the creator to start the game
+          this.gameInfo.showBotSelection = false;
+          console.log('[STORE] Game joiner setup - waiting for creator');
+        }
+      } else {
+        console.log('[STORE] No isGameCreator in payload, payload keys:', Object.keys(payload));
+      }
 
       // Extract nested game state and update gameInfo
       if (payload && payload.gameState) {
@@ -443,6 +513,7 @@ class Store implements IStore {
       if (payload && payload.cards) {
         this.gameInfo.cards = payload.cards;
         this.gameInfo.canStartGame = true;
+        this.gameInfo.showBotSelection = false; // Hide bot selection when game starts
       }
 
       return;
@@ -472,6 +543,7 @@ class Store implements IStore {
           console.log("ERROR");
         }
         this.gameInfo.canStartGame = true;
+        this.gameInfo.showBotSelection = false; // Hide bot selection when game starts
         break;
 
       case common.MESSAGES.droppedCards:
@@ -594,6 +666,32 @@ class Store implements IStore {
         console.log("Default case. Shouldn't hit this. Action:", action, "Data:", data);
         break;
     }
+  };
+
+  // Game mode selection methods
+  public setGameModeCreate = () => {
+    this.gameInfo.gameMode = 'create';
+    this.gameInfo.isGameCreator = true;
+    this.gameInfo.showGameModeSelection = false;
+  };
+
+  public setGameModeJoin = (gameId: string) => {
+    this.gameInfo.gameMode = 'join';
+    this.gameInfo.gameIdToJoin = gameId;
+    this.gameInfo.isGameCreator = false;
+    this.gameInfo.showGameModeSelection = false;
+  };
+
+  public setSharedGameId = (gameId: string) => {
+    this.gameInfo.sharedGameId = gameId;
+  };
+
+  public clearGameMode = () => {
+    this.gameInfo.gameMode = null;
+    this.gameInfo.gameIdToJoin = undefined;
+    this.gameInfo.isGameCreator = false;
+    this.gameInfo.sharedGameId = undefined;
+    this.gameInfo.showGameModeSelection = true;
   };
 }
 

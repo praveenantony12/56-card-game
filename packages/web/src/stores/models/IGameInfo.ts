@@ -11,6 +11,7 @@ export interface IGame {
   currentBetPlayerId?: string;
   notification?: string | any;
   canStartGame?: boolean;
+  showBotSelection?: boolean;
   yourTurn?: boolean;
   gameOver?: boolean;
   leftGame?: boolean;
@@ -38,5 +39,10 @@ export interface IGame {
     teamAScore: number;
     teamBScore: number;
     scoreResetOccurred: boolean;
-  }
+  };
+  gameMode?: 'create' | 'join' | null;
+  gameIdToJoin?: string;
+  isGameCreator?: boolean;
+  sharedGameId?: string;
+  showGameModeSelection?: boolean;
 }

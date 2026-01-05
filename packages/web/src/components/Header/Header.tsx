@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { Button, Form, Input, Menu, Message, Icon } from "semantic-ui-react";
 import { IStore } from "../../stores/IStore";
+import GameModeSelection from "../GameModeSelection";
 
 import "./header.css";
 
@@ -24,6 +25,16 @@ class Header extends React.Component<IProps, {}> {
   }
 
   public render() {
+    // Show game mode selection if user hasn't signed in yet and mode selection is active
+    if (!this.store.user.isSignedIn && this.store.game.showGameModeSelection) {
+      return (
+        <GameModeSelection
+          onCreateGame={this.onCreateGame}
+          onJoinGame={this.onJoinGame}
+        />
+      );
+    }
+
     return (
       <Menu
         color="orange"
@@ -48,6 +59,14 @@ class Header extends React.Component<IProps, {}> {
       this.inputRef.value = "";
     }
   };
+
+  private onCreateGame = () => {
+    this.store.setGameModeCreate();
+  }
+
+  private onJoinGame = (gameId: string) => {
+    this.store.setGameModeJoin(gameId);
+  }
 
   private onLeaveGame = () => {
     this.store.leaveGame();

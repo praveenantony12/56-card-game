@@ -9,4 +9,5 @@ export interface IPlayer {
   isDisconnected?: boolean;
   disconnectedAt?: Date;
   lastActivity?: Date;
+  isBotAgent?: boolean;
 }

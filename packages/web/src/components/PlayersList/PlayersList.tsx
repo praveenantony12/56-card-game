@@ -60,7 +60,7 @@ class PlayersList extends React.Component<IProps, {}> {
             }
           >
             <Button color={player === currentPlayerId ? "green" : "white"}>
-              <Icon name="user" />
+              <Icon name={player.startsWith("Bot_") ? "user secret" : "user"} />
               {player}
             </Button>
             <Label

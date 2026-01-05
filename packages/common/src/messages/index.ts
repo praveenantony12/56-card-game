@@ -6,6 +6,7 @@ export const MESSAGES = {
   ping: "PING",
   register: "REGISTER",
   login: "LOGIN",
+  addBots: "ADD_BOTS",
   reconnect: "RECONNECT",
   reconnectRequest: "RECONNECT_REQUEST",
   reconnectApprove: "RECONNECT_APPROVE",

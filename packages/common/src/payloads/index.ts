@@ -1,7 +1,7 @@
 import { MESSAGES } from "../messages";
 
-export const loginPayload = (userId: string) => {
-  return { operation: MESSAGES.login, payload: { userId } };
+export const loginPayload = (userId: string, gameId?: string) => {
+  return { operation: MESSAGES.login, payload: { userId, gameId } };
 };
 
 export const reconnectPayload = (
@@ -120,3 +120,14 @@ export const selectTrumpSuitPayload = (
     payload: { trumpSuit, gameId, token, playerId },
   };
 };
+
+export const addBotsPayload = (
+  botCount: number,
+  gameId: string,
+  startImmediately?: boolean
+) => {
+  return {
+    operation: MESSAGES.addBots,
+    payload: { botCount, gameId, startImmediately },
+  };
+}

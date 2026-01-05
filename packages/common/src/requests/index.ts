@@ -10,5 +10,6 @@ export * from "./TableCardsRequestPayload";
 export * from "./SelectPlayerRequestPayload";
 export * from "./RestartGameRequestPayload";
 export * from "./SelectTrumpSuitRequestPayload";
+export * from "./AddBotsRequestPayload";
 export * from "./request.model";
 export * from "./signin-request.model";

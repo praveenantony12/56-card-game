@@ -218,7 +218,18 @@ export class Game {
    * Identifies the player who played is the right player in the current turn.
    */
   public get isHisTurn(): boolean {
-    return this.currentPlayer?.token === this.currentPlayerToken;
+    const currentPlayerToken = this.currentPlayer?.token;
+    const result = currentPlayerToken === this.currentPlayerToken;
+
+    console.log("[BOT AGENT] isHisTurn check:", {
+      currentTurn: this.gameObj.currentTurn,
+      currentPlayerInGame: this.currentPlayer?.playerId,
+      currentPlayerInGameToken: currentPlayerToken,
+      requestPlayerToken: this.currentPlayerToken,
+      result
+    });
+
+    return result;
   }
 
   /**
@@ -280,6 +291,7 @@ export class Game {
    * Incerements the current turn by 1.
    */
   public incrementTurn() {
+    const previousTurn = this.gameObj.currentTurn;
     const updatedTurn = this.gameObj.currentTurn + 1;
     if (updatedTurn === MAX_PLAYERS) {
       this.gameObj.currentTurn = 0;
@@ -288,6 +300,13 @@ export class Game {
       this.gameObj.currentTurn = updatedTurn;
       this.roundOver = false;
     }
+
+    console.log("[BOT AGENT] Turn incremented:", {
+      previousTurn,
+      newTurn: this.gameObj.currentTurn,
+      maxPlayers: MAX_PLAYERS,
+      roundOver: this.roundOver
+    });
   }
 
   /**

@@ -9,6 +9,7 @@ import {
   RestartGameRequestPayload,
   SelectPlayerRequestPayload,
   incrementBetByPlayerPayload,
+  AddBotsRequestPayload,
   // TableCardsRequestPayload
 } from "@rcg/common";
 
@@ -24,6 +25,7 @@ import { Game } from "../core/Game";
 import { cardToWeightagePoints, cardToWeightageDict } from "../constants/deck";
 import { InMemoryStore } from "../persistence/InMemoryStore";
 import { Server as IOServer, Socket as IOSocket } from "socket.io";
+import { TeamBotAgent } from "../agents/TeamBotAgent";
 
 /**
  * Game :- A main class that manages all the game actions/logics.
@@ -38,6 +40,7 @@ export class GameCore {
   reachedMaxLoad = false;
   roundTimers: { [gameId: string]: NodeJS.Timeout } = {};
   gameStartIndex: number = 0; // Track which player starts the game
+  botTimers: { [gameId: string]: NodeJS.Timeout } = {}; // Bot turn timers
 
   // Reconnection system
   private disconnectTimeouts: {
@@ -59,9 +62,10 @@ export class GameCore {
   }
 
   /**
-   * Adds the player to the game pool.
+   * Adds the player to the game pool or join existing game.
    * @param socket The socket instance
    * @param playerId The player id
+   * @param gameIdToJoin Optional game ID to join existing game
    * @param cb The callback after the action is done.
    *
    * Note: Here we need to get the socket instance everytime and can't be stored as intance
@@ -70,6 +74,7 @@ export class GameCore {
   public addPlayerToGamePool(
     socket: IOSocket,
     playerId: string,
+    gameIdToJoin: string | undefined,
     cb: Function
   ) {
     try {
@@ -98,6 +103,69 @@ export class GameCore {
         }
       }
 
+      let targetGameId: string;
+      let isGameCreator = false;
+
+      if (gameIdToJoin) {
+        // Player wants to join an existing game
+        console.log(`[GAME CORE] ${playerId} attempting to join game: ${gameIdToJoin}`);
+
+        // Check if the game exists and has space for more players
+        const existingGame = this.inMemoryStore.fetchGame(gameIdToJoin);
+        if (!existingGame) {
+          throw new Error("Game not found. Please check the Game ID and try again.");
+        }
+
+        // Check if game already started or is full
+        if (existingGame.isGameStarted) {
+          throw new Error("Game has already started and cannot accept new players.");
+        }
+
+        // Handle both pre-game (gamePlayersInfo) and post-game structure (players)
+        let currentHumanCount = 0;
+        let currentBotCount = 0;
+
+        if (existingGame.gamePlayersInfo && Array.isArray(existingGame.gamePlayersInfo)) {
+          // Pre-game structure
+          currentHumanCount = existingGame.gamePlayersInfo.length;
+          currentBotCount = existingGame.botCount || 0;
+        } else if (existingGame.players && Array.isArray(existingGame.players)) {
+          // Post-game start structure count hohans vs bots 
+          currentHumanCount = existingGame.players.filter((p: IPlayer) => !p.isBotAgent).length;
+          currentBotCount = existingGame.players.filter((p: IPlayer) => p.isBotAgent).length;
+        }
+
+        const totalCurrentPlayers = currentHumanCount + currentBotCount;
+
+        if (totalCurrentPlayers >= MAX_PLAYERS) {
+          throw new Error("Gane is already full (6/6 players).");
+        }
+
+        targetGameId = gameIdToJoin;
+        console.log(`[GAME CORE) ${playerId} successfully joining game: ${targetGameId}`);
+
+      } else {
+        // Player is creating a new game
+        targetGameId = getUniqueId();
+        isGameCreator = true;
+        this.currentGameId = targetGameId;
+        console.log(`[GAME CORE] ${playerId} is creating a new game: ${targetGameId}`);
+
+        // Create a new game record in the store for other players to join
+        const newGame: any = {
+          gameId: targetGameId,
+          gamePlayersInfo: [],
+          botPlayersInfo: [], // Track bots seperately
+          botCount: 0, // Track number of bots added
+          inGameStarted: false,
+          gameStartedTime: new Date(),
+          disconnectedPlayers: {},
+          // Add other required game properties as needed
+        };
+        this.inMemoryStore.saveGame(targetGameId, newGame);
+        console.log(`[GAME CORE] Created new game record in store: ${targetGameId}`);
+      }
+
       this.checkValidityAndThrowIfInValid(playerId, socket.id);
 
       const player: IPlayer = {
@@ -107,29 +175,313 @@ export class GameCore {
         gameId: this.currentGameId,
       };
 
-      this.playersPool.push(player);
+      // For joining existing games, we need to add the player to that specific game
+      if (gameIdToJoin || !isGameCreator) {
+        const game = this.inMemoryStore.fetchGame(targetGameId);
+        if (game) {
+          // Add player to existing game
+          game.gamePlayersInfo.push({
+            playerId,
+            token: player.token,
+            socketId: socket.id,
+          });
+          this.inMemoryStore.saveGame(targetGameId, game);
+          console.log(`[GAME CORE] Added ${playerId} to existing game ${targetGameId}, total players: ${game.gamePlayersInfo.length}`);
+        }
+      } else {
+        // For new game, add the creator to both the pool and the game record
+        this.playersPool.push(player);
+        const game = this.inMemoryStore.fetchGame(targetGameId);
+        if (game) {
+          game.gamePlayersInfo.push({
+            playerId,
+            token: player.token,
+            socketId: socket.id,
+          });
+          this.inMemoryStore.saveGame(targetGameId, game);
+          console.log(`[GAME CORE] Added ${playerId} to new game pool and game record for game ${targetGameId}`);
+        }
+      }
 
-      socket.join(this.currentGameId);
+      socket.join(targetGameId);
 
       (socket as any).gameInfo = player;
 
-      cb(null, successResponse(RESPONSE_CODES.loginSuccess, player));
+      // Include gmae creation info in response
+      const responsePayload = {
+        ...player,
+        isGameCreator,
+        gameld: targetGameId,
+      }
 
-      if (this.playersPool.length === MAX_PLAYERS) {
-        const starvingPlayers = this.playersPool.splice(0, MAX_PLAYERS);
-        const starvingGamePoolId = this.currentGameId;
-        this.playersPoolForReGame = [...starvingPlayers];
-        this.playersPool = [];
-        this.currentGameId = getUniqueId();
+      cb(null, successResponse(RESPONSE_CODES.loginSuccess, responsePayload));
 
-        // Reset starter index for the first game
-        this.gameStartIndex = 0;
+      // For game creators, they will see bot selection UI
+      // For Joiners, they wait for the creator to start the game or auto-start when full
 
-        this.startGame(starvingGamePoolId, [...starvingPlayers]);
+      console.log(`[GAME CORE] Login successful for ${playerId} in game ${targetGameId} (creator: ${isGameCreator})`);
+
+      // Check if we should auto-start the game (when 6 total players reached)
+      // This applies to both creators and joiners
+
+      const updatedGame = this.inMemoryStore.fetchGame(targetGameId);
+      if (updatedGame) {
+        const totalPlayers = updatedGame.gamePlayersInfo.length + (updatedGame.botCount || 0);
+        console.log(`[GAME CORE] Game ${targetGameId} now has ${totalPlayers}/6 players (${updatedGame.gamePlayersInfo.length} humans + ${updatedGame.botCount || 0} bots)`);
+
+        if (totalPlayers === MAX_PLAYERS && !updatedGame.isGameStarted) {
+
+          console.log(`[GAME CORE] Auto - starting game ${targetGameId} - 6 players reached!`);
+
+          // Get all human players
+
+          const allHumanPlayers = updatedGame.gamePlayersInfo.map(playerInfo => ({
+            socketId: playerInfo.socketId,
+            playerId: playerInfo.playerId,
+            token: playerInfo.token,
+            gameld: targetGameId
+          }));
+
+          // Get all bot players (if any)
+
+          const allBotPlayers = (updatedGame.botPlayersInfo || []).map(botInfo => ({
+            socketId: botInfo.socketId,
+            playerId: botInfo.playerId,
+            token: botInfo.token,
+            gameId: targetGameId,
+            isBotAgent: true
+          }));
+
+          const allPlayers = [...allHumanPlayers, ...allBotPlayers];
+
+          // Mark game as started to prevent duplicate starts
+          updatedGame.isGameStarted = true;
+          this.inMemoryStore.saveGame(targetGameId, updatedGame);
+
+          this.startGame(targetGameId, allPlayers);
+        }
       }
     } catch (error) {
+      console.log(`[GAME CORE] Login failed for ${playerId}:`, error);
       cb(null, errorResponse(RESPONSE_CODES.loginFailed, error && error.message ? error.message : "Unknown error"));
     }
+  }
+
+  /**
+   * Handle adding bots to the current game
+   * @param req The AddBotsRequestPayload
+   * @param cb The callback function
+   **/
+  public onAddBots(req: AddBotsRequestPayload, cb: Function) {
+    try {
+      const { botCount, gameId, startImmediately = true } = req;
+
+      // Validate bot count
+      if (botCount < 0 || botCount > 5) {
+        cb(null, errorResponse(RESPONSE_CODES.failed, "Bot count must be between 0 and 5"));
+        return;
+      }
+
+      // If botCount is 0, just wait for human players (no bots to add)
+      if (botCount === 0) {
+        console.log(`[BOT AGENT] Game ${gameId} set to wait for human players only(no bots)`);
+        cb(null, successResponse(RESPONSE_CODES.loginSuccess, {
+          message: "Gane set to wait for human players. Share the Game ID with friends!",
+          botPlayers: [],
+          gameStarted: false,
+          playersNeeded: MAX_PLAYERS - 1 // Need 5 more humans (6 total 1 creator) });
+        }));
+        return;
+      }
+
+      // Get existing game or use current game
+      let targetGame = this.inMemoryStore.fetchGame(gameId);
+      let currentHumanPlayers: IPlayer[] = [];
+      let targetGameId = gameId;
+
+      if (targetGame) {
+        // For existing games, get players from the game's player info
+        currentHumanPlayers = targetGame.gamePlayersInfo.map(playerInfo => ({
+          socketId: playerInfo.socketId,
+          playerId: playerInfo.playerId,
+          token: playerInfo.token,
+          gameId: gameId
+        }));
+        console.log(`[BOT AGENT] Adding bots to existing game s{gameld} with ${currentHumanPlayers.length} human players`);
+      } else {
+        // For new games, use the players pool
+        currentHumanPlayers = this.playersPool.filter(p => p.gameId === gameId);
+        if (currentHumanPlayers.length === 0) {
+          // Fall back to current players pool if no specific game ID match 
+          currentHumanPlayers = [...this.playersPool];
+          targetGameId = this.currentGameId;
+          targetGame = this.inMemoryStore.fetchGame(targetGameId) || this.createEmptyGame(targetGameId);
+        }
+        console.log(`[BOT AGENT] Adding bots to new game ${targetGameId} with  ${currentHumanPlayers.length} human players from pool`);
+      }
+
+      // Check if we have enough space for bots
+      const currentBotCount = targetGame.botCount || 0;
+      const totalPlayers = currentHumanPlayers.length + currentBotCount + botCount;
+
+      if (totalPlayers > MAX_PLAYERS) {
+        cb(null, errorResponse(RESPONSE_CODES.failed, `Cannot add ${botCount} bots. Maximum ${MAX_PLAYERS} players allowed. Current: ${currentHumanPlayers.length} humans + ${currentBotCount} bots`));
+        return;
+      }
+
+      // Create bot players
+      const botPlayers = this.addBotPlayers(currentHumanPlayers.length + currentBotCount);
+      const selectedBots = botPlayers.slice(0, botCount);
+
+      // Update game record with bot info
+      if (!targetGame.botPlayersInfo) targetGame.botPlayersInfo = [];
+      selectedBots.forEach(bot => {
+        targetGame.botPlayersInfo.push({
+          playerId: bot.playerId,
+          token: bot.token,
+          socketId: bot.socketId,
+          isBotAgent: true
+        });
+      });
+      targetGame.botCount = (targetGame.botCount || 6) + botCount;
+      this.inMemoryStore.saveGame(targetGameId, targetGame);
+
+      // Check if we should start the game
+      const totalPlayersAfterBots = currentHumanPlayers.length + targetGame.botCount;
+      if (startImmediately || totalPlayersAfterBots === MAX_PLAYERS) {
+        // Start the game with current players  + all bots 
+        const allBots = targetGame.botPlayersInfo.map(botInfo => ({
+          socketId: botInfo.socketId,
+          playerId: botInfo.playerId,
+          token: botInfo.token,
+          gameId: botInfo.gameId,
+          isBotAgent: true
+        }));
+        const allPlayers = [...currentHumanPlayers, ...allBots];
+
+        // Cleanup players pool if this was a new game
+        if (!this.inMemoryStore.fetchGame(gameId)) {
+          this.playersPoolForReGame = [...allPlayers];
+          this.playersPool = [];
+          this.currentGameId = getUniqueId();
+        }
+
+        // Reset Starter index for the first game
+        this.gameStartIndex = 0;
+
+        console.log(`[BOT AGENT] Added ${botCount} bots to game ${targetGameId}. Waiting for ${MAX_PLAYERS - totalPlayersAfterBots} more humans players.`);
+
+        cb(null, successResponse(RESPONSE_CODES.loginSuccess, {
+          message: `Added ${botCount} bot players. Waiting for ${MAX_PLAYERS - totalPlayersAfterBots} more humans players to join.`,
+          botPlayers: selectedBots.map(bot => bot.playerId),
+          gameStarted: false,
+          playersNeeded: MAX_PLAYERS - totalPlayersAfterBots
+        }));
+      }
+    } catch (error) {
+      console.error(`[BOT AGENT] Error in onAddBots:`, error);
+      cb(null, errorResponse(RESPONSE_CODES.loginFailed, error && error.message ? error.message : "Unknown error"));
+    }
+  }
+
+
+  private createEmptyGame(gameId: string): any {
+    return {
+      gameId: gameId,
+      gamePlayersInfo: [],
+      botPlayersInfo: [],
+      botCount: 0,
+      isGameStarted: false,
+      gameStartTime: new Date(),
+      disconnectedPlayers: {},
+    };
+  }
+
+  /**
+   * Optimizing team assignments to keep humans together as much as possible
+   * Team A: positions 0, 2, 4
+   * Team B: positions 1, 3, 5
+   * 
+   * @param players Array of players (humans and bots)
+   * @returns reordered players array optimized for team assignment
+   **/
+  private optimizeTeamAssignment(players: IPlayer[]): IPlayer[] {
+    const humans = players.filter(p => !p.isBotAgent);
+    const bots = players.filter(p => p.isBotAgent);
+    const humanCount = humans.length;
+    const botCount = bots.length;
+
+    console.log(`TEAM ASSIGNMENT] Optimizing for ${humanCount} humans + ${botCount}`);
+
+    // Create result array with 6 positions
+    const result = new Array(6);
+
+    switch (humanCount) {
+
+      case 6:
+        // All humans use normal assignment(no change needed)
+        return players;
+
+      case 5:
+        // 5 humans + 1 bot: put all humans in Team A (0,2,4) and B (1,3), bot gets remaining spot
+        result[0] = humans[0]; // Team A
+        result[1] = humans[1]; // Team B
+        result[2] = humans[2]; // Team A
+        result[3] = humans[3]; // Team B
+        result[4] = humans[4]; // Team A
+        result[5] = bots[0]; // Team B (last spot)
+        break;
+
+      case 4:
+        // 4 humans + 2 bots: 3 humans in Team A (0,2,4) and human + 2 bots in Team B
+        result[0] = humans[0]; // Team A
+        result[1] = humans[3]; // Team B
+        result[2] = humans[1]; // Team A
+        result[3] = bots[0]; // Team B
+        result[4] = humans[2]; // Team A
+        result[5] = bots[1]; // Team B
+        break;
+
+      case 4:
+        // 3 humans + 3 bots: all humans in Team A (0,2,4) and all bots in Team B (IDEAL Human Vs Bots game)
+        result[0] = humans[0]; // Team A
+        result[1] = bots[0]; // Team B
+        result[2] = humans[1]; // Team A
+        result[3] = bots[2]; // Team B
+        result[4] = humans[2]; // Team A
+        result[5] = bots[2]; // Team B
+        break;
+
+      case 5:
+        // 2 humans + 4 bots: 2 human + 1 bot in Team A, 3 bots in Team B
+        result[0] = humans[0]; // Team A
+        result[1] = bots[0]; // Team B
+        result[2] = humans[1]; // Team A
+        result[3] = bots[2]; // Team B
+        result[4] = bots[0]; // Team A - one bot with human
+        result[5] = bots[3]; // Team B
+        break;
+
+      case 6:
+        // 1 humans + 5 bots: this should only happen when "Start with 5 bots" is selected
+        // Put human in Team A with 2 bots, 3 bots in Team B
+        result[0] = humans[0]; // Team A
+        result[1] = bots[2]; // Team B
+        result[2] = bots[0]; // Team A
+        result[3] = bots[3]; // Team B
+        result[4] = bots[1]; // Team A
+        result[5] = bots[4]; // Team B
+        break;
+
+      default:
+        // Fallback: use original order
+        return players;
+    }
+
+    console.log(`[TEAM ASSIGNMENT] Team A (0,2,4): ${result[0]?.playerId}, ${result[2]?.playerId}, ${result[4]?.playerId}`);
+    console.log(`[TEAM ASSIGNMENT] Team B (1,3,5): ${result[1]?.playerId}, ${result[3]?.playerId}, ${result[5]?.playerId}`);
+
+    return result;
   }
 
   /** 
@@ -270,7 +622,7 @@ export class GameCore {
 
         // Notify all players that game is resumed
         const resumePayload = Payloads.sendGameResumed(
-          `${playerId} reconnected. Game resumed!`
+          `${playerId} reconnected.Game resumed!`
         );
         const resumeResponse = successResponse(
           RESPONSE_CODES.gameNotification,
@@ -380,7 +732,7 @@ export class GameCore {
 
       // Notify the requesting player that reconnection was denied 
       pendingRequest.requestingSocket.emit("data", errorResponse(RESPONSE_CODES.reconnectDenied,
-        `Reconnection denied by ${denyingPlayerId}`));
+        `Reconnection denied by ${denyingPlayerId} `));
 
       // Clean up the pending request
       delete game.pendingReconnections[playerId];
@@ -458,7 +810,7 @@ export class GameCore {
 
       // Notify all players that the game has resumed
       const resumePayload = Payloads.sendGameResumed(
-        `${playerId} has reconnected. Game resumed!`
+        `${playerId} has reconnected.Game resumed!`
       );
       const resumeResponse = successResponse(RESPONSE_CODES.gameNotification, resumePayload);
       this.ioServer?.to(gameId).emit("data", resumeResponse);
@@ -478,7 +830,18 @@ export class GameCore {
    * @param gameId The game id.
    */
   public startGame(gameId: string, players: IPlayer[]) {
-    const gameObject = this.createGameObject(players, this.gameStartIndex);
+    // Reorder players to keep humans together as much as possible
+    const reorderedPlayers = this.optimizeTeamAssignment(players);
+    const gameObject = this.createGameObject(reorderedPlayers, this.gameStartIndex);
+
+    // Mark agme as started
+    gameObject.isGameStarted = true;
+    gameObject.gameStartTime = new Date();
+
+    // Add restart protection from the very beginning
+    gameObject.restartProtection = true;
+    gameObject.recentlyRestarted = false; // Not a restart, but initial start
+
     this.inMemoryStore.saveGame(gameId, gameObject);
 
     gameObject.players.forEach((player) => {
@@ -487,12 +850,26 @@ export class GameCore {
 
     this.sendPlayersInfo(
       gameId,
-      players.map((x) => x.playerId)
+      reorderedPlayers.map((x) => x.playerId)
     );
 
     const gameObj = this.inMemoryStore.fetchGame(gameId);
     gameObj.dropCardPlayer = [];
     this.inMemoryStore.saveGame(gameId, gameObj);
+
+    // Notify all players about restart protection status from game start
+    const restartProtectionPayload = {
+      action: "RESTART_PROTECTION",
+      data: {
+        restartProtectionActive: true,
+        message: "Restart is disabled until the first card is played"
+      }
+    };
+    const restartProtectionResponse = successResponse(
+      RESPONSE_CODES.gameNotification,
+      restartProtectionPayload
+    );
+    this.ioServer.to(gameId).emit("data", restartProtectionResponse);
 
     this.notifyTurn(gameId);
   }
@@ -504,32 +881,57 @@ export class GameCore {
   public onRestartGame(req: RestartGameRequestPayload, cb: Function) {
     const { gameId } = req;
 
-    // Move to next player clowkwise for the new game
-    if (this.playersPoolForReGame && this.playersPoolForReGame.length > 0) {
-      this.gameStartIndex = (this.gameStartIndex + 1) % this.playersPoolForReGame.length;
+    // Get current game object to work with current players
+    const currentGameObj = this.inMemoryStore.fetchGame(gameId);
+    if (!currentGameObj) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found"));
+      return;
     }
 
+    // Check if restart is currently being protected (just after a recent restart)
+    if (currentGameObj.restartProtectionActive) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Restart is temporarily disabled. Please wait for the first round to be played."));
+      return;
+    }
+
+    // Get current players from the active game
+    const currentPlayers = currentGameObj.players || [];
+    if (currentPlayers.length === 0) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "No players found in game"));
+      return;
+    }
+
+    // Move to next game clockwise for thr new game - fix the rotation logic
+    const currentStartIndex = this.gameStartIndex;
+    const newStarterIndex = (currentStartIndex + 1) % currentPlayers.length;
+    this.gameStartIndex = newStarterIndex;
+
+    console.log(`[RESTART] Game ${gameId}: Starter moving from index ${currentStartIndex} to ${newStarterIndex}`);
+    console.log(`[RESTART] New starter: ${currentPlayers[newStarterIndex]?.playerId}`);
+
     // Preserve team score before restarting
-    const currentGameObj = this.inMemoryStore.fetchGame(req.gameId);
     const preserveTeamAScore = currentGameObj?.teamAScore || 10;
     const preserveTeamBScore = currentGameObj?.teamBScore || 10;
 
     // Update socket IDs from current game state to handle reconnected players
-    if (currentGameObj && currentGameObj.players) {
-      this.playersPoolForReGame = currentGameObj.players.filter(p => !p.isDisconnected).map(player => ({
-        ...player,
-        // Ensure we have the most current socket ID for each player
-      }))
-    }
+    const playersForRestart = currentPlayers.filter(p => !p.isDisconnected).map(player => ({
+      ...player,
+      // Ensure we have the most current socket ID for each player
+    }));
 
-    this.startGame(req.gameId, this.playersPoolForReGame);
+    // Start the game with updated started index
+    this.startGame(gameId, playersForRestart);
 
-    //Restore the preserved team scores after game creation
-    const gameObj = this.inMemoryStore.fetchGame(req.gameId);
+    // Restore the preserved team scores after game creation
+    const gameObj = this.inMemoryStore.fetchGame(gameId);
     gameObj.teamAScore = preserveTeamAScore;
     gameObj.teamBScore = preserveTeamBScore;
 
-    // Calculate gameScore for slider compatibiility (difference from 10-10 baseline)
+    // Mark game as recently restarted to prevent immediate restart until first round
+    gameObj.recenntlyRestarted = true;
+    gameObj.restartProtectionActive = true;
+
+    // Calculate gameScore for slider compatibility (difference from 10-10 baseline)
     // gameScore represents shifts: positive means Team B is leading, negative means Team A is leading
     const scoreBaseLine = 10;
     const teamADiff = preserveTeamAScore - scoreBaseLine;
@@ -613,7 +1015,30 @@ export class GameCore {
     );
     this.ioServer.to(req.gameId).emit("data", gameScoreResponse);
 
+    // Notify alal players about restart protection status
+    const restartProtectionPayload = {
+      action: "RESTART_PROTECTION",
+      data: {
+        restartProtectionActive: gameObj.restartProtectionActive,
+        message: "Restart is temporarily disabled until the first card is played"
+      }
+    };
+    const restartProtectionResponse = successResponse(
+      RESPONSE_CODES.gameNotification,
+      restartProtectionPayload
+    );
+    this.ioServer.to(req.gameId).emit("data", restartProtectionResponse);
+
     this.dropCardPlayer = [];
+
+    // Send success response to the requesting player
+    cb(null, successResponse(RESPONSE_CODES.gameNotification, {
+      message: "Game restarted successdully",
+      newStarter: currentPlayers[newStarterIndex]?.playerId,
+      restartProtectionActive: true
+    }));
+
+    console.log(`[RESTART] Game ${gameId} restarted successfully. New starter: ${currentPlayers[newStarterIndex]?.playerId}`);
   }
 
   /**
@@ -622,7 +1047,9 @@ export class GameCore {
    */
   public onDropCard(req: DropCardRequestPayload, cb: Function) {
     const { card, gameId, token, playerId } = req;
+    console.log(`[BOT AGENT] onDropCard called for ${playerId} with card ${card}`);
     if (!card) {
+      console.log(`[BOT AGENT] onDropCard failed for ${playerId}: Invalid card`);
       cb(null, errorResponse(RESPONSE_CODES.failed, "Invalid card!!"));
       return;
     }
@@ -642,103 +1069,127 @@ export class GameCore {
 
       // Set bidding player to the one who is dropping the first card (starting player)
       gameObject.biddingPlayer = playerId;
-      gameObject.playerWithCurrentBet = playerId;
 
+      // Remove restart protection once first card is played after restart
+      if (gameObject.restartProtectionActive) {
+        gameObject.restartProtectionActive = false;
+        gameObject.recentlyRestarted = false;
 
-      // Determine which team the bidding player belongs to
-      const playerIndex = gameObject.players.findIndex(
-        p => p.playerId === playerId
-      );
-      gameObject.biddingTeam = (playerIndex % 2 === 0) ? "A" : "B";
+        console.log(`[RESTART] Protection disabled for game ${gameId} - first card played`);
 
-      // Set default trump to "Noes" if not already set
-      if (!gameObject.trumpSuit) {
-        gameObject.trumpSuit = "N";
-        if (!gameObject.playerTrumpSuit) {
-          gameObject.playerTrumpSuit = {};
+        // Notify all players that restart protection is now disabled
+        const restartProtectionPayload = {
+          action: "RESTART_PROTECTION",
+          data: {
+            restartProtectionActive: false,
+            message: "Restart is now available again"
+          }
+        };
+
+        const restartProtectionResponse = successResponse(
+          RESPONSE_CODES.gameNotification,
+          restartProtectionPayload
+        );
+        this.ioServer.to(gameId).emit("data", restartProtectionResponse);
+
+        gameObject.playerWithCurrentBet = playerId;
+
+        // Determine which team the bidding player belongs to
+        const playerIndex = gameObject.players.findIndex(
+          p => p.playerId === playerId
+        );
+        gameObject.biddingTeam = (playerIndex % 2 === 0) ? "A" : "B";
+
+        // Set default trump to "Noes" if not already set
+        if (!gameObject.trumpSuit) {
+          gameObject.trumpSuit = "N";
+          if (!gameObject.playerTrumpSuit) {
+            gameObject.playerTrumpSuit = {};
+          }
+          gameObject.playerTrumpSuit[playerId] = "N";
         }
-        gameObject.playerTrumpSuit[playerId] = "N";
+
+        this.inMemoryStore.saveGame(gameId, gameObject);
+
+        // Notify all players about the default trump selection
+        const trumpSuitPayload: GameActionResponse = Payloads.sendTrumpSuitSelected(
+          gameObject.playerTrumpSuit,
+          gameObject.trumpSuit
+        );
+        const trumpResponse = successResponse(
+          RESPONSE_CODES.gameNotification,
+          trumpSuitPayload
+        );
+        this.ioServer.to(req.gameId).emit("data", trumpResponse);
+
+        // Notify all players about the default bet selection
+        const bidPayload = Payloads.sendBetByPlayer(
+          gameObject.currentBet,
+          playerId
+        );
+        const bidResponse = successResponse(
+          RESPONSE_CODES.gameNotification,
+          bidPayload
+        );
+        this.ioServer.to(req.gameId).emit("data", bidResponse);
       }
 
-      this.inMemoryStore.saveGame(gameId, gameObject);
+      // This is possible in only hacky way of sending rather than from the UI.
+      // So softly deny it and don't operate on this.
+      if (!currentGameIns.isHisTurn) {
+        console.log(`[BOT AGENT] onDropCard failed for ${playerId}: Not their turn`);
+        cb(null, errorResponse(RESPONSE_CODES.failed, "Its not your turn!!"));
+        return;
+      }
 
-      // Notify all players about the default trump selection
-      const trumpSuitPayload: GameActionResponse = Payloads.sendTrumpSuitSelected(
-        gameObject.playerTrumpSuit,
-        gameObject.trumpSuit
+      // This is to prevent player from cheating by putting a different suit
+      // when the player has the same suit card available
+      if (currentGameIns.isCheating) {
+        console.log(`[BOT AGENT] onDropCard failed for ${playerId}: Cheating detected`);
+        cb(
+          null,
+          errorResponse(
+            RESPONSE_CODES.failed,
+            "You have the same suit card. Please play one of them!!"
+          )
+        );
+        return;
+      }
+
+      // Prevent additional drops if the round already has plays from all players
+      const currentGameObj = this.inMemoryStore.fetchGame(req.gameId);
+      if (
+        currentGameObj &&
+        currentGameObj.dropDetails &&
+        currentGameObj.players &&
+        currentGameObj.dropDetails.length >= currentGameObj.players.length
+      ) {
+        cb(
+          null,
+          errorResponse(
+            RESPONSE_CODES.failed,
+            "Round completed. Please wait for the round result."
+          )
+        );
+        return;
+      }
+
+      const gameObj = currentGameObj;
+      const dropCardPlayer = `${card} - ${playerId} `;
+      this.dropCardPlayer.push(dropCardPlayer);
+      const DropCardByPlayerPayload: GameActionResponse = Payloads.sendDropCardByPlayer(
+        this.dropCardPlayer
       );
-      const trumpResponse = successResponse(
+      let response = successResponse(
         RESPONSE_CODES.gameNotification,
-        trumpSuitPayload
+        DropCardByPlayerPayload
       );
-      this.ioServer.to(req.gameId).emit("data", trumpResponse);
-
-      // Notify all players about the default bet selection
-      const bidPayload = Payloads.sendBetByPlayer(
-        gameObject.currentBet,
-        playerId
-      );
-      const bidResponse = successResponse(
-        RESPONSE_CODES.gameNotification,
-        bidPayload
-      );
-      this.ioServer.to(req.gameId).emit("data", bidResponse);
+      this.ioServer.to(req.gameId).emit("data", response);
+      gameObj.dropCardPlayer.push(dropCardPlayer);
+      this.inMemoryStore.saveGame(req.gameId, gameObj);
+      this.rotateStrike(currentGameIns, cb);
     }
-
-    // This is possible in only hacky way of sending rather than from the UI.
-    // So softly deny it and don't operate on this.
-    if (!currentGameIns.isHisTurn) {
-      cb(null, errorResponse(RESPONSE_CODES.failed, "Its not your turn!!"));
-      return;
-    }
-
-    // This is to prevent player from cheating by putting a different suit
-    // when the player has the same suit card available
-    if (currentGameIns.isCheating) {
-      cb(
-        null,
-        errorResponse(
-          RESPONSE_CODES.failed,
-          "You have the same suit card. Please play one of them!!"
-        )
-      );
-      return;
-    }
-
-    // Prevent additional drops if the round already has plays from all players
-    const currentGameObj = this.inMemoryStore.fetchGame(req.gameId);
-    if (
-      currentGameObj &&
-      currentGameObj.dropDetails &&
-      currentGameObj.players &&
-      currentGameObj.dropDetails.length >= currentGameObj.players.length
-    ) {
-      cb(
-        null,
-        errorResponse(
-          RESPONSE_CODES.failed,
-          "Round completed. Please wait for the round result."
-        )
-      );
-      return;
-    }
-
-    const gameObj = currentGameObj;
-    const dropCardPlayer = `${card}-${playerId}`;
-    this.dropCardPlayer.push(dropCardPlayer);
-    const DropCardByPlayerPayload: GameActionResponse = Payloads.sendDropCardByPlayer(
-      this.dropCardPlayer
-    );
-    let response = successResponse(
-      RESPONSE_CODES.gameNotification,
-      DropCardByPlayerPayload
-    );
-    this.ioServer.to(req.gameId).emit("data", response);
-    gameObj.dropCardPlayer.push(dropCardPlayer);
-    this.inMemoryStore.saveGame(req.gameId, gameObj);
-    this.rotateStrike(currentGameIns, cb);
   }
-
   /**
    * The event handles for increasing the current player bet.
    * @param req The IncrementBetByPlayerRequest.
@@ -1035,9 +1486,12 @@ export class GameCore {
    * @param cb The callback function
    */
   private rotateStrike(currentGameIns: Game, cb: Function) {
+    console.log("[BOT AGENT] rotateStrike called");
     this.sendCardDropAcceptedNotification(cb);
 
+    console.log("[BOT AGENT] Before updateStrike, currentTurn:", currentGameIns.gameObj.currentTurn);
     currentGameIns.updateStrike();
+    console.log("[BOT AGENT] After updateStrike, currentTurn:", currentGameIns.gameObj.currentTurn);
 
     // if (currentGameIns.isRoundOver) {
     //   currentGameIns.droppedCards = [];
@@ -1049,21 +1503,37 @@ export class GameCore {
       currentGameIns.droppedCards
     );
 
+    console.log("[BOT AGENT] Before saveGame, currentTurn:", currentGameIns.gameObj.currentTurn);
     currentGameIns.saveGame();
+    console.log("[BOT AGENT] After saveGame, currentTurn:", currentGameIns.gameObj.currentTurn);
 
     // Check if all players have dropped their cards
     const gameObj = this.inMemoryStore.fetchGame(currentGameIns.gameId);
+    console.log("[BOT AGENT] After fetchGame, currentTurn:", currentGameIns.gameObj.currentTurn);
     const allPlayersDropped = gameObj.dropDetails &&
       gameObj.dropDetails.length >= gameObj.players.length;
 
+    console.log("[BOT AGENT] rotateStrike - round check:", {
+      gameId: currentGameIns.gameId,
+      dropDetailsLength: gameObj.dropDetails?.length || 0,
+      totalPlayers: gameObj.players.length,
+      allPlayersDropped,
+      existingTimer: !!this.roundTimers[currentGameIns.gameId]
+    })
+
     if (allPlayersDropped && !this.roundTimers[currentGameIns.gameId]) {
       // Set a 5-second timer to auto-determine the winner
+      console.log("[BOT AGENT] Round completed, setting winner determination timer");
       this.roundTimers[currentGameIns.gameId] = setTimeout(() => {
         this.autoDetermineRoundWinner(currentGameIns.gameId);
         delete this.roundTimers[currentGameIns.gameId];
       }, 5000);
+
+      // Don't notify turn when round is complete - wait for winner determination
+      return;
     }
 
+    console.log("[BOT AGENT] Before notifyTurn, currentTurn:", gameObj.currentTurn);
     this.notifyTurn(currentGameIns.gameId);
   }
 
@@ -1207,6 +1677,12 @@ export class GameCore {
     // Only proceed if we found a valid winner
     if (winningPlayerIndex === -1) return;
 
+    console.log("[BOT AGENT autoDetermineRoundWinner - winner found:", {
+      winningPlayerIndex,
+      winnerTeam,
+      winningPlayerBid: gameObj.players[winningPlayerIndex]?.playerId
+    });
+
     gameObj.roundWinnerTeam = winnerTeam;
     gameObj.currentTurn = winningPlayerIndex;
     gameObj.nextStrikePlayerIndex = winningPlayerIndex;
@@ -1316,7 +1792,7 @@ export class GameCore {
       scoreResetOccurred = true;
 
       if (biddingTeamAchievedBid) {
-        winnerMessage = `${biddingPlayerName}'s team wins! They achieved their bid of ${finalBid} points with ${biddingTeamPoints} points. Score reset to 10-10 due to negative score.`;
+        winnerMessage = `${biddingPlayerName} 's team wins! They achieved their bid of ${finalBid} points with ${biddingTeamPoints} points. Score reset to 10-10 due to negative score.`;
       } else {
         winnerMessage = `${biddingPlayerName}'s team loses! They failed to achieve their bid of ${finalBid} points with only ${biddingTeamPoints} points. Score reset to 10-10 due to negative score.`;
       }
@@ -1397,6 +1873,10 @@ export class GameCore {
    * @param cards cards array to send
    */
   private sendCards(socketId: string, cards: string[]) {
+    // Skip sending cards to bots (fake socket IDs start with "bot-socket-")
+    if (socketId.startsWith("bot-socket-")) {
+      return;
+    }
     const payload = Payloads.sendCards(cards);
     const recieveCards = successResponse(
       RESPONSE_CODES.gameNotification,
@@ -1431,6 +1911,9 @@ export class GameCore {
       const playerCards = gameObj[player.token] || [];
       this.sendCards(player.socketId, playerCards);
     });
+
+    // Check if it's a bot's turn and auto-play
+    this.checkAndPlayBotTurn(gameId);
   }
 
   /**
@@ -1618,62 +2101,79 @@ export class GameCore {
   public handlePlayerDisconnection(gameId: string, playerId: string, socketId: string): void {
     const game = this.inMemoryStore.fetchGame(gameId);
     if (!game) {
-      console.log("Game 5(gameId) not found for disconnection");
-      return;
-
-    }
-
-    // Find and mark player as disconnected
-    const playerIndex = game.players.findIndex(
-      (p: IPlayer) => p.playerId === playerId && p.socketId === socketId
-    );
-
-    if (playerIndex === -1) {
-      console.log('Player (playerId) not found in game s(gameId}');
+      console.log(`Game ${gameId} not found for disconnection`);
       return;
     }
 
-    const player = (game.players as any)[playerIndex];
-    player.isDisconnected = true;
-    player.disconnectedAt = new Date();
-
-    // Initialize disconnectedPlayers if not exists 
-    if (!game.disconnectedPlayers) {
-      game.disconnectedPlayers = {};
-    }
-
-    // Move player to disconnected players tracking 
-    game.disconnectedPlayers[playerId] = { ...player };
-
-    // Check if game should be paused
-    const connectedPlayersCount = game.players.filter(
-      (p: IPlayer) => !p.isDisconnected
-    ).length;
-
-    if (connectedPlayersCount < MAX_PLAYERS) {
-      game.gamePaused = true;
-      game.pausedAt = new Date();
-
-      // First notify about the spcific player disconnection
-      const disconnectedPayload = Payloads.sendPlayerDisconnected(
-        `${playerId} has disconnected from the game`
+    // Check if the game has started (has players array) or is still in lobby (only has gamePlayersInfo)
+    if (game.players && game.players.length > 0) {
+      // Game has started - handle normal disconection logic
+      const playerIndex = game.players.findIndex(
+        (p: IPlayer) => p.playerId === playerId && p.socketId === socketId
       );
 
-      const disconnectResponse = successResponse(RESPONSE_CODES.gameNotification, disconnectedPayload);
-      this.ioServer.to(gameId).emit("data", disconnectResponse);
 
-      //  then notify about the pause
-      const pausePayload = Payloads.sendGamePaused(
-        `${playerId} disconnected. Game paused. Waiting for reconnection...`
-      );
+      if (playerIndex === -1) {
+        console.log(`Player ${playerId} not found in game ${gameId}`);
+        return;
+      }
 
-      const pauseResponse = successResponse(RESPONSE_CODES.gameNotification, pausePayload);
-      this.ioServer.to(gameId).emit("data", pauseResponse);
+      const player = (game.players as any)[playerIndex];
+      player.isDisconnected = true;
+      player.disconnectedAt = new Date();
+
+      // Initialize disconnectedPlayers if not exists 
+      if (!game.disconnectedPlayers) {
+        game.disconnectedPlayers = {};
+      }
+
+      // Move player to disconnected players tracking 
+      game.disconnectedPlayers[playerId] = { ...player };
+
+      // Check if game should be paused
+      const connectedPlayersCount = game.players.filter(
+        (p: IPlayer) => !p.isDisconnected
+      ).length;
+
+      if (connectedPlayersCount < MAX_PLAYERS) {
+        game.gamePaused = true;
+        game.pausedAt = new Date();
+
+        // First notify about the specific player disconnection
+        const disconnectedPayload = Payloads.sendPlayerDisconnected(
+          `${playerId} has disconnected from the game`
+        );
+
+        const disconnectResponse = successResponse(RESPONSE_CODES.gameNotification, disconnectedPayload);
+        this.ioServer.to(gameId).emit("data", disconnectResponse);
+
+        // then notify about the pause
+        const pausePayload = Payloads.sendGamePaused(
+          `${playerId} disconnected. Game paused. Waiting for reconnection...`
+        );
+
+        const pauseResponse = successResponse(RESPONSE_CODES.gameNotification, pausePayload);
+        this.ioServer.to(gameId).emit("data", pauseResponse);
+      }
+
+
+      // Set timeout for permanent removal 
+      this.setDisconnectTimeout(gameId, playerId);
+    } else {
+      // Game is still in lobby phase - just remove the player from the gamePlayersInfo
+      console.log(`Player ${playerId} disconnected from the lobby in game ${gameId}`);
+
+      if (game.gamePlayersInfo) {
+        const playerIndex = game.gamePlayersInfo.findIndex(
+          (p: any) => p.playerId === playerId && p.socketId === socketId
+        );
+
+        if (playerIndex !== -1) {
+          game.gamePlayersInfo.splice(playerIndex, 1);
+          console.log(`Removed player ${playerId} from lobby. Players remaining: ${game.gamePlayersInfo.length}`);
+        }
+      }
     }
-
-
-    // Set timeout for permanent removal 
-    this.setDisconnectTimeout(gameId, playerId);
 
     // Save updated game
     this.inMemoryStore.saveGame(gameId, game);
@@ -1745,6 +2245,155 @@ export class GameCore {
       this.ioServer.to(gameId).emit("data", removalResponse);
 
       this.inMemoryStore.saveGame(gameId, game);
+    }
+  }
+
+  /**
+   * Add bot players to reach the minimum player count
+   * @param humanPlayerCount Number of human players
+   * @returns Array of bot players to add
+   **/
+
+  public addBotPlayers(humanPlayerCount: number): IPlayer[] {
+    const botsNeeded = MAX_PLAYERS - humanPlayerCount;
+    const botPlayers: IPlayer[] = [];
+
+    for (let i = 0; i < botsNeeded; i++) {
+      const botPlayer: IPlayer = {
+        socketId: `bot-socket-${getUniqueId()}`, // Fake socket ID for bots 
+        playerId: `Bot_${1 + 1}`,
+        token: getUniqueId(),
+        gameId: this.currentGameId,
+        isBotAgent: true
+      }
+      botPlayers.push(botPlayer);
+    };
+    return botPlayers;
+  }
+
+  /** Handle bot turn with 1 - second delay to simulate human behavior
+   * @param gameId The game ID
+   * @param botPlayerId The bot player ID
+   */
+
+  public async playBotAgentTurn(gameId: string, botPlayerId: string): Promise<void> {
+    try {
+      const game = this.inMemoryStore.fetchGame(gameId);
+      if (!game) {
+        console.error(`[BOT AGENT] Game ${gameId} not found`);
+        return;
+      }
+
+      // Find the bot player to get their token
+      const botPlayer = game.players.find(p => p.playerId === botPlayerId);
+      if (!botPlayer || !botPlayer.token) {
+        console.error(`[BOT AGENT] Bot player ${botPlayerId} not found or missing token`);
+        return;
+      }
+
+      const agent = new TeamBotAgent();
+      const card = agent.decide(game, botPlayer.token, botPlayerId);
+
+      console.log("[BOT AGENT)", {
+        botAgentId: botPlayerId,
+        botTokent: botPlayer.token,
+        card,
+        gameId
+      });
+
+      // Simulate human delay (1 second)
+      const botTimer = setTimeout(() => {
+        this.handleBotCardPlay(gameId, botPlayerId, card);
+        // Clean up timer
+        if (this.botTimers[gameId]) {
+          delete this.botTimers[gameId];
+        }
+      }, 1000);
+
+      // Store timer for cleanup if needed this.botTimers [gameId] = botTimer:
+      this.botTimers[gameId] = botTimer;
+
+    } catch (error) {
+      console.error(`[BOT AGENT] Error in bot turn for ${botPlayerId}:`, error);
+    }
+  }
+
+  /**
+   * Handle bot card play by reusing existing validation logic
+   * @param gameId The game ID
+   * @param botPlayerId The bot player ID
+   * @param card The card to play
+   * */
+
+  I
+
+  private handleBotCardPlay(gameId: string, botPlayerId: string, card: string): void {
+    const game = this.inMemoryStore.fetchGame(gameId);
+    if (!game) {
+      console.error(`[BOT AGENT] Game ${gameId} not found during card play`);
+      return;
+    }
+
+    const botPlayer = game.players.find(p => p.playerId === botPlayerId && p.isBotAgent);
+    if (!botPlayer) {
+      console.error(`[BOT AGENT] Bot player ${botPlayerId} not found`);
+      return;
+    }
+
+    // Create drop card request payload
+    const dropCardRequest: DropCardRequestPayload = {
+      card,
+      gameId,
+      token: botPlayer.token,
+      playerId: botPlayerId
+    };
+
+    // Reuse existing validation path
+    console.log(`[BOT AGENT] Calling onDropCard for ${botPlayerId} with card ${card}`);
+    this.onDropCard(dropCardRequest, (error: any, result: any) => {
+      console.log(`[BOT AGENT] onDropCard callback for ${botPlayerId}:`, { error, result });
+      if (error) {
+        console.error(`[BOT AGENT] Error playing card for ${botPlayerId}: `, error);
+      } else {
+        console.log(`[BOT AGENT) Successfully played ${card} for ${botPlayerId}`);
+        // Log game state after bot plays
+
+        const gameAfterPlay = this.inMemoryStore.fetchGame(gameId);
+        console.log("[BOT AGENT] Game state after bot play:", {
+          currentTurn: gameAfterPlay?.currentTurn,
+          nextPlayerId: gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.playerId,
+          isNextPlayerBot: gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.isBotAgent,
+          droppedCardsCount: gameAfterPlay?.droppedCards7.length || 0,
+          dropDetailsCount: gameAfterPlay?.dropDetails?.length || 0
+        });
+      }
+    });
+  }
+
+
+  /**
+   * Check if it's a bot's turn and auto - play if needed
+   * @paran gameId The game ID
+   */
+  public checkAndPlayBotTurn(gameId: string): void {
+
+    const game = this.inMemoryStore.fetchGame(gameId);
+    if (!game || game.currentTurn === undefined) return;
+
+    const currentPlayer = game.player[game.currentTurn];
+    console.log("[BOT AGENT] Checking turn:", {
+      gameId,
+      currentTurn: game.currentTurn,
+      currentPlayerId: currentPlayer?.playerId,
+      isBot: currentPlayer?.isBotAgent,
+      totalPlayers: game.players.length
+    });
+
+    if (currentPlayer && currentPlayer.isBotAgent) {
+      console.log("[BOT AGENT] Bot turn detected, scheduling play for: " + currentPlayer.playerId);
+      setTimeout(() => {
+        this.playBotAgentTurn(gameId, currentPlayer.playerId);
+      }, 500);
     }
   }
 }
