@@ -194,7 +194,7 @@ class Store implements IStore {
     }
   }
 
-  public async addbots(botCount: number, startImmediately?: boolean) {
+  public async addBots(botCount: number, startImmediately?: boolean) {
     const { gameId } = this.userInfo;
     this.clearNotifications();
     try {
@@ -205,7 +205,8 @@ class Store implements IStore {
       );
 
       if (response.code === common.RESPONSE_CODES.loginSuccess) {
-        // Bot selection successful, hide the selection UI this.gameInfo.show@otSelection = false;
+        // Bot selection successful, hide the selection UI 
+        this.gameInfo.showBotSelection = false;
         this.gameInfo.notification = response.payload?.message || `Game started with ${botCount} bot players`;
       }
     } catch (error) {
