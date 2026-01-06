@@ -35,18 +35,16 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
     }
 
     return (
-
         <Container style={{ marginTop: '50px', maxwidth: '500px' }}>
-
             <Segment raised padded>
                 <Header as="h2" textAlign="center" color="blue">
                     Welcome to Card Game
-                </Header >
+                </Header>
 
                 {!selectedMode ? (
                     <div style={{ textAlign: 'center', marginTop: '30px' }}>
                         <Header as="h3" style={{ marginBottom: '30px' }}>
-                            Choose game models
+                            Choose Game Mode
                         </Header>
 
                         <Button
@@ -57,6 +55,7 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
                         >
                             Create New Game
                         </Button>
+
                         <Button
                             size="large"
                             color="blue"
@@ -65,11 +64,8 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
                         >
                             Join Existing Game
                         </Button>
-
                     </div>
-
                 ) : (
-
                     <div style={{ marginTop: '20px' }}>
                         <h3>Join Existing Game</h3>
                         <div>
@@ -77,7 +73,7 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
                                 Game ID
                             </label>
                             <Input focus placeholder='Search...' />
-                            <Input
+                            <input
                                 id="gameIdInput"
                                 name="gameId"
                                 type="text"
@@ -86,10 +82,10 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
                                 onChange={handleGameIdChange}
                                 style={{
                                     width: '100%',
-                                    height: '48px',
+                                    height: '40px',
                                     padding: '12px',
-                                    border: '2px solid #2185de',
-                                    borderRadius: '14px',
+                                    border: '2px solid #2185d0',
+                                    borderRadius: '4px',
                                     fontSize: '16px',
                                     display: 'block',
                                     visibility: 'visible',
@@ -135,7 +131,7 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
                                 onClick={() => setSelectedMode(null)}
                                 style={{
                                     backgroundColor: 'transparent',
-                                    color: '#2185de',
+                                    color: '#2185d0',
                                     border: '1px solid #2185d0',
                                     padding: '12px 24px',
                                     borderRadius: '4px',
@@ -147,7 +143,6 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
                             </button>
                         </div>
                     </div>
-
                 )}
             </Segment>
         </Container>
