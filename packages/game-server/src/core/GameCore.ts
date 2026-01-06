@@ -157,7 +157,7 @@ export class GameCore {
           gamePlayersInfo: [],
           botPlayersInfo: [], // Track bots separately
           botCount: 0, // Track number of bots added
-          inGameStarted: false,
+          isGameStarted: false,
           gameStartTime: new Date(),
           disconnectedPlayers: {},
           // Add other required game properties as needed
@@ -211,29 +211,25 @@ export class GameCore {
         ...player,
         isGameCreator,
         gameId: targetGameId,
-      }
+      };
 
       cb(null, successResponse(RESPONSE_CODES.loginSuccess, responsePayload));
 
       // For game creators, they will see bot selection UI
       // For joiners, they wait for the creator to start the game or auto-start when full
-
       console.log(`[GAME CORE] Login successful for ${playerId} in game ${targetGameId} (creator: ${isGameCreator})`);
 
       // Check if we should auto-start the game (when 6 total players reached)
       // This applies to both creators and joiners
-
       const updatedGame = this.inMemoryStore.fetchGame(targetGameId);
       if (updatedGame) {
         const totalPlayers = updatedGame.gamePlayersInfo.length + (updatedGame.botCount || 0);
         console.log(`[GAME CORE] Game ${targetGameId} now has ${totalPlayers}/6 players (${updatedGame.gamePlayersInfo.length} humans + ${updatedGame.botCount || 0} bots)`);
 
         if (totalPlayers === MAX_PLAYERS && !updatedGame.isGameStarted) {
-
           console.log(`[GAME CORE] Auto-starting game ${targetGameId} - 6 players reached!`);
 
           // Get all human players
-
           const allHumanPlayers = updatedGame.gamePlayersInfo.map(playerInfo => ({
             socketId: playerInfo.socketId,
             playerId: playerInfo.playerId,
@@ -242,7 +238,6 @@ export class GameCore {
           }));
 
           // Get all bot players (if any)
-
           const allBotPlayers = (updatedGame.botPlayersInfo || []).map(botInfo => ({
             socketId: botInfo.socketId,
             playerId: botInfo.playerId,
@@ -289,7 +284,7 @@ export class GameCore {
           message: "Game set to wait for human players. Share the Game ID with friends!",
           botPlayers: [],
           gameStarted: false,
-          playersNeeded: MAX_PLAYERS - 1 // Need 5 more humans (6 total - 1 creator) });
+          playersNeeded: MAX_PLAYERS - 1 // Need 5 more humans (6 total - 1 creator)
         }));
         return;
       }
@@ -307,7 +302,7 @@ export class GameCore {
           token: playerInfo.token,
           gameId: gameId
         }));
-        console.log(`[BOT AGENT] Adding bots to existing game ${targetGameId} with ${currentHumanPlayers.length} human players`);
+        console.log(`[BOT AGENT] Adding bots to existing game ${gameId} with ${currentHumanPlayers.length} human players`);
       } else {
         // For new games, use the players pool
         currentHumanPlayers = this.playersPool.filter(p => p.gameId === gameId);
@@ -317,7 +312,7 @@ export class GameCore {
           targetGameId = this.currentGameId;
           targetGame = this.inMemoryStore.fetchGame(targetGameId) || this.createEmptyGame(targetGameId);
         }
-        console.log(`[BOT AGENT] Adding bots to new game ${targetGameId} with  ${currentHumanPlayers.length} human players from pool`);
+        console.log(`[BOT AGENT] Adding bots to new game ${targetGameId} with ${currentHumanPlayers.length} human players from pool`);
       }
 
       // Check if we have enough space for bots
@@ -370,16 +365,18 @@ export class GameCore {
         // Reset starter index for the first game
         this.gameStartIndex = 0;
 
-        console.log(`[BOT AGENT] Starting game ${targetGameId} with ${allPlayers.length} total players (${currentHumanPlayers.length}) humans + ${allBots.length} bots)`);
+        console.log(`[BOT AGENT] Starting game ${targetGameId} with ${allPlayers.length} total players (${currentHumanPlayers.length} humans + ${allBots.length} bots)`);
         this.startGame(targetGameId, allPlayers);
 
         cb(null, successResponse(RESPONSE_CODES.loginSuccess, {
           message: `Game started with ${selectedBots.length} bot players`,
           botPlayers: selectedBots.map(bot => bot.playerId),
-          gameStarted: true,
+          gameStarted: true
         }));
       } else {
-        console.log(`[BOT AGENT] Added ${botCount} bots to game ${targetGameId}. Waiting for ${MAX_PLAYERS - totalPlayersAfterBots} more humans players.`);
+        // Just add bots and wait for human players
+        console.log(`[BOT AGENT] Added ${botCount} bots to game ${targetGameId}. Waiting for ${MAX_PLAYERS - totalPlayersAfterBots} more human players.`);
+
         cb(null, successResponse(RESPONSE_CODES.loginSuccess, {
           message: `Added ${botCount} bot players. Waiting for ${MAX_PLAYERS - totalPlayersAfterBots} more humans players to join.`,
           botPlayers: selectedBots.map(bot => bot.playerId),
@@ -392,7 +389,6 @@ export class GameCore {
       cb(null, errorResponse(RESPONSE_CODES.failed, error && error.message ? error.message : "Unknown error"));
     }
   }
-
 
   private createEmptyGame(gameId: string): any {
     return {
@@ -428,7 +424,7 @@ export class GameCore {
     switch (humanCount) {
 
       case 6:
-        // All humans - use normal assignment(no change needed)
+        // All humans - use normal assignment (no change needed)
         return players;
 
       case 5:
@@ -456,7 +452,7 @@ export class GameCore {
         result[0] = humans[0]; // Team A
         result[1] = bots[0];   // Team B
         result[2] = humans[1]; // Team A
-        result[3] = bots[2];   // Team B
+        result[3] = bots[1];   // Team B
         result[4] = humans[2]; // Team A
         result[5] = bots[2];   // Team B
         break;
@@ -473,7 +469,7 @@ export class GameCore {
 
       case 1:
         // 1 human + 5 bots: this should only happen when "Start with 5 bots" is selected
-        // Put humans in Team A with 2 bots, 3 bots in Team B
+        // Put human in Team A with 2 bots, 3 bots in Team B
         result[0] = humans[0]; // Team A - the human
         result[1] = bots[2];   // Team B
         result[2] = bots[0];   // Team A
@@ -2275,7 +2271,8 @@ export class GameCore {
         isBotAgent: true
       };
       botPlayers.push(botPlayer);
-    };
+    }
+
     return botPlayers;
   }
 
@@ -2393,7 +2390,7 @@ export class GameCore {
     });
 
     if (currentPlayer && currentPlayer.isBotAgent) {
-      console.log("[BOT AGENT] Bot turn detected, scheduling play for:" + currentPlayer.playerId);
+      console.log("[BOT AGENT] Bot turn detected, scheduling play for:", currentPlayer.playerId);
       // Give a small delay to let the UI update first
       setTimeout(() => {
         this.playBotAgentTurn(gameId, currentPlayer.playerId);
