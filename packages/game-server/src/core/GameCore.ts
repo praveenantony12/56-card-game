@@ -45,7 +45,7 @@ export class GameCore {
   // Reconnection system
   private disconnectTimeouts: {
     [gameId: string]: {
-      [playerId: string]: NodeJS.Timeout
+      [playerId: string]: NodeJS.Timeout;
     };
   } = {};
   private readonly DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -90,7 +90,11 @@ export class GameCore {
       const allGameIds = this.inMemoryStore.getAllGameIds();
       for (const gameId of allGameIds) {
         const game = this.inMemoryStore.fetchGame(gameId);
-        if (game && game.disconnectedPlayers && game.disconnectedPlayers[playerId]) {
+        if (
+          game &&
+          game.disconnectedPlayers &&
+          game.disconnectedPlayers[playerId]
+        ) {
           // Player is reconnecting - use reconnection flow instead
           const disconnectedPlayer = game.disconnectedPlayers[playerId];
           return this.reconnectPlayerToGame(
@@ -108,31 +112,47 @@ export class GameCore {
 
       if (gameIdToJoin) {
         // Player wants to join an existing game
-        console.log(`[GAME CORE] ${playerId} attempting to join game: ${gameIdToJoin}`);
+        console.log(
+          `[GAME CORE] ${playerId} attempting to join game: ${gameIdToJoin}`
+        );
 
         // Check if the game exists and has space for more players
         const existingGame = this.inMemoryStore.fetchGame(gameIdToJoin);
         if (!existingGame) {
-          throw new Error("Game not found. Please check the Game ID and try again.");
+          throw new Error(
+            "Game not found. Please check the Game ID and try again."
+          );
         }
 
         // Check if game already started or is full
         if (existingGame.isGameStarted) {
-          throw new Error("Game has already started and cannot accept new players.");
+          throw new Error(
+            "Game has already started and cannot accept new players."
+          );
         }
 
         // Handle both pre-game (gamePlayersInfo) and post-game structure (players)
         let currentHumanCount = 0;
         let currentBotCount = 0;
 
-        if (existingGame.gamePlayersInfo && Array.isArray(existingGame.gamePlayersInfo)) {
+        if (
+          existingGame.gamePlayersInfo &&
+          Array.isArray(existingGame.gamePlayersInfo)
+        ) {
           // Pre-game structure
           currentHumanCount = existingGame.gamePlayersInfo.length;
           currentBotCount = existingGame.botCount || 0;
-        } else if (existingGame.players && Array.isArray(existingGame.players)) {
-          // Post-game start structure - count humans vs bots 
-          currentHumanCount = existingGame.players.filter((p: IPlayer) => !p.isBotAgent).length;
-          currentBotCount = existingGame.players.filter((p: IPlayer) => p.isBotAgent).length;
+        } else if (
+          existingGame.players &&
+          Array.isArray(existingGame.players)
+        ) {
+          // Post-game start structure - count humans vs bots
+          currentHumanCount = existingGame.players.filter(
+            (p: IPlayer) => !p.isBotAgent
+          ).length;
+          currentBotCount = existingGame.players.filter(
+            (p: IPlayer) => p.isBotAgent
+          ).length;
         }
 
         const totalCurrentPlayers = currentHumanCount + currentBotCount;
@@ -142,14 +162,17 @@ export class GameCore {
         }
 
         targetGameId = gameIdToJoin;
-        console.log(`[GAME CORE) ${playerId} successfully joining game: ${targetGameId}`);
-
+        console.log(
+          `[GAME CORE) ${playerId} successfully joining game: ${targetGameId}`
+        );
       } else {
         // Player is creating a new game
         targetGameId = getUniqueId();
         isGameCreator = true;
         this.currentGameId = targetGameId;
-        console.log(`[GAME CORE] ${playerId} is creating a new game: ${targetGameId}`);
+        console.log(
+          `[GAME CORE] ${playerId} is creating a new game: ${targetGameId}`
+        );
 
         // Create a new game record in the store for other players to join
         const newGame: any = {
@@ -163,7 +186,9 @@ export class GameCore {
           // Add other required game properties as needed
         };
         this.inMemoryStore.saveGame(targetGameId, newGame);
-        console.log(`[GAME CORE] Created new game record in store: ${targetGameId}`);
+        console.log(
+          `[GAME CORE] Created new game record in store: ${targetGameId}`
+        );
       }
 
       this.checkValidityAndThrowIfInValid(playerId, socket.id);
@@ -186,7 +211,9 @@ export class GameCore {
             socketId: socket.id,
           });
           this.inMemoryStore.saveGame(targetGameId, game);
-          console.log(`[GAME CORE] Added ${playerId} to existing game ${targetGameId}, total players: ${game.gamePlayersInfo.length}`);
+          console.log(
+            `[GAME CORE] Added ${playerId} to existing game ${targetGameId}, total players: ${game.gamePlayersInfo.length}`
+          );
         }
       } else {
         // For new games, add the creator to both the pool and the game record
@@ -200,7 +227,9 @@ export class GameCore {
           });
           this.inMemoryStore.saveGame(targetGameId, game);
         }
-        console.log(`[GAME CORE] Added ${playerId} to new game pool and game record for game ${targetGameId}`);
+        console.log(
+          `[GAME CORE] Added ${playerId} to new game pool and game record for game ${targetGameId}`
+        );
       }
 
       socket.join(targetGameId);
@@ -217,34 +246,47 @@ export class GameCore {
 
       // For game creators, they will see bot selection UI
       // For joiners, they wait for the creator to start the game or auto-start when full
-      console.log(`[GAME CORE] Login successful for ${playerId} in game ${targetGameId} (creator: ${isGameCreator})`);
+      console.log(
+        `[GAME CORE] Login successful for ${playerId} in game ${targetGameId} (creator: ${isGameCreator})`
+      );
 
       // Check if we should auto-start the game (when 6 total players reached)
       // This applies to both creators and joiners
       const updatedGame = this.inMemoryStore.fetchGame(targetGameId);
       if (updatedGame) {
-        const totalPlayers = updatedGame.gamePlayersInfo.length + (updatedGame.botCount || 0);
-        console.log(`[GAME CORE] Game ${targetGameId} now has ${totalPlayers}/6 players (${updatedGame.gamePlayersInfo.length} humans + ${updatedGame.botCount || 0} bots)`);
+        const totalPlayers =
+          updatedGame.gamePlayersInfo.length + (updatedGame.botCount || 0);
+        console.log(
+          `[GAME CORE] Game ${targetGameId} now has ${totalPlayers}/6 players (${
+            updatedGame.gamePlayersInfo.length
+          } humans + ${updatedGame.botCount || 0} bots)`
+        );
 
         if (totalPlayers === MAX_PLAYERS && !updatedGame.isGameStarted) {
-          console.log(`[GAME CORE] Auto-starting game ${targetGameId} - 6 players reached!`);
+          console.log(
+            `[GAME CORE] Auto-starting game ${targetGameId} - 6 players reached!`
+          );
 
           // Get all human players
-          const allHumanPlayers = updatedGame.gamePlayersInfo.map(playerInfo => ({
-            socketId: playerInfo.socketId,
-            playerId: playerInfo.playerId,
-            token: playerInfo.token,
-            gameId: targetGameId
-          }));
+          const allHumanPlayers = updatedGame.gamePlayersInfo.map(
+            (playerInfo) => ({
+              socketId: playerInfo.socketId,
+              playerId: playerInfo.playerId,
+              token: playerInfo.token,
+              gameId: targetGameId,
+            })
+          );
 
           // Get all bot players (if any)
-          const allBotPlayers = (updatedGame.botPlayersInfo || []).map(botInfo => ({
-            socketId: botInfo.socketId,
-            playerId: botInfo.playerId,
-            token: botInfo.token,
-            gameId: targetGameId,
-            isBotAgent: true
-          }));
+          const allBotPlayers = (updatedGame.botPlayersInfo || []).map(
+            (botInfo) => ({
+              socketId: botInfo.socketId,
+              playerId: botInfo.playerId,
+              token: botInfo.token,
+              gameId: targetGameId,
+              isBotAgent: true,
+            })
+          );
 
           const allPlayers = [...allHumanPlayers, ...allBotPlayers];
           this.gameStartIndex = 0;
@@ -258,7 +300,13 @@ export class GameCore {
       }
     } catch (error) {
       console.error(`[GAME CORE] Login failed for ${playerId}:`, error);
-      cb(null, errorResponse(RESPONSE_CODES.loginFailed, error && error.message ? error.message : "Unknown error"));
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.loginFailed,
+          error && error.message ? error.message : "Unknown error"
+        )
+      );
     }
   }
 
@@ -273,19 +321,31 @@ export class GameCore {
 
       // Validate bot count
       if (botCount < 0 || botCount > 5) {
-        cb(null, errorResponse(RESPONSE_CODES.failed, "Bot count must be between 0 and 5"));
+        cb(
+          null,
+          errorResponse(
+            RESPONSE_CODES.failed,
+            "Bot count must be between 0 and 5"
+          )
+        );
         return;
       }
 
       // If botCount is 0, just wait for human players (no bots to add)
       if (botCount === 0) {
-        console.log(`[BOT AGENT] Game ${gameId} set to wait for human players only (no bots)`);
-        cb(null, successResponse(RESPONSE_CODES.loginSuccess, {
-          message: "Game set to wait for human players. Share the Game ID with friends!",
-          botPlayers: [],
-          gameStarted: false,
-          playersNeeded: MAX_PLAYERS - 1 // Need 5 more humans (6 total - 1 creator)
-        }));
+        console.log(
+          `[BOT AGENT] Game ${gameId} set to wait for human players only (no bots)`
+        );
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.loginSuccess, {
+            message:
+              "Game set to wait for human players. Share the Game ID with friends!",
+            botPlayers: [],
+            gameStarted: false,
+            playersNeeded: MAX_PLAYERS - 1, // Need 5 more humans (6 total - 1 creator)
+          })
+        );
         return;
       }
 
@@ -296,62 +356,80 @@ export class GameCore {
 
       if (targetGame) {
         // For existing games, get players from the game's player info
-        currentHumanPlayers = targetGame.gamePlayersInfo.map(playerInfo => ({
+        currentHumanPlayers = targetGame.gamePlayersInfo.map((playerInfo) => ({
           socketId: playerInfo.socketId,
           playerId: playerInfo.playerId,
           token: playerInfo.token,
-          gameId: gameId
+          gameId: gameId,
         }));
-        console.log(`[BOT AGENT] Adding bots to existing game ${gameId} with ${currentHumanPlayers.length} human players`);
+        console.log(
+          `[BOT AGENT] Adding bots to existing game ${gameId} with ${currentHumanPlayers.length} human players`
+        );
       } else {
         // For new games, use the players pool
-        currentHumanPlayers = this.playersPool.filter(p => p.gameId === gameId);
+        currentHumanPlayers = this.playersPool.filter(
+          (p) => p.gameId === gameId
+        );
         if (currentHumanPlayers.length === 0) {
-          // Fall back to current players pool if no specific game ID match 
+          // Fall back to current players pool if no specific game ID match
           currentHumanPlayers = [...this.playersPool];
           targetGameId = this.currentGameId;
-          targetGame = this.inMemoryStore.fetchGame(targetGameId) || this.createEmptyGame(targetGameId);
+          targetGame =
+            this.inMemoryStore.fetchGame(targetGameId) ||
+            this.createEmptyGame(targetGameId);
         }
-        console.log(`[BOT AGENT] Adding bots to new game ${targetGameId} with ${currentHumanPlayers.length} human players from pool`);
+        console.log(
+          `[BOT AGENT] Adding bots to new game ${targetGameId} with ${currentHumanPlayers.length} human players from pool`
+        );
       }
 
       // Check if we have enough space for bots
       const currentBotCount = targetGame.botCount || 0;
-      const totalPlayers = currentHumanPlayers.length + currentBotCount + botCount;
+      const totalPlayers =
+        currentHumanPlayers.length + currentBotCount + botCount;
 
       if (totalPlayers > MAX_PLAYERS) {
-        cb(null, errorResponse(RESPONSE_CODES.failed, `Cannot add ${botCount} bots. Maximum ${MAX_PLAYERS} players allowed. Current: ${currentHumanPlayers.length} humans + ${currentBotCount} bots`));
+        cb(
+          null,
+          errorResponse(
+            RESPONSE_CODES.failed,
+            `Cannot add ${botCount} bots. Maximum ${MAX_PLAYERS} players allowed. Current: ${currentHumanPlayers.length} humans + ${currentBotCount} bots`
+          )
+        );
         return;
       }
 
       // Create bot players
-      const botPlayers = this.addBotPlayers(currentHumanPlayers.length + currentBotCount);
+      const botPlayers = this.addBotPlayers(
+        currentHumanPlayers.length + currentBotCount
+      );
       const selectedBots = botPlayers.slice(0, botCount);
 
       // Update game record with bot info
       if (!targetGame.botPlayersInfo) targetGame.botPlayersInfo = [];
-      selectedBots.forEach(bot => {
+      selectedBots.forEach((bot) => {
         targetGame.botPlayersInfo.push({
           playerId: bot.playerId,
           token: bot.token,
           socketId: bot.socketId,
-          isBotAgent: true
+          isBotAgent: true,
         });
       });
       targetGame.botCount = (targetGame.botCount || 0) + botCount;
       this.inMemoryStore.saveGame(targetGameId, targetGame);
 
       // Check if we should start the game
-      const totalPlayersAfterBots = currentHumanPlayers.length + targetGame.botCount;
+      const totalPlayersAfterBots =
+        currentHumanPlayers.length + targetGame.botCount;
 
       if (startImmediately || totalPlayersAfterBots === MAX_PLAYERS) {
-        // Start the game with current players + all bots 
-        const allBots = targetGame.botPlayersInfo.map(botInfo => ({
+        // Start the game with current players + all bots
+        const allBots = targetGame.botPlayersInfo.map((botInfo) => ({
           socketId: botInfo.socketId,
           playerId: botInfo.playerId,
           token: botInfo.token,
           gameId: targetGameId,
-          isBotAgent: true
+          isBotAgent: true,
         }));
         const allPlayers = [...currentHumanPlayers, ...allBots];
 
@@ -365,28 +443,48 @@ export class GameCore {
         // Reset starter index for the first game
         this.gameStartIndex = 0;
 
-        console.log(`[BOT AGENT] Starting game ${targetGameId} with ${allPlayers.length} total players (${currentHumanPlayers.length} humans + ${allBots.length} bots)`);
+        console.log(
+          `[BOT AGENT] Starting game ${targetGameId} with ${allPlayers.length} total players (${currentHumanPlayers.length} humans + ${allBots.length} bots)`
+        );
         this.startGame(targetGameId, allPlayers);
 
-        cb(null, successResponse(RESPONSE_CODES.loginSuccess, {
-          message: `Game started with ${selectedBots.length} bot players`,
-          botPlayers: selectedBots.map(bot => bot.playerId),
-          gameStarted: true
-        }));
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.loginSuccess, {
+            message: `Game started with ${selectedBots.length} bot players`,
+            botPlayers: selectedBots.map((bot) => bot.playerId),
+            gameStarted: true,
+          })
+        );
       } else {
         // Just add bots and wait for human players
-        console.log(`[BOT AGENT] Added ${botCount} bots to game ${targetGameId}. Waiting for ${MAX_PLAYERS - totalPlayersAfterBots} more human players.`);
+        console.log(
+          `[BOT AGENT] Added ${botCount} bots to game ${targetGameId}. Waiting for ${
+            MAX_PLAYERS - totalPlayersAfterBots
+          } more human players.`
+        );
 
-        cb(null, successResponse(RESPONSE_CODES.loginSuccess, {
-          message: `Added ${botCount} bot players. Waiting for ${MAX_PLAYERS - totalPlayersAfterBots} more humans players to join.`,
-          botPlayers: selectedBots.map(bot => bot.playerId),
-          gameStarted: false,
-          playersNeeded: MAX_PLAYERS - totalPlayersAfterBots
-        }));
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.loginSuccess, {
+            message: `Added ${botCount} bot players. Waiting for ${
+              MAX_PLAYERS - totalPlayersAfterBots
+            } more humans players to join.`,
+            botPlayers: selectedBots.map((bot) => bot.playerId),
+            gameStarted: false,
+            playersNeeded: MAX_PLAYERS - totalPlayersAfterBots,
+          })
+        );
       }
     } catch (error) {
       console.error(`[BOT AGENT] Error in onAddBots:`, error);
-      cb(null, errorResponse(RESPONSE_CODES.failed, error && error.message ? error.message : "Unknown error"));
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          error && error.message ? error.message : "Unknown error"
+        )
+      );
     }
   }
 
@@ -406,23 +504,24 @@ export class GameCore {
    * Optimize team assignments to keep humans together as much as possible.
    * Team A: positions 0, 2, 4
    * Team B: positions 1, 3, 5
-   * 
+   *
    * @param players Array of players (humans and bots)
    * @returns Reordered players array optimized for team assignment
    */
   private optimizeTeamAssignment(players: IPlayer[]): IPlayer[] {
-    const humans = players.filter(p => !p.isBotAgent);
-    const bots = players.filter(p => p.isBotAgent);
+    const humans = players.filter((p) => !p.isBotAgent);
+    const bots = players.filter((p) => p.isBotAgent);
     const humanCount = humans.length;
     const botCount = bots.length;
 
-    console.log(`[TEAM ASSIGNMENT] Optimizing for ${humanCount} humans + ${botCount} bots`);
+    console.log(
+      `[TEAM ASSIGNMENT] Optimizing for ${humanCount} humans + ${botCount} bots`
+    );
 
     // Create result array with 6 positions
     const result = new Array(6);
 
     switch (humanCount) {
-
       case 6:
         // All humans - use normal assignment (no change needed)
         return players;
@@ -434,7 +533,7 @@ export class GameCore {
         result[2] = humans[2]; // Team A
         result[3] = humans[3]; // Team B
         result[4] = humans[4]; // Team A
-        result[5] = bots[0];   // Team B (last spot)
+        result[5] = bots[0]; // Team B (last spot)
         break;
 
       case 4:
@@ -442,40 +541,40 @@ export class GameCore {
         result[0] = humans[0]; // Team A
         result[1] = humans[3]; // Team B - one human
         result[2] = humans[1]; // Team A
-        result[3] = bots[0];   // Team B - first bot
+        result[3] = bots[0]; // Team B - first bot
         result[4] = humans[2]; // Team A
-        result[5] = bots[1];   // Team B - second bot
+        result[5] = bots[1]; // Team B - second bot
         break;
 
       case 3:
         // 3 humans + 3 bots: all humans in Team A and all bots in Team B (IDEAL Human Vs Bots game)
         result[0] = humans[0]; // Team A
-        result[1] = bots[0];   // Team B
+        result[1] = bots[0]; // Team B
         result[2] = humans[1]; // Team A
-        result[3] = bots[1];   // Team B
+        result[3] = bots[1]; // Team B
         result[4] = humans[2]; // Team A
-        result[5] = bots[2];   // Team B
+        result[5] = bots[2]; // Team B
         break;
 
       case 2:
         // 2 humans + 4 bots: 2 humans + 1 bot in Team A, 3 bots in Team B
         result[0] = humans[0]; // Team A
-        result[1] = bots[1];   // Team B
+        result[1] = bots[1]; // Team B
         result[2] = humans[1]; // Team A
-        result[3] = bots[2];   // Team B
-        result[4] = bots[0];   // Team A - one bot with humans
-        result[5] = bots[3];   // Team B
+        result[3] = bots[2]; // Team B
+        result[4] = bots[0]; // Team A - one bot with humans
+        result[5] = bots[3]; // Team B
         break;
 
       case 1:
         // 1 human + 5 bots: this should only happen when "Start with 5 bots" is selected
         // Put human in Team A with 2 bots, 3 bots in Team B
         result[0] = humans[0]; // Team A - the human
-        result[1] = bots[2];   // Team B
-        result[2] = bots[0];   // Team A
-        result[3] = bots[3];   // Team B
-        result[4] = bots[1];   // Team A
-        result[5] = bots[4];   // Team B
+        result[1] = bots[2]; // Team B
+        result[2] = bots[0]; // Team A
+        result[3] = bots[3]; // Team B
+        result[4] = bots[1]; // Team A
+        result[5] = bots[4]; // Team B
         break;
 
       default:
@@ -483,13 +582,17 @@ export class GameCore {
         return players;
     }
 
-    console.log(`[TEAM ASSIGNMENT] Team A (0,2,4): ${result[0]?.playerId}, ${result[2]?.playerId}, ${result[4]?.playerId}`);
-    console.log(`[TEAM ASSIGNMENT] Team B (1,3,5): ${result[1]?.playerId}, ${result[3]?.playerId}, ${result[5]?.playerId}`);
+    console.log(
+      `[TEAM ASSIGNMENT] Team A (0,2,4): ${result[0]?.playerId}, ${result[2]?.playerId}, ${result[4]?.playerId}`
+    );
+    console.log(
+      `[TEAM ASSIGNMENT] Team B (1,3,5): ${result[1]?.playerId}, ${result[3]?.playerId}, ${result[5]?.playerId}`
+    );
 
     return result;
   }
 
-  /** 
+  /**
    * Handles player reconnection to an existing game.
    * @param socket The socket instance
    * @param playerId The player id
@@ -518,7 +621,11 @@ export class GameCore {
       // Try to find the game and player to reconnect
       if (gameId) {
         const game = this.inMemoryStore.fetchGame(gameId);
-        if (game && game.disconnectedPlayers && game.disconnectedPlayers[playerId]) {
+        if (
+          game &&
+          game.disconnectedPlayers &&
+          game.disconnectedPlayers[playerId]
+        ) {
           playerToReconnect = game.disconnectedPlayers[playerId];
           reconnectedGame = game;
         }
@@ -528,7 +635,9 @@ export class GameCore {
       if (!playerToReconnect) {
         // Note: This is a simplified search. In production, you'd want a more efficient way
         // to index games by player for faster lookup
-        console.log("Searching for disconnected player $(playerId) across all games");
+        console.log(
+          "Searching for disconnected player $(playerId) across all games"
+        );
       }
 
       if (!playerToReconnect || !reconnectedGame || !gameId) {
@@ -541,7 +650,7 @@ export class GameCore {
       );
 
       if (activePlayers.length > 0) {
-        // Store the pending reconnection request 
+        // Store the pending reconnection request
         if (!reconnectedGame.pendingReconnections) {
           reconnectedGame.pendingReconnections = {};
         }
@@ -551,14 +660,14 @@ export class GameCore {
           requestingSocket: socket,
           requestTime: new Date(),
           approvals: [],
-          requiredApprovals: 1 // Only need one approval
+          requiredApprovals: 1, // Only need one approval
         };
 
         //Notify other players about the reconnection request
         const reconnectionRequest = {
           playerId: playerId,
           playerName: playerToReconnect.playerId, // Using playerId as display name
-          gameId: gameId
+          gameId: gameId,
         };
 
         activePlayers.forEach((player: IPlayer) => {
@@ -567,16 +676,19 @@ export class GameCore {
             code: RESPONSE_CODES.gameNotification,
             payload: {
               action: "reconnection_request",
-              data: reconnectionRequest
-            }
+              data: reconnectionRequest,
+            },
           });
         });
 
-        // Send pending approval response to reconnecting player 
-        cb(null, successResponse(RESPONSE_CODES.reconnectPendingApproval, {
-          message: "Reconnection request sent to other players for approval",
-          gameld: gameId
-        }));
+        // Send pending approval response to reconnecting player
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.reconnectPendingApproval, {
+            message: "Reconnection request sent to other players for approval",
+            gameld: gameId,
+          })
+        );
         return;
       }
 
@@ -591,7 +703,7 @@ export class GameCore {
 
       // Update the players array
       const playerIndex = reconnectedGame.players.findIndex(
-        (p: IPlayer) => p.playerId = playerId
+        (p: IPlayer) => (p.playerId = playerId)
       );
 
       if (playerIndex == -1) {
@@ -602,7 +714,10 @@ export class GameCore {
       delete reconnectedGame.disconnectedPlayers![playerId];
 
       // Clear disconnect timeout
-      if (this.disconnectTimeouts[gameId] && this.disconnectTimeouts[gameId][playerId]) {
+      if (
+        this.disconnectTimeouts[gameId] &&
+        this.disconnectTimeouts[gameId][playerId]
+      ) {
         clearTimeout(this.disconnectTimeouts[gameId][playerId]);
         delete this.disconnectTimeouts[gameId][playerId];
       }
@@ -613,7 +728,6 @@ export class GameCore {
 
       // Save updated game
       this.inMemoryStore.saveGame(gameId, reconnectedGame);
-
 
       // Check if game was paused and can be resumed
       const connectedPlayersCount = reconnectedGame.players.filter(
@@ -635,7 +749,7 @@ export class GameCore {
         );
         this.ioServer.to(gameId).emit("data", resumeResponse);
       } else {
-        // Notify other players about reconnection 
+        // Notify other players about reconnection
         const reconnectPayload = Payloads.sendPlayerReconnected(
           `${playerId} has reconnected to the game.`
         );
@@ -653,7 +767,7 @@ export class GameCore {
       );
       cb(null, successResponse(RESPONSE_CODES.loginSuccess, gameStatePayload));
 
-      // Refresh game state for all players 
+      // Refresh game state for all players
       this.refreshGameStateForAllPlayers(gameId);
     } catch (error) {
       console.error("Reconnection error:", error);
@@ -661,15 +775,14 @@ export class GameCore {
     }
   }
 
-
   /**
-  * Approve a reconnection request
-  * @param socket The socket of the approving player
-  * @param gameld The game ID
-  * @param playerId The ID of the player to reconnect
-  * @param approvingPlayerId The ID of the player giving approval
-  * @param cb The callback function
-  */
+   * Approve a reconnection request
+   * @param socket The socket of the approving player
+   * @param gameld The game ID
+   * @param playerId The ID of the player to reconnect
+   * @param approvingPlayerId The ID of the player giving approval
+   * @param cb The callback function
+   */
   public async approveReconnection(
     socket: IOSocket,
     gameId: string,
@@ -678,11 +791,13 @@ export class GameCore {
     cb: Function
   ) {
     try {
-
       const game = this.inMemoryStore.fetchGame(gameId);
-      if (!game || !game.pendingReconnections || !game.pendingReconnections[playerId]) {
+      if (
+        !game ||
+        !game.pendingReconnections ||
+        !game.pendingReconnections[playerId]
+      ) {
         throw new Error("No pending reconnection request found");
-
       }
 
       const pendingRequest = game.pendingReconnections[playerId];
@@ -698,14 +813,19 @@ export class GameCore {
 
         await this.completeReconnection(gameId, game, playerId, pendingRequest);
 
-        cb(null, successResponse(RESPONSE_CODES.reconnectApproved, {
-          message: "Player reconnection approved and completed"
-        }));
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.reconnectApproved, {
+            message: "Player reconnection approved and completed",
+          })
+        );
       } else {
-
-        cb(null, successResponse(RESPONSE_CODES.success, {
-          message: `Approval recorded.$(pendingRequest.approvals.length) / ${pendingRequest.requiredApprovals} approvals recieved`
-        }));
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.success, {
+            message: `Approval recorded.$(pendingRequest.approvals.length) / ${pendingRequest.requiredApprovals} approvals recieved`,
+          })
+        );
       }
     } catch (error) {
       cb(null, errorResponse(RESPONSE_CODES.error, (error as Error).message));
@@ -729,23 +849,34 @@ export class GameCore {
   ) {
     try {
       const game = this.inMemoryStore.fetchGame(gameId);
-      if (!game || !game.pendingReconnections || !game.pendingReconnections[playerId]) {
+      if (
+        !game ||
+        !game.pendingReconnections ||
+        !game.pendingReconnections[playerId]
+      ) {
         throw new Error("No pending reconnection request found");
       }
 
       const pendingRequest = game.pendingReconnections(playerId);
 
-      // Notify the requesting player that reconnection was denied 
-      pendingRequest.requestingSocket.emit("data", errorResponse(RESPONSE_CODES.reconnectDenied,
-        `Reconnection denied by ${denyingPlayerId}`));
+      // Notify the requesting player that reconnection was denied
+      pendingRequest.requestingSocket.emit(
+        "data",
+        errorResponse(
+          RESPONSE_CODES.reconnectDenied,
+          `Reconnection denied by ${denyingPlayerId}`
+        )
+      );
 
       // Clean up the pending request
       delete game.pendingReconnections[playerId];
 
-      cb(null, successResponse(RESPONSE_CODES.success, {
-        message: "Reconnection request denied"
-      }));
-
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, {
+          message: "Reconnection request denied",
+        })
+      );
     } catch (error) {
       cb(null, errorResponse(RESPONSE_CODES.error, (error as Error).message));
     }
@@ -781,11 +912,14 @@ export class GameCore {
       (game.players as any)[playerIndex] = playerToReconnect;
     }
 
-    // Remove from disconnected players 
+    // Remove from disconnected players
     delete game.disconnectedPlayers![playerId];
 
     // Clear disconnect timeout
-    if (this.disconnectTimeouts[gameId] && this.disconnectTimeouts[gameId][playerId]) {
+    if (
+      this.disconnectTimeouts[gameId] &&
+      this.disconnectTimeouts[gameId][playerId]
+    ) {
       clearTimeout(this.disconnectTimeouts[gameId][playerId]);
       delete this.disconnectTimeouts[gameId][playerId];
     }
@@ -796,17 +930,22 @@ export class GameCore {
     // Save updated game state
     this.inMemoryStore.saveGame(gameId, game);
 
-    // Join the reconnecting player to the game room (use consistent room format) 
+    // Join the reconnecting player to the game room (use consistent room format)
     requestingSocket.join(gameId);
     (requestingSocket as any).gameInfo = playerToReconnect;
 
-    // Build and send the current game state to the reconnected player 
+    // Build and send the current game state to the reconnected player
     const gameState = this.buildGameStateForPlayer(game, playerToReconnect);
 
-    requestingSocket.emit("data", successResponse(RESPONSE_CODES.reconnectSuccess, gameState))
+    requestingSocket.emit(
+      "data",
+      successResponse(RESPONSE_CODES.reconnectSuccess, gameState)
+    );
 
     // Check if the game should be resumed
-    const connectedPlayersCount = game.players.filter((p: IPlayer) => !p.isDisconnected).length;
+    const connectedPlayersCount = game.players.filter(
+      (p: IPlayer) => !p.isDisconnected
+    ).length;
 
     if (game.gamePaused && connectedPlayersCount >= MAX_PLAYERS) {
       // Resume the game
@@ -817,18 +956,23 @@ export class GameCore {
       const resumePayload = Payloads.sendGameResumed(
         `${playerId} has reconnected. Game resumed!`
       );
-      const resumeResponse = successResponse(RESPONSE_CODES.gameNotification, resumePayload);
+      const resumeResponse = successResponse(
+        RESPONSE_CODES.gameNotification,
+        resumePayload
+      );
       this.ioServer?.to(gameId).emit("data", resumeResponse);
     }
 
     // Notify all players that the player has reconnected
     const reconnectPayload = Payloads.sendPlayerReconnected(
       `${playerId} has successfully reconnected to the game!`
-    )
-    const reconnectResponse = successResponse(RESPONSE_CODES.gameNotification, reconnectPayload);
+    );
+    const reconnectResponse = successResponse(
+      RESPONSE_CODES.gameNotification,
+      reconnectPayload
+    );
     this.ioServer.to(gameId).emit("data", reconnectResponse);
   }
-
 
   /**
    * Starts the game.
@@ -838,7 +982,10 @@ export class GameCore {
     // Reorder players to keep humans together on teams as much as possible
     const reorderedPlayers = this.optimizeTeamAssignment(players);
 
-    const gameObject = this.createGameObject(reorderedPlayers, this.gameStartIndex);
+    const gameObject = this.createGameObject(
+      reorderedPlayers,
+      this.gameStartIndex
+    );
 
     // Mark game as started
     gameObject.isGameStarted = true;
@@ -868,8 +1015,8 @@ export class GameCore {
       action: "RESTART_PROTECTION",
       data: {
         restartProtectionActive: true,
-        message: "Restart is disabled until the first card is played"
-      }
+        message: "Restart is disabled until the first card is played",
+      },
     };
     const restartProtectionResponse = successResponse(
       RESPONSE_CODES.gameNotification,
@@ -896,7 +1043,13 @@ export class GameCore {
 
     // Check if restart is currently protected (just after a recent restart)
     if (currentGameObj.restartProtectionActive) {
-      cb(null, errorResponse(RESPONSE_CODES.failed, "Restart is temporarily disabled. Please wait for the first round to be played."));
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "Restart is temporarily disabled. Please wait for the first round to be played."
+        )
+      );
       return;
     }
 
@@ -917,7 +1070,10 @@ export class GameCore {
     // Get current players from the active game
     const currentPlayers = currentGameObj.players || [];
     if (currentPlayers.length === 0) {
-      cb(null, errorResponse(RESPONSE_CODES.failed, "No players found in game"));
+      cb(
+        null,
+        errorResponse(RESPONSE_CODES.failed, "No players found in game")
+      );
       return;
     }
 
@@ -926,18 +1082,24 @@ export class GameCore {
     const newStarterIndex = (currentStarterIndex + 1) % currentPlayers.length;
     this.gameStartIndex = newStarterIndex;
 
-    console.log(`[RESTART] Game ${gameId}: starter moving from index ${currentStarterIndex} to ${newStarterIndex}`);
-    console.log(`[RESTART] New starter: ${currentPlayers[newStarterIndex]?.playerId}`);
+    console.log(
+      `[RESTART] Game ${gameId}: starter moving from index ${currentStarterIndex} to ${newStarterIndex}`
+    );
+    console.log(
+      `[RESTART] New starter: ${currentPlayers[newStarterIndex]?.playerId}`
+    );
 
     // Preserve team score before restarting
     const preserveTeamAScore = currentGameObj?.teamAScore || 10;
     const preserveTeamBScore = currentGameObj?.teamBScore || 10;
 
     // Update socket IDs from current game state to handle reconnected players
-    const playersForRestart = currentPlayers.filter(p => !p.isDisconnected).map(player => ({
-      ...player,
-      // Ensure we have the most current socket ID for each player
-    }));
+    const playersForRestart = currentPlayers
+      .filter((p) => !p.isDisconnected)
+      .map((player) => ({
+        ...player,
+        // Ensure we have the most current socket ID for each player
+      }));
 
     // Start the game with updated starter index
     this.startGame(gameId, playersForRestart);
@@ -998,7 +1160,7 @@ export class GameCore {
       biddingTeamAchievedBid: false,
       teamAScore: gameObj.teamAScore,
       teamBScore: gameObj.teamBScore,
-      scoreResetOccurred: false
+      scoreResetOccurred: false,
     };
     const gameCompleteResetPayload: GameActionResponse =
       Payloads.sendGameComplete(gameCompleteResetData);
@@ -1024,11 +1186,16 @@ export class GameCore {
       {},
       undefined
     );
-    response = successResponse(RESPONSE_CODES.gameNotification, trumpSuitPayload);
+    response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      trumpSuitPayload
+    );
     this.ioServer.to(req.gameId).emit("data", response);
 
     // Send updated game score for slider compatibility
-    const gameScorePayload: GameActionResponse = Payloads.sendUpdatedGameScore(gameObj.gameScore);
+    const gameScorePayload: GameActionResponse = Payloads.sendUpdatedGameScore(
+      gameObj.gameScore
+    );
     const gameScoreResponse = successResponse(
       RESPONSE_CODES.gameNotification,
       gameScorePayload
@@ -1040,8 +1207,9 @@ export class GameCore {
       action: "RESTART_PROTECTION",
       data: {
         restartProtectionActive: gameObj.restartProtectionActive,
-        message: "Restart is temporarily disabled until the first card is played"
-      }
+        message:
+          "Restart is temporarily disabled until the first card is played",
+      },
     };
     const restartProtectionResponse = successResponse(
       RESPONSE_CODES.gameNotification,
@@ -1052,13 +1220,18 @@ export class GameCore {
     this.dropCardPlayer = [];
 
     // Send success response to the requesting player
-    cb(null, successResponse(RESPONSE_CODES.gameNotification, {
-      message: "Game restarted successfully",
-      newStarter: currentPlayers[newStarterIndex]?.playerId,
-      restartProtectionActive: true
-    }));
+    cb(
+      null,
+      successResponse(RESPONSE_CODES.gameNotification, {
+        message: "Game restarted successfully",
+        newStarter: currentPlayers[newStarterIndex]?.playerId,
+        restartProtectionActive: true,
+      })
+    );
 
-    console.log(`[RESTART] Game ${gameId} restarted successfully. New starter: ${currentPlayers[newStarterIndex]?.playerId}`);
+    console.log(
+      `[RESTART] Game ${gameId} restarted successfully. New starter: ${currentPlayers[newStarterIndex]?.playerId}`
+    );
   }
 
   /**
@@ -1067,10 +1240,14 @@ export class GameCore {
    */
   public onDropCard(req: DropCardRequestPayload, cb: Function) {
     const { card, gameId, token, playerId } = req;
-    console.log(`[BOT AGENT] onDropCard called for ${playerId} with card ${card}`);
+    console.log(
+      `[BOT AGENT] onDropCard called for ${playerId} with card ${card}`
+    );
 
     if (!card) {
-      console.log(`[BOT AGENT] onDropCard failed for ${playerId}: Invalid card`);
+      console.log(
+        `[BOT AGENT] onDropCard failed for ${playerId}: Invalid card`
+      );
       cb(null, errorResponse(RESPONSE_CODES.failed, "Invalid card!!"));
       return;
     }
@@ -1079,7 +1256,8 @@ export class GameCore {
 
     // Set default bid and trump final bid if not set yet (first card drop indicates game has started)
     const gameObject = this.inMemoryStore.fetchGame(gameId);
-    const isFirstCardOfGame = (!gameObject.teamACards || gameObject.teamACards.length === 0) &&
+    const isFirstCardOfGame =
+      (!gameObject.teamACards || gameObject.teamACards.length === 0) &&
       (!gameObject.teamBCards || gameObject.teamBCards.length === 0) &&
       (!gameObject.droppedCards || gameObject.droppedCards.length === 0);
 
@@ -1095,15 +1273,17 @@ export class GameCore {
       if (gameObject.restartProtectionActive) {
         gameObject.restartProtectionActive = false;
         gameObject.recentlyRestarted = false;
-        console.log(`[RESTART] Protection disabled for game ${gameId} - first card played`);
+        console.log(
+          `[RESTART] Protection disabled for game ${gameId} - first card played`
+        );
 
         // Notify all players that restart protection is now disabled
         const restartProtectionPayload = {
           action: "RESTART_PROTECTION",
           data: {
             restartProtectionActive: false,
-            message: "Restart is now available again"
-          }
+            message: "Restart is now available again",
+          },
         };
         const restartProtectionResponse = successResponse(
           RESPONSE_CODES.gameNotification,
@@ -1115,9 +1295,9 @@ export class GameCore {
 
       // Determine which team the bidding player belongs to
       const playerIndex = gameObject.players.findIndex(
-        p => p.playerId === playerId
+        (p) => p.playerId === playerId
       );
-      gameObject.biddingTeam = (playerIndex % 2 === 0) ? "A" : "B";
+      gameObject.biddingTeam = playerIndex % 2 === 0 ? "A" : "B";
 
       // Set default trump to "Noes" if not already set
       if (!gameObject.trumpSuit) {
@@ -1131,10 +1311,11 @@ export class GameCore {
       this.inMemoryStore.saveGame(gameId, gameObject);
 
       // Notify all players about the default trump selection
-      const trumpSuitPayload: GameActionResponse = Payloads.sendTrumpSuitSelected(
-        gameObject.playerTrumpSuit,
-        gameObject.trumpSuit
-      );
+      const trumpSuitPayload: GameActionResponse =
+        Payloads.sendTrumpSuitSelected(
+          gameObject.playerTrumpSuit,
+          gameObject.trumpSuit
+        );
       const trumpResponse = successResponse(
         RESPONSE_CODES.gameNotification,
         trumpSuitPayload
@@ -1156,7 +1337,9 @@ export class GameCore {
     // This is possible in only hacky way of sending rather than from the UI.
     // So softly deny it and don't operate on this.
     if (!currentGameIns.isHisTurn) {
-      console.log(`[BOT AGENT] onDropCard failed for ${playerId}: Not their turn`);
+      console.log(
+        `[BOT AGENT] onDropCard failed for ${playerId}: Not their turn`
+      );
       cb(null, errorResponse(RESPONSE_CODES.failed, "Its not your turn!!"));
       return;
     }
@@ -1164,7 +1347,9 @@ export class GameCore {
     // This is to prevent player from cheating by putting a different suit
     // when the player has the same suit card available
     if (currentGameIns.isCheating) {
-      console.log(`[BOT AGENT] onDropCard failed for ${playerId}: Cheating detected`);
+      console.log(
+        `[BOT AGENT] onDropCard failed for ${playerId}: Cheating detected`
+      );
       cb(
         null,
         errorResponse(
@@ -1196,9 +1381,8 @@ export class GameCore {
     const gameObj = currentGameObj;
     const dropCardPlayer = `${card}-${playerId}`;
     this.dropCardPlayer.push(dropCardPlayer);
-    const DropCardByPlayerPayload: GameActionResponse = Payloads.sendDropCardByPlayer(
-      this.dropCardPlayer
-    );
+    const DropCardByPlayerPayload: GameActionResponse =
+      Payloads.sendDropCardByPlayer(this.dropCardPlayer);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
       DropCardByPlayerPayload
@@ -1234,15 +1418,13 @@ export class GameCore {
 
       // Determine which team the bidding player belongs to
       const playerIndex = gameObj.players.findIndex(
-        p => p.playerId === player.playerId
+        (p) => p.playerId === player.playerId
       );
-      gameObj.biddingTeam = (playerIndex % 2 === 0) ? "A" : "B";
+      gameObj.biddingTeam = playerIndex % 2 === 0 ? "A" : "B";
     }
 
-    const IncrementBetByPlayerPayload: GameActionResponse = Payloads.sendBetByPlayer(
-      req.playerBet,
-      player.playerId
-    );
+    const IncrementBetByPlayerPayload: GameActionResponse =
+      Payloads.sendBetByPlayer(req.playerBet, player.playerId);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
       IncrementBetByPlayerPayload
@@ -1273,9 +1455,8 @@ export class GameCore {
     gameObj.teamAScore = scoreBaseLine - gameScoreNum;
     gameObj.teamBScore = scoreBaseLine + gameScoreNum;
 
-    const UpdateGameScorePayload: GameActionResponse = Payloads.sendUpdatedGameScore(
-      req.gameScore
-    );
+    const UpdateGameScorePayload: GameActionResponse =
+      Payloads.sendUpdatedGameScore(req.gameScore);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
       UpdateGameScorePayload
@@ -1293,10 +1474,11 @@ export class GameCore {
       biddingTeamAchievedBid: false,
       teamAScore: gameObj.teamAScore,
       teamBScore: gameObj.teamBScore,
-      scoreResetOccurred: false
+      scoreResetOccurred: false,
     };
 
-    const gameCompleteResetPayload: GameActionResponse = Payloads.sendGameComplete(gameCompleteResetData);
+    const gameCompleteResetPayload: GameActionResponse =
+      Payloads.sendGameComplete(gameCompleteResetData);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
       gameCompleteResetPayload
@@ -1323,13 +1505,14 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
     if (!gameObj) return;
 
-    const dropCards = (gameObj && gameObj.dropDetails) ? gameObj.dropDetails : [];
+    const dropCards = gameObj && gameObj.dropDetails ? gameObj.dropDetails : [];
     // Use all dropped cards from this round (dropDetails is cleared each round)
     const remainingDropCards = dropCards;
-    const updatedTeamACards = remainingDropCards.concat(gameObj.teamACards || []);
-    const teamAPayload: GameActionResponse = Payloads.sendTeamACards(
-      updatedTeamACards
+    const updatedTeamACards = remainingDropCards.concat(
+      gameObj.teamACards || []
     );
+    const teamAPayload: GameActionResponse =
+      Payloads.sendTeamACards(updatedTeamACards);
     gameObj.teamACards = updatedTeamACards;
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
@@ -1386,13 +1569,14 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
     if (!gameObj) return;
 
-    const dropCards = (gameObj && gameObj.dropDetails) ? gameObj.dropDetails : [];
+    const dropCards = gameObj && gameObj.dropDetails ? gameObj.dropDetails : [];
     // Use all dropped cards from this round (dropDetails is cleared each round)
     const remainingDropCards = dropCards;
-    const updatedTeamBCards = remainingDropCards.concat(gameObj.teamBCards || []);
-    const teamBPayload: GameActionResponse = Payloads.sendTeamBCards(
-      updatedTeamBCards
+    const updatedTeamBCards = remainingDropCards.concat(
+      gameObj.teamBCards || []
     );
+    const teamBPayload: GameActionResponse =
+      Payloads.sendTeamBCards(updatedTeamBCards);
     gameObj.teamBCards = updatedTeamBCards;
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
@@ -1448,7 +1632,10 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(gameId);
 
     if (!gameObj || !gameObj.players || gameObj.players.length < 1) {
-      cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found or no players"));
+      cb(
+        null,
+        errorResponse(RESPONSE_CODES.failed, "Game not found or no players")
+      );
       return;
     }
 
@@ -1508,9 +1695,15 @@ export class GameCore {
     console.log("[BOT AGENT] rotateStrike called");
     this.sendCardDropAcceptedNotification(cb);
 
-    console.log("[BOT AGENT] Before updateStrike, currentTurn:", currentGameIns.gameObj.currentTurn);
+    console.log(
+      "[BOT AGENT] Before updateStrike, currentTurn:",
+      currentGameIns.gameObj.currentTurn
+    );
     currentGameIns.updateStrike();
-    console.log("[BOT AGENT] After updateStrike, currentTurn:", currentGameIns.gameObj.currentTurn);
+    console.log(
+      "[BOT AGENT] After updateStrike, currentTurn:",
+      currentGameIns.gameObj.currentTurn
+    );
 
     // if (currentGameIns.isRoundOver) {
     //   currentGameIns.droppedCards = [];
@@ -1522,15 +1715,25 @@ export class GameCore {
       currentGameIns.droppedCards
     );
 
-    console.log("[BOT AGENT] Before saveGame, currentTurn:", currentGameIns.gameObj.currentTurn);
+    console.log(
+      "[BOT AGENT] Before saveGame, currentTurn:",
+      currentGameIns.gameObj.currentTurn
+    );
     currentGameIns.saveGame();
-    console.log("[BOT AGENT] After saveGame, currentTurn:", currentGameIns.gameObj.currentTurn);
+    console.log(
+      "[BOT AGENT] After saveGame, currentTurn:",
+      currentGameIns.gameObj.currentTurn
+    );
 
     // Check if all players have dropped their cards
     const gameObj = this.inMemoryStore.fetchGame(currentGameIns.gameId);
-    console.log("[BOT AGENT] After fetchGame, currentTurn:", gameObj.currentTurn);
+    console.log(
+      "[BOT AGENT] After fetchGame, currentTurn:",
+      gameObj.currentTurn
+    );
 
-    const allPlayersDropped = gameObj.dropDetails &&
+    const allPlayersDropped =
+      gameObj.dropDetails &&
       gameObj.dropDetails.length >= gameObj.players.length;
 
     console.log("[BOT AGENT] rotateStrike - round check:", {
@@ -1538,12 +1741,14 @@ export class GameCore {
       dropDetailsLength: gameObj.dropDetails?.length || 0,
       totalPlayers: gameObj.players.length,
       allPlayersDropped,
-      existingTimer: !!this.roundTimers[currentGameIns.gameId]
+      existingTimer: !!this.roundTimers[currentGameIns.gameId],
     });
 
     if (allPlayersDropped && !this.roundTimers[currentGameIns.gameId]) {
       // Set a 5-second timer to auto-determine the winner
-      console.log("[BOT AGENT] Round completed, setting winner determination timer");
+      console.log(
+        "[BOT AGENT] Round completed, setting winner determination timer"
+      );
       this.roundTimers[currentGameIns.gameId] = setTimeout(() => {
         this.autoDetermineRoundWinner(currentGameIns.gameId);
         delete this.roundTimers[currentGameIns.gameId];
@@ -1553,7 +1758,10 @@ export class GameCore {
       return;
     }
 
-    console.log("[BOT AGENT] Before notifyTurn, currentTurn:", gameObj.currentTurn);
+    console.log(
+      "[BOT AGENT] Before notifyTurn, currentTurn:",
+      gameObj.currentTurn
+    );
     this.notifyTurn(currentGameIns.gameId);
   }
 
@@ -1564,7 +1772,7 @@ export class GameCore {
   public abortGame(gameId: string) {
     // Cleanup disconnection timeouts
     if (this.disconnectTimeouts[gameId]) {
-      Object.values(this.disconnectTimeouts[gameId]).forEach(timeOut => {
+      Object.values(this.disconnectTimeouts[gameId]).forEach((timeOut) => {
         clearTimeout(timeOut);
       });
       delete this.disconnectTimeouts[gameId];
@@ -1583,7 +1791,7 @@ export class GameCore {
     const response = successResponse(RESPONSE_CODES.gameNotification, payload);
     this.ioServer.to(gameId).emit("data", response);
 
-    console.log(`Game ${gameId} aborted and cleanup completed`)
+    console.log(`Game ${gameId} aborted and cleanup completed`);
   }
 
   /**
@@ -1602,7 +1810,12 @@ export class GameCore {
    */
   private autoDetermineRoundWinner(gameId: string) {
     const gameObj = this.inMemoryStore.fetchGame(gameId);
-    if (!gameObj || !gameObj.players || (gameObj.players.length as number) === 0) return;
+    if (
+      !gameObj ||
+      !gameObj.players ||
+      (gameObj.players.length as number) === 0
+    )
+      return;
 
     if (!cardToWeightagePoints) return;
     if (!cardToWeightageDict) return;
@@ -1628,7 +1841,7 @@ export class GameCore {
     let trumpCardsInRound = false;
 
     if (isTrumpSet) {
-      trumpCardsInRound = dropCardPlayer.some(cardDetail => {
+      trumpCardsInRound = dropCardPlayer.some((cardDetail) => {
         if (!cardDetail) return false;
         const [card] = cardDetail.split("-");
         return card && card.length > 1 && card[1] === trumpSuit;
@@ -1651,7 +1864,6 @@ export class GameCore {
 
         // Only considering trump cards for winning
         if (card.length > 1 && card[1] === trumpSuit) {
-
           const playerIndex = gameObj.players.findIndex(
             (p: IPlayer) => p && p.playerId === playerId
           );
@@ -1700,7 +1912,7 @@ export class GameCore {
     console.log("[BOT AGENT] autoDetermineRoundWinner - winner found:", {
       winningPlayerIndex,
       winnerTeam,
-      winningPlayerId: gameObj.players[winningPlayerIndex]?.playerId
+      winningPlayerId: gameObj.players[winningPlayerIndex]?.playerId,
     });
 
     gameObj.roundWinnerTeam = winnerTeam;
@@ -1715,9 +1927,9 @@ export class GameCore {
 
     // Automatically update the winning team's cards (same as manual button click)
     if (winnerTeam === "A") {
-      this.onDeckWonByTeamA({ gameId } as any, () => { });
+      this.onDeckWonByTeamA({ gameId } as any, () => {});
     } else {
-      this.onDeckWonByTeamB({ gameId } as any, () => { });
+      this.onDeckWonByTeamB({ gameId } as any, () => {});
     }
   }
 
@@ -1765,16 +1977,21 @@ export class GameCore {
     //Determine score change based on bid range
     let winPoinsts, losePoints;
     if (finalBid >= 28 && finalBid <= 39) {
-      winPoinsts = 1; losePoints = -2;
+      winPoinsts = 1;
+      losePoints = -2;
     } else if (finalBid >= 40 && finalBid <= 47) {
-      winPoinsts = 2; losePoints = -3;
+      winPoinsts = 2;
+      losePoints = -3;
     } else if (finalBid >= 48 && finalBid <= 57) {
-      winPoinsts = 3; losePoints = -4;
+      winPoinsts = 3;
+      losePoints = -4;
     } else if (finalBid === 56) {
-      winPoinsts = 4; losePoints = -5;
+      winPoinsts = 4;
+      losePoints = -5;
     } else {
       // Default fallback for any unexpected bid values
-      winPoinsts = 1; losePoints = -2;
+      winPoinsts = 1;
+      losePoints = -2;
     }
 
     if (biddingTeamAchievedBid) {
@@ -1839,16 +2056,15 @@ export class GameCore {
       biddingTeamAchievedBid,
       teamAScore: gameObj.teamAScore,
       teamBScore: gameObj.teamBScore,
-      scoreResetOccurred: scoreResetOccurred
+      scoreResetOccurred: scoreResetOccurred,
     };
 
     // Save game state
     this.inMemoryStore.saveGame(gameId, gameObj);
 
     // Send game completion notification to all players
-    const gameCompletePayload: GameActionResponse = Payloads.sendGameComplete(
-      gameCompleteData
-    );
+    const gameCompletePayload: GameActionResponse =
+      Payloads.sendGameComplete(gameCompleteData);
     const gameCompletionResponse = successResponse(
       RESPONSE_CODES.gameNotification,
       gameCompletePayload
@@ -1909,7 +2125,9 @@ export class GameCore {
     if (socket) {
       socket.emit("data", recieveCards);
     } else {
-      console.warn(`Socket ${socketId} not found. Player might be disconnected.`);
+      console.warn(
+        `Socket ${socketId} not found. Player might be disconnected.`
+      );
     }
   }
 
@@ -2064,7 +2282,8 @@ export class GameCore {
    */
   private buildGameStateForPlayer(game: GameModel, player: IPlayer): any {
     const playerCards = game[player.token] || [];
-    const currentPlayer = game.currentTurn !== undefined ? game.players[game.currentTurn] : null;
+    const currentPlayer =
+      game.currentTurn !== undefined ? game.players[game.currentTurn] : null;
 
     return {
       ...player,
@@ -2077,7 +2296,8 @@ export class GameCore {
         teamACards: game.teamACards || [],
         teamBCards: game.teamBCards || [],
         currentBet: game.currentBet,
-        gameScore: game.gamescore, trumpSuit: game.trumpSuit,
+        gameScore: game.gamescore,
+        trumpSuit: game.trumpSuit,
         currentTurn: game.currentTurn,
         finalBid: game.finalfid,
         biddingTeam: game.biddingTeam,
@@ -2085,9 +2305,9 @@ export class GameCore {
         isGameComplete: game.isGameComplete,
         teamAScore: game.teamAScore,
         teamBScore: game.teamBScore,
-        gamePaused: game.gamePaused
-      }
-    }
+        gamePaused: game.gamePaused,
+      },
+    };
   }
 
   /**
@@ -2098,17 +2318,24 @@ export class GameCore {
     const game = this.inMemoryStore.fetchGame(gameId);
     if (!game) return;
 
-    const connectedPlayers = game.players.filter((p: IPlayer) => !p.isDisconnected);
+    const connectedPlayers = game.players.filter(
+      (p: IPlayer) => !p.isDisconnected
+    );
 
     connectedPlayers.forEach((player: IPlayer) => {
       // Verify socket still exists before sending data
       const socket = this.ioServer.sockets.connected[player.socketId];
       if (socket) {
         const gameStatePayload = this.buildGameStateForPlayer(game, player);
-        const response = successResponse(RESPONSE_CODES.gameRefresh, gameStatePayload);
+        const response = successResponse(
+          RESPONSE_CODES.gameRefresh,
+          gameStatePayload
+        );
         this.ioServer.to(player.socketId).emit("data", response);
       } else {
-        console.warn(`Socket ${player.socketId} not found for ${player.playerId}. Skipping state refresh`);
+        console.warn(
+          `Socket ${player.socketId} not found for ${player.playerId}. Skipping state refresh`
+        );
       }
     });
   }
@@ -2119,7 +2346,11 @@ export class GameCore {
    * @param playerId The player id
    * @param socketId The socket id
    */
-  public handlePlayerDisconnection(gameId: string, playerId: string, socketId: string): void {
+  public handlePlayerDisconnection(
+    gameId: string,
+    playerId: string,
+    socketId: string
+  ): void {
     const game = this.inMemoryStore.fetchGame(gameId);
     if (!game) {
       console.log(`Game ${gameId} not found for disconnection`);
@@ -2142,12 +2373,12 @@ export class GameCore {
       player.isDisconnected = true;
       player.disconnectedAt = new Date();
 
-      // Initialize disconnectedPlayers if not exists 
+      // Initialize disconnectedPlayers if not exists
       if (!game.disconnectedPlayers) {
         game.disconnectedPlayers = {};
       }
 
-      // Move player to disconnected players tracking 
+      // Move player to disconnected players tracking
       game.disconnectedPlayers[playerId] = { ...player };
 
       // Check if game should be paused
@@ -2164,7 +2395,10 @@ export class GameCore {
           `${playerId} has disconnected from the game`
         );
 
-        const disconnectResponse = successResponse(RESPONSE_CODES.gameNotification, disconnectedPayload);
+        const disconnectResponse = successResponse(
+          RESPONSE_CODES.gameNotification,
+          disconnectedPayload
+        );
         this.ioServer.to(gameId).emit("data", disconnectResponse);
 
         // then notify about the pause
@@ -2172,15 +2406,20 @@ export class GameCore {
           `${playerId} disconnected. Game paused. Waiting for reconnection...`
         );
 
-        const pauseResponse = successResponse(RESPONSE_CODES.gameNotification, pausePayload);
+        const pauseResponse = successResponse(
+          RESPONSE_CODES.gameNotification,
+          pausePayload
+        );
         this.ioServer.to(gameId).emit("data", pauseResponse);
       }
 
-      // Set timeout for permanent removal 
+      // Set timeout for permanent removal
       this.setDisconnectTimeout(gameId, playerId);
     } else {
       // Game is still in lobby phase - just remove the player from gamePlayersInfo
-      console.log(`Player ${playerId} disconnected from lobby in game ${gameId}`);
+      console.log(
+        `Player ${playerId} disconnected from lobby in game ${gameId}`
+      );
 
       if (game.gamePlayersInfo) {
         const playerIndex = game.gamePlayersInfo.findIndex(
@@ -2189,7 +2428,9 @@ export class GameCore {
 
         if (playerIndex !== -1) {
           game.gamePlayersInfo.splice(playerIndex, 1);
-          console.log(`Removed player ${playerId} from lobby. Players remaining: ${game.gamePlayersInfo.length}`);
+          console.log(
+            `Removed player ${playerId} from lobby. Players remaining: ${game.gamePlayersInfo.length}`
+          );
         }
       }
     }
@@ -2221,7 +2462,9 @@ export class GameCore {
     }, this.DISCONNECT_TIMEOUT_MS);
 
     console.log(
-      `Disconnect timeout set for ${playerId} in game ${gameId} (${this.DISCONNECT_TIMEOUT_MS / 1000}s)`
+      `Disconnect timeout set for ${playerId} in game ${gameId} (${
+        this.DISCONNECT_TIMEOUT_MS / 1000
+      }s)`
     );
   }
 
@@ -2237,21 +2480,29 @@ export class GameCore {
 
     if (!game) return;
 
-    // Remove from disconnected players 
+    // Remove from disconnected players
     if (game.disconnectedPlayers && game.disconnectedPlayers[playerId]) {
       delete game.disconnectedPlayers[playerId];
     }
 
     // Clean up timeout
-    if (this.disconnectTimeouts[gameId] && this.disconnectTimeouts[gameId][playerId]) {
+    if (
+      this.disconnectTimeouts[gameId] &&
+      this.disconnectTimeouts[gameId][playerId]
+    ) {
       delete this.disconnectTimeouts[gameId][playerId];
     }
 
     // Check if game should be aborted
-    const totalConnectedPlayers = game.players.filter((p: IPlayer) => p.isDisconnected).length;
-    const totalDisconnectedPlayers = Object.keys(game.disconnectedPlayers || {}).length;
+    const totalConnectedPlayers = game.players.filter(
+      (p: IPlayer) => p.isDisconnected
+    ).length;
+    const totalDisconnectedPlayers = Object.keys(
+      game.disconnectedPlayers || {}
+    ).length;
 
-    if (totalConnectedPlayers + totalDisconnectedPlayers < 3) { // Minimum players needed
+    if (totalConnectedPlayers + totalDisconnectedPlayers < 3) {
+      // Minimum players needed
       // Not enough players to continue abort game
       this.abortGame(gameId);
     } else {
@@ -2260,7 +2511,10 @@ export class GameCore {
         `${playerId} has been removed due to prolonged disconnection.`
       );
 
-      const removalResponse = successResponse(RESPONSE_CODES.gameNotification, removalPayload);
+      const removalResponse = successResponse(
+        RESPONSE_CODES.gameNotification,
+        removalPayload
+      );
       this.ioServer.to(gameId).emit("data", removalResponse);
 
       this.inMemoryStore.saveGame(gameId, game);
@@ -2278,11 +2532,11 @@ export class GameCore {
 
     for (let i = 0; i < botsNeeded; i++) {
       const botPlayer: IPlayer = {
-        socketId: `bot-socket-${getUniqueId()}`, // Fake socket ID for bots 
+        socketId: `bot-socket-${getUniqueId()}`, // Fake socket ID for bots
         playerId: `Bot_${i + 1}`,
         token: getUniqueId(),
         gameId: this.currentGameId,
-        isBotAgent: true
+        isBotAgent: true,
       };
       botPlayers.push(botPlayer);
     }
@@ -2290,12 +2544,15 @@ export class GameCore {
     return botPlayers;
   }
 
-  /** 
+  /**
    * Handle bot turn with 1-second delay to simulate human behavior
    * @param gameId The game ID
    * @param botPlayerId The bot player ID
    */
-  public async playBotAgentTurn(gameId: string, botPlayerId: string): Promise<void> {
+  public async playBotAgentTurn(
+    gameId: string,
+    botPlayerId: string
+  ): Promise<void> {
     try {
       const game = this.inMemoryStore.fetchGame(gameId);
       if (!game) {
@@ -2304,9 +2561,11 @@ export class GameCore {
       }
 
       // Find the bot player to get their token
-      const botPlayer = game.players.find(p => p.playerId === botPlayerId);
+      const botPlayer = game.players.find((p) => p.playerId === botPlayerId);
       if (!botPlayer || !botPlayer.token) {
-        console.error(`[BOT AGENT] Bot player ${botPlayerId} not found or missing token`);
+        console.error(
+          `[BOT AGENT] Bot player ${botPlayerId} not found or missing token`
+        );
         return;
       }
 
@@ -2317,7 +2576,7 @@ export class GameCore {
         botAgentId: botPlayerId,
         botToken: botPlayer.token,
         card,
-        gameId
+        gameId,
       });
 
       // Simulate human delay (1 second)
@@ -2331,7 +2590,6 @@ export class GameCore {
 
       // Store timer for cleanup if needed
       this.botTimers[gameId] = botTimer;
-
     } catch (error) {
       console.error(`[BOT AGENT] Error in bot turn for ${botPlayerId}:`, error);
     }
@@ -2343,14 +2601,20 @@ export class GameCore {
    * @param botPlayerId The bot player ID
    * @param card The card to play
    */
-  private handleBotCardPlay(gameId: string, botPlayerId: string, card: string): void {
+  private handleBotCardPlay(
+    gameId: string,
+    botPlayerId: string,
+    card: string
+  ): void {
     const game = this.inMemoryStore.fetchGame(gameId);
     if (!game) {
       console.error(`[BOT AGENT] Game ${gameId} not found during card play`);
       return;
     }
 
-    const botPlayer = game.players.find(p => p.playerId === botPlayerId && p.isBotAgent);
+    const botPlayer = game.players.find(
+      (p) => p.playerId === botPlayerId && p.isBotAgent
+    );
     if (!botPlayer) {
       console.error(`[BOT AGENT] Bot player ${botPlayerId} not found`);
       return;
@@ -2361,26 +2625,38 @@ export class GameCore {
       card,
       gameId,
       token: botPlayer.token,
-      playerId: botPlayerId
+      playerId: botPlayerId,
     };
 
     // Reuse existing validation path
-    console.log(`[BOT AGENT] Calling onDropCard for ${botPlayerId} with card ${card}`);
+    console.log(
+      `[BOT AGENT] Calling onDropCard for ${botPlayerId} with card ${card}`
+    );
     this.onDropCard(dropCardRequest, (error: any, result: any) => {
-      console.log(`[BOT AGENT] onDropCard callback for ${botPlayerId}:`, { error, result });
+      console.log(`[BOT AGENT] onDropCard callback for ${botPlayerId}:`, {
+        error,
+        result,
+      });
       if (error) {
-        console.error(`[BOT AGENT] Error playing card for ${botPlayerId}:`, error);
+        console.error(
+          `[BOT AGENT] Error playing card for ${botPlayerId}:`,
+          error
+        );
       } else {
-        console.log(`[BOT AGENT] Successfully played ${card} for ${botPlayerId}`);
+        console.log(
+          `[BOT AGENT] Successfully played ${card} for ${botPlayerId}`
+        );
 
         // Log game state after bot plays
         const gameAfterPlay = this.inMemoryStore.fetchGame(gameId);
         console.log("[BOT AGENT] Game state after bot play:", {
           currentTurn: gameAfterPlay?.currentTurn,
-          nextPlayerId: gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.playerId,
-          isNextPlayerBot: gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.isBotAgent,
+          nextPlayerId:
+            gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.playerId,
+          isNextPlayerBot:
+            gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.isBotAgent,
           droppedCardsCount: gameAfterPlay?.droppedCards?.length || 0,
-          dropDetailsCount: gameAfterPlay?.dropDetails?.length || 0
+          dropDetailsCount: gameAfterPlay?.dropDetails?.length || 0,
         });
       }
     });
@@ -2400,11 +2676,14 @@ export class GameCore {
       currentTurn: game.currentTurn,
       currentPlayerId: currentPlayer?.playerId,
       isBot: currentPlayer?.isBotAgent,
-      totalPlayers: game.players.length
+      totalPlayers: game.players.length,
     });
 
     if (currentPlayer && currentPlayer.isBotAgent) {
-      console.log("[BOT AGENT] Bot turn detected, scheduling play for:", currentPlayer.playerId);
+      console.log(
+        "[BOT AGENT] Bot turn detected, scheduling play for:",
+        currentPlayer.playerId
+      );
       // Give a small delay to let the UI update first
       setTimeout(() => {
         this.playBotAgentTurn(gameId, currentPlayer.playerId);
