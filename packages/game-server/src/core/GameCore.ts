@@ -2685,7 +2685,8 @@ export class GameCore {
         currentPlayer.playerId
       );
       // Give a small delay to let the UI update first
-      setTimeout(() => {
+      // Store the timer so it can be cleared on restart
+      this.botTimers[gameId] = setTimeout(() => {
         this.playBotAgentTurn(gameId, currentPlayer.playerId);
       }, 500);
     }

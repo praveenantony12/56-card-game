@@ -346,7 +346,7 @@ export class TeamBotAgent {
   private isHighestCard(
     card: string,
     playedCards: Set<string>,
-    trumpsuit?: string
+    trumpSuit?: string
   ): boolean {
     const suit = this.getCardSuit(card);
     const ranks = ["J", "9", "A", "10", "K", "Q"]; // Descending order of power
@@ -668,7 +668,7 @@ export class TeamBotAgent {
     // FIX: Slicing from index 2 to handle "10" (length 2 rank) and "J" (length 1 rank)
     const rank = card.slice(2);
 
-    // Point system: J=3, 9-2, A=1, 10=1, К=0, Q=0
+    // Point system: J=3, 9=2, A=1, 10=1, К=0, Q=0
 
     const pointMap: { [key: string]: number } = {
       J: 3,
@@ -691,6 +691,7 @@ export class TeamBotAgent {
       K: 2, // Points=0, but higher than Q
       Q: 1, // Points=0, but lower than K
     };
+
     // Return combined value: points * 10 + tie-breaker for proper ordering
     return points * 10 + (tieBreaker[rank] || 0);
   }
