@@ -1,4 +1,3 @@
-import { gameTests } from "../__tests__/test-cases/game.tests";
 import { ICardGame } from "../core/models/ICardGame";
 
 /**
@@ -29,11 +28,11 @@ export class TeamBotAgent {
         const trumpSuit = gameState.trumpSuit === "N" ? undefined : gameState.trumpSuit;
 
         // Check if teammate is currently winning
-        const winningCard = this.getWinningCard(currentRoundCards, gameState.trump5uit);
+        const winningCard = this.getWinningCard(currentRoundCards, gameState.trumpSuit);
         const winningPlayerId = winningCard ? this.extractPlayerFromCardDrop(winningCard) : null;
         const teammateWinning = this.isTeammateWinning(gameState, botAgentId);
 
-        //Debug Logging
+        //Debug logging
         console.log("[BOT AGENT DEBUG]", {
             botAgentId,
             currentRoundCards,
@@ -47,7 +46,7 @@ export class TeamBotAgent {
         // Initialize reasoning object
         const reasoning = {
             botId: botAgentId,
-            gameMode: trumpSuit ? `Trump : ${trumpSuit}` : "No - Trump(Noes)",
+            gameMode: trumpSuit ? `Trump: ${trumpSuit}` : "No-Trump(Noes)",
             totalPlayedCards: playedCards.size,
             currentRoundCardsCount: currentRoundCards.length,
             legalMovesCount: legalMoves.length,
@@ -60,9 +59,9 @@ export class TeamBotAgent {
             selectedCard: ""
         };
 
-        console.log("\n╔═════════════════════════════════════════════════════════════════════════════════╗");
-        console.log("║                         BOT DECISION REASONING OBSERVER                         ║");
-        console.log("╚═════════════════════════════════════════════════════════════════════════════════╝ ");
+        console.log("\n╔════════════════════════════════════════════════════════════════════╗");
+        console.log("║                BOT DECISION REASONING OBSERVER                     ║");
+        console.log("╚════════════════════════════════════════════════════════════════════╝");
 
 
         // STRATEGY 1: If teammate is winning, throw high-point cards to maximize team points
@@ -72,7 +71,6 @@ export class TeamBotAgent {
 
             // Special rule for "Noes" (No-Trump) games: NEVER throw Jacks
             // Jacks are crucial for winning future rounds since there's no trump
-
             const isNoesGame = !trumpSuit || gameState.trumpSuit === "N";
 
             if (isNoesGame) {
@@ -93,7 +91,7 @@ export class TeamBotAgent {
                         `Available non - Jack cards: [${nonJackMoves.join(', ')}]. ` +
                         `Jacks preserved: [${legalMoves.filter(c => c.slice(2) === 'J').join(', ')}].`;
                 } else {
-                    //Only have Jacks left must throw one, but note this in reasoning
+                    // Only have Jacks left - must throw one, but note this in reasoning
                     selectedCard = this.highestPointCard(legalMoves);
                     cardPoints = this.getCardPoints(selectedCard);
                     reasoning.strategy = "TEAMMATE WINNING";
@@ -103,12 +101,12 @@ export class TeamBotAgent {
                         `This Jack won't be available for future moves - strategic cost accepted. `;
                 }
             } else {
-                // Trump game
+                // Trump game - normal strategy, throw highest-point card (including Jacks)
                 selectedCard = this.highestPointCard(legalMoves);
                 cardPoints = this.getCardPoints(selectedCard);
                 reasoning.strategy = "TEAMMATE_WINNING";
                 reasoning.reasoning = `Teammate (${winningPlayerId}) is currently winning with ${winningCard?.split('-')[0]}. ` +
-                    `TRUMP GAME: Supporting teammate by throwing highest-point card [${selectedCard}] (${cardPoints} points) ` +
+                    `TRUMP GAME (${trumpSuit}): SUPPORTING teammate by throwing highest-point card [${selectedCard}] (${cardPoints} points) ` +
                     `to maximize team's score for this round. This is a standard strategy to drop valuable cards when teammate has secured a win`;
             }
 
@@ -118,7 +116,6 @@ export class TeamBotAgent {
         }
 
         // STRATEGY 2: If leading (first card) or trying to win
-
         const winningMoves = this.getWinningMoves(legalMoves, currentRoundCards, trumpSuit);
 
         if (winningMoves.length > 0) {
@@ -147,7 +144,7 @@ export class TeamBotAgent {
                 // If we are last, and we can win, we win! Play the lowest card that is sufficient to win.
                 const selectedCard = this.lowestCard(winningMoves);
                 reasoning.strategy = "LAST_PLAYER_WIN";
-                reasoning.reasoning = `Last player in round with (${winningMoves.length}) winning move(s): [${winningMoves.join(', ')}]. ` +
+                reasoning.reasoning = `Last player in round with ${winningMoves.length} winning move(s): [${winningMoves.join(', ')}]. ` +
                     `Currently winning card: ${winningCard?.split('-')[0]}. ` +
                     `Playing lowest sufficient winning card to capture the round while conserving higher cards. ` +
                     `SAFE to play as no more players can beat us.`;
@@ -158,11 +155,11 @@ export class TeamBotAgent {
                 // No last player, and no HIGHEST card
                 const selectedCard = this.lowestCard(legalMoves);
                 reasoning.strategy = "RISKY_WIN_AVOIDED";
-                reasoning.reasoning = `Have (${highestCardMoves.length}) - potential winning card(s):  [${winningMoves.join(', ')}]. ` +
-                    `but NONE are highest remaining cards (those are still left to play)` +
-                    `Not the last player, opponents still left to play. ` +
-                    `RISK: Playing high card could lose to unknown higher cards (e.g. playing 9 while J might still be out). ` +
-                    `DECISION: Duck with the lowest card ${selectedCard} to avoid waste and save high cards for safer opportunities.`;
+                reasoning.reasoning = `Have (${winningMoves.length}) - potential winning card(s): [${winningMoves.join(', ')}]. ` +
+                    `but NONE are highest remaining cards (higher cards unknown - those are still left to play)` +
+                    `Not the last player, opponents still to play. ` +
+                    `RISK: Playing high card could lose to unknown higher cards (e.g., playing 9 when J might still be out). ` +
+                    `DECISION: Duck with the lowest card [${selectedCard}] to avoid waste and save high cards for safer opportunities.`;
                 reasoning.selectedCard = selectedCard;
                 this.logReasoning(reasoning);
                 return selectedCard;
@@ -172,7 +169,7 @@ export class TeamBotAgent {
         // STRATEGY 3: Cannot win or chose not to win.
         const selectedCard = this.lowestCard(legalMoves);
         reasoning.strategy = "DUCK_NO_WIN";
-        reasoning.reasoning = `No winning moves available from legal cards:  [${legalMoves.join(', ')}]. ` +
+        reasoning.reasoning = `No winning moves available from legal cards: [${legalMoves.join(', ')}]. ` +
             `Current winning card: ${winningCard?.split('-')[0] || 'None'}. ` +
             `Not the last player, opponents still left to play. ` +
             `Cannot beat the current winning card, so ducking with lowest card to minimize loss. ` +
@@ -186,56 +183,54 @@ export class TeamBotAgent {
      * Log the reasoning behind a bot's decision
      */
     private logReasoning(reasoning: any): void {
-        console.log("\n┌────────────────────────────────────────────────────────────────────────┐");
+        console.log("\n┌──────────────────────────────────────────────────────────────┐");
         console.log(`│ Bot ID: ${reasoning.botId.padEnd(52)} │`);
         console.log(`│ Game Mode: ${reasoning.gameMode.padEnd(49)} │`);
-        console.log(`├────────────────────────────────────────────────────────────────────────┤`);
+        console.log("├──────────────────────────────────────────────────────────────┤");
         console.log(`│ Current Round Cards: ${String(reasoning.currentRoundCardsCount).padEnd(38)} │`);
         console.log(`│ Total Cards Played: ${String(reasoning.totalPlayedCards).padEnd(39)} │`);
-        console.log(`│ TLegal Moves Available: ${String(reasoning.LegalMovesCount).padEnd(36)} │`);
-        console.log(`├────────────────────────────────────────────────────────────────────────┤`);
+        console.log(`│ Legal Moves Available: ${String(reasoning.legalMovesCount).padEnd(36)} │`);
+        console.log("├──────────────────────────────────────────────────────────────┤");
 
         if (reasoning.currentWinningCard) {
             console.log(`│ Currently Winning: ${reasoning.currentWinningCard.padEnd(41)} │`);
-            console.log(`│Winning Player: ${(reasoning.currentWinningPlayer || 'Unknown').padEnd(44)} │`);
+            console.log(`│ Winning Player: ${(reasoning.currentWinningPlayer || 'Unknown').padEnd(44)} │`);
         }
 
-        console.log(`├────────────────────────────────────────────────────────────────────────┤`);
-        console.log(`│ Strategy: ${reasoning.strategy.padEnd(50)} │`);
-        console.log(`├────────────────────────────────────────────────────────────────────────┤`);
-        console.log(`│ Reasoning:                                                             │`);
+        console.log("├──────────────────────────────────────────────────────────────┤");
+        console.log(`│ STRATEGY: ${reasoning.strategy.padEnd(50)} │`);
+        console.log("├──────────────────────────────────────────────────────────────┤");
+        console.log("│ REASONING:                                                   │");
 
         // Wrap reasoning text to fit in box
         const maxWidth = 59;
-        const words = reasoning.reasoning.split();
+        const words = reasoning.reasoning.split(" ");
         let line = '';
 
         words.forEach((word: string) => {
-
             if ((line + word).length > maxWidth) {
-                console.log(`│  ${line.padEnd(maxWidth)} │`);
-                line = word + '';
+                console.log(`│ ${line.padEnd(maxWidth)} │`);
+                line = word + ' ';
             } else {
-                line = word + '';
+                line += word + ' ';
             }
         });
 
         if (line.trim().length > 0) {
-            console.log(`│ ${line.trim().padEnd(maxWidth)} | `);
+            console.log(`│ ${line.trim().padEnd(maxWidth)} |`);
         }
 
-        console.log(`├────────────────────────────────────────────────────────────────────────┤`);
+        console.log("├──────────────────────────────────────────────────────────────┤");
         console.log(`│ SELECTED CARD: ${reasoning.selectedCard.padEnd(45)} │`);
-        console.log(`├────────────────────────────────────────────────────────────────────────┤`);
+        console.log("└──────────────────────────────────────────────────────────────┘\n");
     }
-
 
     /**
      * Check if I am the last player in the current round
      */
     private isLastPlayerInRound(currentCount: number, gameState: ICardGame): boolean {
         const totalPlayers = gameState.players ? gameState.players.length : 0;
-        if (totalPlayers) return false;
+        if (totalPlayers === 0) return false;
         const currentRoundCards = gameState.dropCardPlayer || gameState.dropDetails || [];
         return currentRoundCards.length === totalPlayers - 1;
     }
@@ -243,7 +238,7 @@ export class TeamBotAgent {
     private getAllPlayedCards(gameState: ICardGame): Set<string> {
         const played = new Set<string>();
 
-        // Add cards from tean piles (previous rounds)
+        // Add cards from team piles (previous rounds)
         if (Array.isArray(gameState.teamACards)) {
             gameState.teamACards.forEach(c => played.add(c));
         }
@@ -260,15 +255,14 @@ export class TeamBotAgent {
                 played.add(card);
             });
         }
+
         return played;
     }
+
     /**
      * Determines if a card is effectively the highest remaining card of its functional suit(HIGHEST CARD REMAINING)
      * For the given card, checks if all cards of the same suit with higher rank have already been played.
      */
-
-
-
     private isHighestCard(card: string, playedCards: Set<string>, trumpsuit?: string): boolean {
         const suit = this.getCardSuit(card);
 
@@ -304,7 +298,7 @@ export class TeamBotAgent {
     }
 
     private willCardWin(myCard: string, currentRoundCards: string[], trumpSuit?: string): boolean {
-        if (currentRoundCards.length === 0) return true;
+        if (currentRoundCards.length === 0) return true; // Leading always "wins" initially
 
         const potentialRound = [...currentRoundCards, `${myCard}-me`];
         const winner = this.getWinningCard(potentialRound, trumpSuit);
@@ -326,7 +320,7 @@ export class TeamBotAgent {
             return [];
         }
 
-        // Use dropCardPlayer for current cards
+        // Use dropCardPlayer for current round cards
         const currentRoundCards = gameState.dropCardPlayer || gameState.dropDetails || [];
 
         if (currentRoundCards.length === 0) {
@@ -342,7 +336,9 @@ export class TeamBotAgent {
         }
 
         // Check if bot has cards of the lead suit
-        const suitCards = playerCards.filter(card => this.getCardSuit(card) === leadSuit);
+        const suitCards = playerCards.filter(
+            (card) => this.getCardSuit(card) === leadSuit
+        );
 
         if (suitCards.length > 0) {
             return suitCards; // Must follow suit
@@ -359,10 +355,13 @@ export class TeamBotAgent {
     * @returns True if teammate is winning
     */
     private isTeammateWinning(gameState: ICardGame, botAgentId: string): boolean {
-        // Use dropDetails instead of tableCards for current round's played carc
-        const currentRoundCards = gameState.dropDetails || [];
+        // Use dropCardPlayer for current round's played cards (format: "card-playerId")
+        const currentRoundCards = gameState.dropCardPlayer || gameState.dropDetails || [];
         if (currentRoundCards.length == 0) return false;
-        const winningCard = this.getWinningCard(currentRoundCards, gameState.trumpSuit);
+        const winningCard = this.getWinningCard(
+            currentRoundCards,
+            gameState.trumpSuit
+        );
         if (!winningCard) return false;
         const winningPlayerId = this.extractPlayerFromCardDrop(winningCard);
         if (!winningPlayerId) return false;
@@ -375,13 +374,16 @@ export class TeamBotAgent {
      * @param trumpSuit The trump suit for the game
      * @returns The winning card or null
      */
-    private getWinningCard(currentRoundCards: string[], trumpSuit?: string): string | null {
+    private getWinningCard(
+        currentRoundCards: string[],
+        trumpSuit?: string
+    ): string | null {
         if (currentRoundCards.length === 0) return null;
 
         let winningCard = currentRoundCards[0];
         const leadSuit = this.getLeadSuit(currentRoundCards);
 
-        // FIX: Iterate through all cards to find the true winner
+        // FIX: Iterate through ALL cards to find the true winner
         for (let i = 1; i < currentRoundCards.length; i++) {
             const cardDrop = currentRoundCards[i];
             const card = cardDrop.split('-')[0]; // Extract card from "card-playerId"
@@ -442,7 +444,7 @@ export class TeamBotAgent {
 
         if (playerIndex === -1) return 0; // Default to team A if not found
 
-        // Team assignments: even positions (0,2,4) = Team A, odd positions (1,3,5) = Team B
+        // Team assignment: even positions (0,2,4) = Team A, odd positions (1,3,5) = Team B
         return playerIndex % 2;
     }
 
@@ -490,7 +492,7 @@ export class TeamBotAgent {
      */
 
     private highestPointCard(cards: string[]): string {
-        if (cards.length == 0) return "";
+        if (cards.length === 0) return "";
 
         return cards.reduce((highest, current) => {
             return this.getCardPoints(current) > this.getCardPoints(highest)
@@ -505,7 +507,7 @@ export class TeamBotAgent {
     * @returns Point value (J=3, 9=2, A=1, 10=1, K=0, Q=0)
     */
     private getCardPoints(card: string): number {
-        if (card || card.length < 3) return 0;
+        if (!card || card.length < 3) return 0;
         const rank = card.slice(2);
 
         const pointMap: { [key: string]: number } = {
@@ -515,7 +517,7 @@ export class TeamBotAgent {
             "10": 1,
             K: 0,
             Q: 0,
-        }
+        };
 
         return pointMap[rank] || 0;
     }
@@ -557,12 +559,11 @@ export class TeamBotAgent {
      */
     private getCardValue(card: string): number {
         if (!card || card.length < 3) return 0;
-        if (!card || card.length < 3) return 0;
 
-        // FIX: Slicing from index 2 to handle "18" (length 2 rank) and "3" (length 1 rank)
+        // FIX: Slicing from index 2 to handle "10" (length 2 rank) and "J" (length 1 rank)
         const rank = card.slice(2);
 
-        // Point system: 3=3, 9-2, A=1, 10-1, К-0, Q-0
+        // Point system: J=3, 9-2, A=1, 10=1, К=0, Q=0
 
         const pointMap: { [key: string]: number } = {
             J: 3,
@@ -571,7 +572,7 @@ export class TeamBotAgent {
             "10": 1,
             K: 0,
             Q: 0,
-        }
+        };
 
         const points = pointMap[rank] || 0;
 
@@ -580,12 +581,12 @@ export class TeamBotAgent {
         const tieBreaker: { [key: string]: number } = {
             J: 0, // Highest points, no tie possible
             "9": 0, // Second highest points, no tie possible
-            A: 2, // Points=1, but higher than 18
+            A: 2, // Points=1, but higher than 10
             "10": 1, // Points=1, but lower than A
-            K: 2, // Points, but higher than 0
-            Q: 1, // Points, but lower than K
+            K: 2, // Points=0, but higher than Q
+            Q: 1, // Points=0, but lower than K
         };
-        // Return combined value: points 10 tie-breaker for proper ordering return points 10 (tießreaker (rank] || ;
+        // Return combined value: points * 10 + tie-breaker for proper ordering
         return points * 10 + (tieBreaker[rank] || 0);
     }
 }
