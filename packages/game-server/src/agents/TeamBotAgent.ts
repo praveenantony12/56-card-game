@@ -83,7 +83,7 @@ export class TeamBotAgent {
     const playedPerSuit = this.getPlayedCardsPerSuit(playedCards);
     const remainingTrumps = this.countRemainingTrumps(trumpSuit, playedCards);
 
-    // STRATEGY 0: VOID SUIT EXPLOITATION - If bot has all remaining cards of a suit, play st!
+    // STRATEGY 0: VOID SUIT EXPLOITATION - If bot has all remaining cards of a suit, play it!
     // This is a guaranteed winner strategy especially in No-Trump games
     const isNoesGame = !trumpSuit || gameState.trumpSuit === "N";
 
@@ -98,7 +98,7 @@ export class TeamBotAgent {
         );
         const selectedCard = this.highestCard(myCardsInSuit); // Play highest to win
 
-        reasoning.strategy = "VOID_SUIT_GUARANTEED_MIN";
+        reasoning.strategy = "VOID_SUIT_GUARANTEED_WIN";
         reasoning.reasoning =
           `CARD COUNTING: Detected VOID SUIT (${suit}). ` +
           `Bot has ALL ${
@@ -240,7 +240,7 @@ export class TeamBotAgent {
           playedCards
         );
 
-        reasoning.strategy = "HIGHEST_CARD_WINS";
+        reasoning.strategy = "HIGHEST_CARD_WIN";
         reasoning.reasoning =
           `CARD COUNTING: Have (${highestCardMoves.length}) - highest card(s) that can win (all other higher cards are already played). ` +
           `Highest cards: [${highestCardMoves.join(", ")}]. ` +
@@ -487,7 +487,6 @@ export class TeamBotAgent {
    * @param playedCards Set of all played cards
    * @returns True if other players likely have cards of this suit
    */
-
   private canOthersFollowSuit(
     suit: string,
     myCards: string[],
