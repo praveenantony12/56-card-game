@@ -900,6 +900,20 @@ export class GameCore {
       return;
     }
 
+    // CRITICAL: Clear all existing bot timers for this game before restart
+    if (this.botTimers[gameId]) {
+      clearTimeout(this.botTimers[gameId]);
+      delete this.botTimers[gameId];
+      console.log(`[RESTART] Cleared bot timers for game ${gameId}`);
+    }
+
+    // Also clear round timers
+    if (this.roundTimers[gameId]) {
+      clearTimeout(this.roundTimers[gameId]);
+      delete this.roundTimers[gameId];
+      console.log(`[RESTART] Cleared round timers for game ${gameId}`);
+    }
+
     // Get current players from the active game
     const currentPlayers = currentGameObj.players || [];
     if (currentPlayers.length === 0) {
