@@ -78,10 +78,88 @@ export class TeamBotAgent {
       "╚════════════════════════════════════════════════════════════════════╝"
     );
 
+    //CARD COUNTING: Analyze remaining cards per suit
+    const myCards = gameState[botToken] || [];
+    const playedPerSuit = this.getPlayedCardsPerSuit(playedCards);
+    const remainingTrumps = this.countRemainingTrumps(trumpSuit, playedCards);
+
+    // STRATEGY #: VOID SUIT EXPLOITATION - If bot has all remaining cards of a suit, play st!
+    // This is a guaranteed winner strategy especially in No-Trump games
+    const isNoesGame = !trumpSuit || gameState.trumpSuit === "N";
+
+    for (const card of legalMoves) {
+      const suit = this.getCardSuit(card);
+
+      // Check if this is a void suit (others can't follow)
+      if (this.canOthersFollowSuit(suit, myCards, playedCards)) {
+        //Bot has ALL remaining cards of this suit!
+        const myCardsInSuit = myCards.filter(
+          (c) => this.getCardSuit(c) === suit
+        );
+        const selectedCard = this.highestCard(myCardsInSuit); // Play highest to win
+
+        reasoning.strategy = "VOID_SUIT_GUARANTEED_MIN";
+
+        reasoning.reasoning =
+          `CARD COUNTING: Detected VOID SUIT (${suit}). ` +
+          `Bot has ALL ${
+            myCardsInSuit.length
+          } remaining cards of suit ${suit}: (${myCardsInSuit.join(",")}]. ` +
+          `No other player can follow this suit GUARANTEED WIN! ` +
+          `Playing highest card [${selectedCard}] to maximize points captured. ` +
+          `Can continue exploiting this suit in future rounds. `;
+
+        this.logReasoning(reasoning);
+
+        reasoning.selectedCard = selectedCard;
+
+        return selectedCard;
+      }
+    }
+
     // STRATEGY 1: If teammate is winning, throw high-point cards to maximize team points
+    // BUT: In Trump don't waste trump cards if teammate already winning with trump
     if (teammateWinning) {
       let selectedCard: string;
       let cardPoints: number;
+
+      // TRUMP CONSERVATION: Don't waste trump cards if teammate winning with trump
+      if (trumpSuit && gameState.trumpSuit !== "N") {
+        const winningCardValue = winningCard?.split("-")[0];
+        const winningSuit = winningCardValue
+          ? this.getCardSuit(winningCardValue)
+          : null;
+
+        // If teammate is winning with trump, don't throw our trump cards
+        if (winningSuit === trumpSuit) {
+          const nonTrumpMoves = legalMoves.filter(
+            (card) => this.getCardSuit(card) !== trumpSuit
+          );
+
+          if (nonTrumpMoves.length > 0) {
+            // Throw highest-point non-trump card
+            selectedCard = this.highestPointCard(nonTrumpMoves);
+            cardPoints = this.getCardPoints(selectedCard);
+            const trumpCardsInHand = legalMoves.filter(
+              (c) => this.getCardSuit(c) === trumpSuit
+            );
+            reasoning.strategy = "TEAMMATE WINNING_TRUMP_CONSERVED";
+            reasoning.reasoning =
+              `Teammate (${winningPlayerId}) winning with TRUMP card ${winningCardValue}. ` +
+              `TRUMP CONSERVATION: Saving our ${
+                trumpCardsInHand.length
+              } trump cards [${trumpCardsInHand.join(
+                ", "
+              )}] for critical rounds. ` +
+              `${remainingTrumps} trump cards remain in play. ` +
+              `Throwing highest-point NON-TRUMP card [${selectedCard}] (${cardPoints} points). ` +
+              `Available non-trump cards: [${nonTrumpMoves.join(", ")}].`;
+            reasoning.selectedCard = selectedCard;
+            this.logReasoning(reasoning);
+            return selectedCard;
+          }
+        }
+      }
 
       // Special rule for "Noes" (No-Trump) games: NEVER throw Jacks
       // Jacks are crucial for winning future rounds since there's no trump
@@ -159,12 +237,20 @@ export class TeamBotAgent {
       if (highestCardMoves.length > 0) {
         // We have the Highest card that wins! Play the highest card.
         const selectedCard = this.highestCard(highestCardMoves);
-        reasoning.strategy = "HIGHEST_CARD_WIN";
+        const selectedSuit = this.getCardSuit(selectedCard);
+        const selectedRank = selectedCard.slice(2);
+        const remainingSuit = this.countRemainingInSuit(
+          selectedSuit,
+          playedCards
+        );
+
+        reasoning.strategy = "HIGHEST_CARD_WINS";
         reasoning.reasoning =
-          `Have (${highestCardMoves.length}) - highest card(s) that can win (all other higher cards are already played). ` +
+          `CARD COUNTING: Have (${highestCardMoves.length}) - highest card(s) that can win (all other higher cards are already played). ` +
           `Highest cards: [${highestCardMoves.join(", ")}]. ` +
-          `Playing the highest card to maximize certainty of winning while potentially collecting points. ` +
-          `This is a SAFE play - no higher card remain in opponents' hands.`;
+          `Selected [${selectedCard}] - rank ${selectedRank} is the highest of ${remainingSuit} remaining cards in suit ${selectedSuit}. ` +
+          `All higher-ranked cards in this suit have been played. ` +
+          `This is a GUARANTEED SAFE WIN - no card in opponents' hands can beat this!`;
         reasoning.selectedCard = selectedCard;
         this.logReasoning(reasoning);
         return selectedCard;
@@ -340,8 +426,162 @@ export class TeamBotAgent {
   }
 
   /**
-   * Determines if a card is effectively the highest remaining card of its functional suit(HIGHEST CARD REMAINING)
-   * For the given card, checks if all cards of the same suit with higher rank have already been played.
+   * Get played cards organized by suit for card counting analysis.
+   * @param playedCards Set of all played cards
+   * @returns Map of suit to set of played cards in that suit
+   */
+
+  private getPlayedCardsPerSuit(
+    playedCards: Set<string>
+  ): Map<string, Set<string>> {
+    const perSuit = new Map<string, Set<string>>();
+
+    playedCards.forEach((card) => {
+      const suit = this.getCardSuit(card);
+
+      if (!perSuit.has(suit)) {
+        perSuit.set(suit, new Set<string>());
+      }
+      perSuit.get(suit)!.add(card);
+    });
+
+    return perSuit;
+  }
+
+  /**
+   * Get all remaining cards in a specific suit that haven't been played yet.
+   * Each suit has 12 cards total (6 ranks x 2 decks): 3, 9, A, 10, K, Q
+   * @param suit The suit to check
+   * @param playedCards Set of all played cards
+   * @returns Array of remaining cards in the suit
+   */
+
+  private getRemainingCardsInSuit(
+    suit: string,
+
+    playedCards: Set<string>
+  ): string[] {
+    const ranks = ["3", "9", "A", "10", "K", "0"];
+
+    const remaining: string[] = [];
+
+    // Check both decks (1 and 2)
+    for (const deck of ["1", "2"]) {
+      for (const rank of ranks) {
+        const card = `${deck}${suit}${rank}`;
+        if (!playedCards.has(card)) {
+          remaining.push(card);
+        }
+      }
+    }
+    return remaining;
+  }
+
+  /**
+   * Count how many cards of a specific suit are still unplayed.
+   * @param suit The suit to count
+   * @param playedCards Set of all played cards
+   * @returns Count of remaining cards in the suit
+   */
+  private countRemainingInSuit(suit: string, playedCards: Set<string>): number {
+    return this.getRemainingCardsInSuit(suit, playedCards).length;
+  }
+
+  /**
+   * Check if other players can follow a specific suit.
+   * If bot has all remaining cards of a suit, others cannot follow.
+   * @param suit The suit to check
+   * @param #yCards Bot's current hand
+   * @param playedCards Set of all played cards
+   * @returns True if other players likely have cards of this suit
+   */
+
+  private canothersFollowSuit(
+    suit: string,
+    myCards: string[],
+    playedCards: Set<string>
+  ): boolean {
+    const remainingInSuit = this.getRemainingCardsInSuit(suit, playedCards);
+    const myCardsInSuit = myCards.filter(
+      (card) => this.getCardSuit(card) === suit
+    );
+
+    // If all remaining cards of this suit are in my hare, others cannot follow
+    return myCardsInSuit.length < remainingInSuit.length;
+  }
+
+  /**
+   * Count remaining trump cards that haven't been played.
+   * Critical for trump game strategy avoid wasting trumps.
+   * @param trumpSuit The trump suit
+   * @param playedCards Set of all played cards
+   * @returns Count of remaining trump cards
+   */
+  private countRemainingTrumps(
+    trumpSuit: string | undefined,
+
+    playedCards: Set<string>
+  ): number {
+    if (!trumpSuit || trumpSuit === "N") return 0;
+    return this.countRemainingInSuit(trumpSuit, playedCards);
+  }
+
+  /**
+   * Get the highest remaining card in a specific suit (considering what's been played).
+   * This is THE card that will win if the suit is led.
+   * @param suit The suit to check
+   * @param playedCards Set of all played cards
+   * @returns The highest remaining card in the suit, or null if all played
+   */
+  private getHighestRemainingInSuit(
+    suit: string,
+    playedCards: Set<string>
+  ): string | null {
+    const ranks = ["J", "9", "A", "10", "K", "Q"]; // Descending order
+
+    for (const rank of ranks) {
+      // Check both decks
+
+      const card1 = `1${suit}${rank}`;
+      const card2 = `2${suit}${rank}`;
+
+      if (!playedCards.has(card1)) return card1;
+      if (!playedCards.has(card2)) return card2;
+    }
+
+    return null; // All cards of this suit have been played
+  }
+
+  /**
+   * Check if the bot has the absolute highest card in a suit (guaranteed winner).
+   * @param suit The suit to check
+   * @param myCards Bot's current hand
+   * @param playedCards Set of all played cards
+   * @returns True if bot has the highest remaining card in this suit
+   */
+
+  private haveHighestInSuit(
+    suit: string,
+
+    myCards: string,
+
+    playedCards: Set<string>
+  ): boolean {
+    const highestRemaining = this.getHighestRemainingInSuit(suit, playedCards);
+    if (highestRemaining) return false;
+
+    return myCards.includes(highestRemaining);
+  }
+
+  /**
+   * CARD COUNTING: Determines if a card is the BOSS card (highest remaining in its suit).
+   * Uses card counting to check if all higher-ranked cards of the same suit have been played.
+   * Example: If both 3's are played, then 9 becomes the boss. If 9's are also played, A becomes boss.
+   * Each suit has 12 cards total 16 ranks 2 decks): J, 9, A, 10, K, Q
+   * @param card The card to check
+   * @param playedCards Set of all played cards
+   * @param trumpSuit The trump suit (unused in this method but kept for compatibility)
+   * @returns True if this card is the highest remaining card in its suit
    */
   private isHighestCard(
     card: string,
@@ -355,7 +595,8 @@ export class TeamBotAgent {
     const myRankIndex = ranks.indexOf(myRank);
     if (myRankIndex === -1) return false;
 
-    // Loop through all ranks higher than my rank
+    // CARD COUNTING: Loop through all ranks higher thank my rank
+    // Check if BOTH copies (from deck 1 and deck 2) of each higher rank have been played
     for (let i = 0; i < myRankIndex; i++) {
       const higherRank = ranks[i];
 
@@ -364,15 +605,14 @@ export class TeamBotAgent {
       const higherCard2 = `2${suit}${higherRank}`;
 
       // If either of these higher cards is NOT in playedCards (and not the card itself),
-      // then my card is NOT boss.
+      // then my card is NOT higher card - someone could still have a higher card.
       if (!playedCards.has(higherCard1) && higherCard1 !== card) return false;
       if (!playedCards.has(higherCard2) && higherCard2 !== card) return false;
     }
 
-    // Also: if I'm not a trump suit, check if trump is already played in this round?
-    // Note: isHighestCard only checks rank superiority
-    // Whether it wins the round (vs trump) is handled by 'winningMoves'.
-
+    // CARD COUNTING SUCCESS: All higher-ranked cards have been played
+    // This card is now the highest remaining card in the suit
+    // Example: Both 1HJ and 2HJ played - 1H9 and 2H9 becomes boss
     return true;
   }
 
