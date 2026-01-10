@@ -333,9 +333,9 @@ export class GameCore {
 
       // If botCount is 0, just wait for human players (no bots to add)
       if (botCount === 0) {
-        console.log(
-          `[BOT AGENT] Game ${gameId} set to wait for human players only (no bots)`
-        );
+        // console.log(
+        //   `[BOT AGENT] Game ${gameId} set to wait for human players only (no bots)`
+        // );
         cb(
           null,
           successResponse(RESPONSE_CODES.loginSuccess, {
@@ -362,9 +362,9 @@ export class GameCore {
           token: playerInfo.token,
           gameId: gameId,
         }));
-        console.log(
-          `[BOT AGENT] Adding bots to existing game ${gameId} with ${currentHumanPlayers.length} human players`
-        );
+        // console.log(
+        //   `[BOT AGENT] Adding bots to existing game ${gameId} with ${currentHumanPlayers.length} human players`
+        // );
       } else {
         // For new games, use the players pool
         currentHumanPlayers = this.playersPool.filter(
@@ -378,9 +378,9 @@ export class GameCore {
             this.inMemoryStore.fetchGame(targetGameId) ||
             this.createEmptyGame(targetGameId);
         }
-        console.log(
-          `[BOT AGENT] Adding bots to new game ${targetGameId} with ${currentHumanPlayers.length} human players from pool`
-        );
+        // console.log(
+        //   `[BOT AGENT] Adding bots to new game ${targetGameId} with ${currentHumanPlayers.length} human players from pool`
+        // );
       }
 
       // Check if we have enough space for bots
@@ -443,9 +443,9 @@ export class GameCore {
         // Reset starter index for the first game
         this.gameStartIndex = 0;
 
-        console.log(
-          `[BOT AGENT] Starting game ${targetGameId} with ${allPlayers.length} total players (${currentHumanPlayers.length} humans + ${allBots.length} bots)`
-        );
+        // console.log(
+        //   `[BOT AGENT] Starting game ${targetGameId} with ${allPlayers.length} total players (${currentHumanPlayers.length} humans + ${allBots.length} bots)`
+        // );
         this.startGame(targetGameId, allPlayers);
 
         cb(
@@ -458,11 +458,11 @@ export class GameCore {
         );
       } else {
         // Just add bots and wait for human players
-        console.log(
-          `[BOT AGENT] Added ${botCount} bots to game ${targetGameId}. Waiting for ${
-            MAX_PLAYERS - totalPlayersAfterBots
-          } more human players.`
-        );
+        // console.log(
+        //   `[BOT AGENT] Added ${botCount} bots to game ${targetGameId}. Waiting for ${
+        //     MAX_PLAYERS - totalPlayersAfterBots
+        //   } more human players.`
+        // );
 
         cb(
           null,
@@ -1240,14 +1240,14 @@ export class GameCore {
    */
   public onDropCard(req: DropCardRequestPayload, cb: Function) {
     const { card, gameId, token, playerId } = req;
-    console.log(
-      `[BOT AGENT] onDropCard called for ${playerId} with card ${card}`
-    );
+    // console.log(
+    //   `[BOT AGENT] onDropCard called for ${playerId} with card ${card}`
+    // );
 
     if (!card) {
-      console.log(
-        `[BOT AGENT] onDropCard failed for ${playerId}: Invalid card`
-      );
+      // console.log(
+      //   `[BOT AGENT] onDropCard failed for ${playerId}: Invalid card`
+      // );
       cb(null, errorResponse(RESPONSE_CODES.failed, "Invalid card!!"));
       return;
     }
@@ -1337,9 +1337,9 @@ export class GameCore {
     // This is possible in only hacky way of sending rather than from the UI.
     // So softly deny it and don't operate on this.
     if (!currentGameIns.isHisTurn) {
-      console.log(
-        `[BOT AGENT] onDropCard failed for ${playerId}: Not their turn`
-      );
+      // console.log(
+      //   `[BOT AGENT] onDropCard failed for ${playerId}: Not their turn`
+      // );
       cb(null, errorResponse(RESPONSE_CODES.failed, "Its not your turn!!"));
       return;
     }
@@ -1347,9 +1347,9 @@ export class GameCore {
     // This is to prevent player from cheating by putting a different suit
     // when the player has the same suit card available
     if (currentGameIns.isCheating) {
-      console.log(
-        `[BOT AGENT] onDropCard failed for ${playerId}: Cheating detected`
-      );
+      // console.log(
+      //   `[BOT AGENT] onDropCard failed for ${playerId}: Cheating detected`
+      // );
       cb(
         null,
         errorResponse(
@@ -1692,18 +1692,18 @@ export class GameCore {
    * @param cb The callback function
    */
   private rotateStrike(currentGameIns: Game, cb: Function) {
-    console.log("[BOT AGENT] rotateStrike called");
+    // console.log("[BOT AGENT] rotateStrike called");
     this.sendCardDropAcceptedNotification(cb);
 
-    console.log(
-      "[BOT AGENT] Before updateStrike, currentTurn:",
-      currentGameIns.gameObj.currentTurn
-    );
+    // console.log(
+    //   "[BOT AGENT] Before updateStrike, currentTurn:",
+    //   currentGameIns.gameObj.currentTurn
+    // );
     currentGameIns.updateStrike();
-    console.log(
-      "[BOT AGENT] After updateStrike, currentTurn:",
-      currentGameIns.gameObj.currentTurn
-    );
+    // console.log(
+    //   "[BOT AGENT] After updateStrike, currentTurn:",
+    //   currentGameIns.gameObj.currentTurn
+    // );
 
     // if (currentGameIns.isRoundOver) {
     //   currentGameIns.droppedCards = [];
@@ -1715,40 +1715,40 @@ export class GameCore {
       currentGameIns.droppedCards
     );
 
-    console.log(
-      "[BOT AGENT] Before saveGame, currentTurn:",
-      currentGameIns.gameObj.currentTurn
-    );
+    // console.log(
+    //   "[BOT AGENT] Before saveGame, currentTurn:",
+    //   currentGameIns.gameObj.currentTurn
+    // );
     currentGameIns.saveGame();
-    console.log(
-      "[BOT AGENT] After saveGame, currentTurn:",
-      currentGameIns.gameObj.currentTurn
-    );
+    // console.log(
+    //   "[BOT AGENT] After saveGame, currentTurn:",
+    //   currentGameIns.gameObj.currentTurn
+    // );
 
     // Check if all players have dropped their cards
     const gameObj = this.inMemoryStore.fetchGame(currentGameIns.gameId);
-    console.log(
-      "[BOT AGENT] After fetchGame, currentTurn:",
-      gameObj.currentTurn
-    );
+    // console.log(
+    //   "[BOT AGENT] After fetchGame, currentTurn:",
+    //   gameObj.currentTurn
+    // );
 
     const allPlayersDropped =
       gameObj.dropDetails &&
       gameObj.dropDetails.length >= gameObj.players.length;
 
-    console.log("[BOT AGENT] rotateStrike - round check:", {
-      gameId: currentGameIns.gameId,
-      dropDetailsLength: gameObj.dropDetails?.length || 0,
-      totalPlayers: gameObj.players.length,
-      allPlayersDropped,
-      existingTimer: !!this.roundTimers[currentGameIns.gameId],
-    });
+    // console.log("[BOT AGENT] rotateStrike - round check:", {
+    //   gameId: currentGameIns.gameId,
+    //   dropDetailsLength: gameObj.dropDetails?.length || 0,
+    //   totalPlayers: gameObj.players.length,
+    //   allPlayersDropped,
+    //   existingTimer: !!this.roundTimers[currentGameIns.gameId],
+    // });
 
     if (allPlayersDropped && !this.roundTimers[currentGameIns.gameId]) {
       // Set a 5-second timer to auto-determine the winner
-      console.log(
-        "[BOT AGENT] Round completed, setting winner determination timer"
-      );
+      // console.log(
+      //   "[BOT AGENT] Round completed, setting winner determination timer"
+      // );
       this.roundTimers[currentGameIns.gameId] = setTimeout(() => {
         this.autoDetermineRoundWinner(currentGameIns.gameId);
         delete this.roundTimers[currentGameIns.gameId];
@@ -1758,10 +1758,10 @@ export class GameCore {
       return;
     }
 
-    console.log(
-      "[BOT AGENT] Before notifyTurn, currentTurn:",
-      gameObj.currentTurn
-    );
+    // console.log(
+    //   "[BOT AGENT] Before notifyTurn, currentTurn:",
+    //   gameObj.currentTurn
+    // );
     this.notifyTurn(currentGameIns.gameId);
   }
 
@@ -1909,11 +1909,11 @@ export class GameCore {
     // Only proceed if we found a valid winner
     if (winningPlayerIndex === -1) return;
 
-    console.log("[BOT AGENT] autoDetermineRoundWinner - winner found:", {
-      winningPlayerIndex,
-      winnerTeam,
-      winningPlayerId: gameObj.players[winningPlayerIndex]?.playerId,
-    });
+    // console.log("[BOT AGENT] autoDetermineRoundWinner - winner found:", {
+    //   winningPlayerIndex,
+    //   winnerTeam,
+    //   winningPlayerId: gameObj.players[winningPlayerIndex]?.playerId,
+    // });
 
     gameObj.roundWinnerTeam = winnerTeam;
     gameObj.currentTurn = winningPlayerIndex;
@@ -2044,6 +2044,10 @@ export class GameCore {
         winnerMessage = `${biddingPlayerName}'s team loses! They failed to achieve their bid of ${finalBid} points with only ${biddingTeamPoints} points.`;
       }
     }
+
+    // Disable restart protection now the the game is complete
+    gameObj.restartProtectionActive = false;
+    gameObj.recentlyRestarted = false;
 
     // Prepare game completion data
     const gameCompleteData = {
@@ -2563,21 +2567,21 @@ export class GameCore {
       // Find the bot player to get their token
       const botPlayer = game.players.find((p) => p.playerId === botPlayerId);
       if (!botPlayer || !botPlayer.token) {
-        console.error(
-          `[BOT AGENT] Bot player ${botPlayerId} not found or missing token`
-        );
+        // console.error(
+        //   `[BOT AGENT] Bot player ${botPlayerId} not found or missing token`
+        // );
         return;
       }
 
       const agent = new TeamBotAgent();
       const card = agent.decide(game, botPlayer.token, botPlayerId);
 
-      console.log("[BOT AGENT]", {
-        botAgentId: botPlayerId,
-        botToken: botPlayer.token,
-        card,
-        gameId,
-      });
+      // console.log("[BOT AGENT]", {
+      //   botAgentId: botPlayerId,
+      //   botToken: botPlayer.token,
+      //   card,
+      //   gameId,
+      // });
 
       // Simulate human delay (1 second)
       const botTimer = setTimeout(() => {
@@ -2629,35 +2633,35 @@ export class GameCore {
     };
 
     // Reuse existing validation path
-    console.log(
-      `[BOT AGENT] Calling onDropCard for ${botPlayerId} with card ${card}`
-    );
+    // console.log(
+    //   `[BOT AGENT] Calling onDropCard for ${botPlayerId} with card ${card}`
+    // );
     this.onDropCard(dropCardRequest, (error: any, result: any) => {
-      console.log(`[BOT AGENT] onDropCard callback for ${botPlayerId}:`, {
-        error,
-        result,
-      });
+      // console.log(`[BOT AGENT] onDropCard callback for ${botPlayerId}:`, {
+      //   error,
+      //   result,
+      // });
       if (error) {
         console.error(
           `[BOT AGENT] Error playing card for ${botPlayerId}:`,
           error
         );
       } else {
-        console.log(
-          `[BOT AGENT] Successfully played ${card} for ${botPlayerId}`
-        );
+        // console.log(
+        //   `[BOT AGENT] Successfully played ${card} for ${botPlayerId}`
+        // );
 
         // Log game state after bot plays
         const gameAfterPlay = this.inMemoryStore.fetchGame(gameId);
-        console.log("[BOT AGENT] Game state after bot play:", {
-          currentTurn: gameAfterPlay?.currentTurn,
-          nextPlayerId:
-            gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.playerId,
-          isNextPlayerBot:
-            gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.isBotAgent,
-          droppedCardsCount: gameAfterPlay?.droppedCards?.length || 0,
-          dropDetailsCount: gameAfterPlay?.dropDetails?.length || 0,
-        });
+        // console.log("[BOT AGENT] Game state after bot play:", {
+        //   currentTurn: gameAfterPlay?.currentTurn,
+        //   nextPlayerId:
+        //     gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.playerId,
+        //   isNextPlayerBot:
+        //     gameAfterPlay?.players[gameAfterPlay?.currentTurn]?.isBotAgent,
+        //   droppedCardsCount: gameAfterPlay?.droppedCards?.length || 0,
+        //   dropDetailsCount: gameAfterPlay?.dropDetails?.length || 0,
+        // });
       }
     });
   }
@@ -2671,19 +2675,19 @@ export class GameCore {
     if (!game || game.currentTurn === undefined) return;
 
     const currentPlayer = game.players[game.currentTurn];
-    console.log("[BOT AGENT] Checking turn:", {
-      gameId,
-      currentTurn: game.currentTurn,
-      currentPlayerId: currentPlayer?.playerId,
-      isBot: currentPlayer?.isBotAgent,
-      totalPlayers: game.players.length,
-    });
+    // console.log("[BOT AGENT] Checking turn:", {
+    //   gameId,
+    //   currentTurn: game.currentTurn,
+    //   currentPlayerId: currentPlayer?.playerId,
+    //   isBot: currentPlayer?.isBotAgent,
+    //   totalPlayers: game.players.length,
+    // });
 
     if (currentPlayer && currentPlayer.isBotAgent) {
-      console.log(
-        "[BOT AGENT] Bot turn detected, scheduling play for:",
-        currentPlayer.playerId
-      );
+      // console.log(
+      //   "[BOT AGENT] Bot turn detected, scheduling play for:",
+      //   currentPlayer.playerId
+      // );
       // Give a small delay to let the UI update first
       // Store the timer so it can be cleared on restart
       this.botTimers[gameId] = setTimeout(() => {

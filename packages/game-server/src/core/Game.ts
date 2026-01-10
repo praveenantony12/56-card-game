@@ -221,13 +221,13 @@ export class Game {
     const currentPlayerToken = this.currentPlayer?.token;
     const result = currentPlayerToken === this.currentPlayerToken;
 
-    console.log("[BOT AGENT] isHisTurn check:", {
-      currentTurn: this.gameObj.currentTurn,
-      currentPlayerInGame: this.currentPlayer?.playerId,
-      currentPlayerInGameToken: currentPlayerToken,
-      requestPlayerToken: this.currentPlayerToken,
-      result
-    });
+    // console.log("[BOT AGENT] isHisTurn check:", {
+    //   currentTurn: this.gameObj.currentTurn,
+    //   currentPlayerInGame: this.currentPlayer?.playerId,
+    //   currentPlayerInGameToken: currentPlayerToken,
+    //   requestPlayerToken: this.currentPlayerToken,
+    //   result
+    // });
 
     return result;
   }
@@ -301,12 +301,12 @@ export class Game {
       this.roundOver = false;
     }
 
-    console.log("[BOT AGENT] Turn incremented:", {
-      previousTurn,
-      newTurn: this.gameObj.currentTurn,
-      maxPlayers: MAX_PLAYERS,
-      roundOver: this.roundOver
-    });
+    // console.log("[BOT AGENT] Turn incremented:", {
+    //   previousTurn,
+    //   newTurn: this.gameObj.currentTurn,
+    //   maxPlayers: MAX_PLAYERS,
+    //   roundOver: this.roundOver,
+    // });
   }
 
   /**

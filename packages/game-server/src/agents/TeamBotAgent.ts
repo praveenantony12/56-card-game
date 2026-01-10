@@ -40,17 +40,17 @@ export class TeamBotAgent {
     const teammateWinning = this.isTeammateWinning(gameState, botAgentId);
 
     // Debug logging
-    console.log("[BOT AGENT DEBUG]", {
-      botAgentId,
-      currentRoundCards,
-      winningCard,
-      winningPlayerId,
-      teammateWinning,
-      botTeam: this.getTeamId(botAgentId, gameState),
-      winnerTeam: winningPlayerId
-        ? this.getTeamId(winningPlayerId, gameState)
-        : null,
-    });
+    // console.log("[BOT AGENT DEBUG]", {
+    //   botAgentId,
+    //   currentRoundCards,
+    //   winningCard,
+    //   winningPlayerId,
+    //   teammateWinning,
+    //   botTeam: this.getTeamId(botAgentId, gameState),
+    //   winnerTeam: winningPlayerId
+    //     ? this.getTeamId(winningPlayerId, gameState)
+    //     : null,
+    // });
 
     // Initialize reasoning object
     const reasoning = {
@@ -69,13 +69,13 @@ export class TeamBotAgent {
     };
 
     console.log(
-      "\n╔════════════════════════════════════════════════════════════════════╗"
+      "\n╔══════════════════════════════════════════════════════════════════╗"
     );
     console.log(
-      "║                BOT DECISION REASONING OBSERVER                     ║"
+      "║               BOT DECISION REASONING OBSERVER                    ║"
     );
     console.log(
-      "╚════════════════════════════════════════════════════════════════════╝"
+      "╚══════════════════════════════════════════════════════════════════╝"
     );
 
     // CARD COUNTING: Analyze remaining cards per suit
@@ -310,54 +310,54 @@ export class TeamBotAgent {
    */
   private logReasoning(reasoning: any): void {
     console.log(
-      "\n┌─────────────────────────────────────────────────────────────┐"
+      "\n┌─────────────────────────────────────────────────────────────────┐"
     );
-    console.log(`│ Bot ID: ${reasoning.botId.padEnd(52)} │`);
-    console.log(`│ Game Mode: ${reasoning.gameMode.padEnd(49)} │`);
+    console.log(`│ Bot ID: ${reasoning.botId.padEnd(55)} │`);
+    console.log(`│ Game Mode: ${reasoning.gameMode.padEnd(52)} │`);
     console.log(
-      "├─────────────────────────────────────────────────────────────┤"
+      "├─────────────────────────────────────────────────────────────────┤"
     );
     console.log(
       `│ Current Round Cards: ${String(reasoning.currentRoundCardsCount).padEnd(
-        38
+        42
       )} │`
     );
     console.log(
-      `│ Total Cards Played: ${String(reasoning.totalPlayedCards).padEnd(39)} │`
+      `│ Total Cards Played: ${String(reasoning.totalPlayedCards).padEnd(43)} │`
     );
     console.log(
       `│ Legal Moves Available: ${String(reasoning.legalMovesCount).padEnd(
-        36
+        40
       )} │`
     );
     console.log(
-      "├─────────────────────────────────────────────────────────────┤"
+      "├─────────────────────────────────────────────────────────────────┤"
     );
 
     if (reasoning.currentWinningCard) {
       console.log(
-        `│ Currently Winning: ${reasoning.currentWinningCard.padEnd(41)} │`
+        `│ Currently Winning: ${reasoning.currentWinningCard.padEnd(44)} │`
       );
       console.log(
         `│ Winning Player: ${(
           reasoning.currentWinningPlayer || "Unknown"
-        ).padEnd(44)} │`
+        ).padEnd(47)} │`
       );
     }
 
     console.log(
-      "├─────────────────────────────────────────────────────────────┤"
+      "├─────────────────────────────────────────────────────────────────┤"
     );
-    console.log(`│ STRATEGY: ${reasoning.strategy.padEnd(50)} │`);
+    console.log(`│ STRATEGY: ${reasoning.strategy.padEnd(53)} │`);
     console.log(
-      "├─────────────────────────────────────────────────────────────┤"
+      "├─────────────────────────────────────────────────────────────────┤"
     );
     console.log(
-      "│ REASONING:                                                   │"
+      "│ REASONING:                                                      │"
     );
 
     // Wrap reasoning text to fit in box
-    const maxWidth = 59;
+    const maxWidth = 63;
     const words = reasoning.reasoning.split(" ");
     let line = "";
 
@@ -375,11 +375,11 @@ export class TeamBotAgent {
     }
 
     console.log(
-      "├─────────────────────────────────────────────────────────────┤"
+      "├─────────────────────────────────────────────────────────────────┤"
     );
-    console.log(`│ SELECTED CARD: ${reasoning.selectedCard.padEnd(45)} │`);
+    console.log(`│ SELECTED CARD: ${reasoning.selectedCard.padEnd(48)} │`);
     console.log(
-      "└─────────────────────────────────────────────────────────────┘\n"
+      "└─────────────────────────────────────────────────────────────────┘\n"
     );
   }
 
@@ -649,7 +649,7 @@ export class TeamBotAgent {
 
     // If there are cards played in this round, try to follow suit if possible
     const leadSuit = this.getLeadSuit(currentRoundCards);
-    console.log("[BOT AGENT] Lead suit detected:", leadSuit);
+    // console.log("[BOT AGENT] Lead suit detected:", leadSuit);
 
     if (!leadSuit) {
       return playerCards; // No clear lead suit, any card is legal

@@ -81,7 +81,7 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
                                 value={gameId}
                                 onChange={handleGameIdChange}
                                 style={{
-                                    width: '100%',
+                                    width: '90%',
                                     height: '40px',
                                     padding: '12px',
                                     border: '2px solid #2185d0',
@@ -110,7 +110,7 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({ onCreateGame, onJ
                             )}
                         </div>
 
-                        <div style={{ marginTop: '20px' }}>
+                        <div style={{ marginTop: '4rem' }}>
                             <button
                                 onClick={handleJoinGame}
                                 disabled={!gameId.trim()}
