@@ -69,13 +69,13 @@ export class TeamBotAgent {
     };
 
     console.log(
-      "\n╔══════════════════════════════════════════════════════════════════╗"
+      "\n╔══════════════════════════════════════════════════════════════════════╗"
     );
     console.log(
-      "║               BOT DECISION REASONING OBSERVER                    ║"
+      "║                  BOT DECISION REASONING OBSERVER                     ║"
     );
     console.log(
-      "╚══════════════════════════════════════════════════════════════════╝"
+      "╚══════════════════════════════════════════════════════════════════════╝"
     );
 
     // CARD COUNTING: Analyze remaining cards per suit
@@ -280,7 +280,7 @@ export class TeamBotAgent {
           `Have ${
             winningMoves.length
           } - potential winning card(s): [${winningMoves.join(", ")}]. ` +
-          `but NONE are highest remaining cards (higher cards unknown - those are still left to play)` +
+          `but NONE are highest remaining cards (higher cards unknown - those are still left to play). ` +
           `Not the last player, opponents still to play. ` +
           `RISK: Playing high card could lose to unknown higher cards (e.g., playing 9 when J might still be out). ` +
           `DECISION: Duck with the lowest card [${selectedCard}] to avoid waste and save high cards for safer opportunities.`;
@@ -310,54 +310,54 @@ export class TeamBotAgent {
    */
   private logReasoning(reasoning: any): void {
     console.log(
-      "\n┌─────────────────────────────────────────────────────────────────┐"
+      "┌──────────────────────────────────────────────────────────────────────┐"
     );
-    console.log(`│ Bot ID: ${reasoning.botId.padEnd(55)} │`);
-    console.log(`│ Game Mode: ${reasoning.gameMode.padEnd(52)} │`);
+    console.log(`│ Bot ID: ${reasoning.botId.padEnd(60)} │`);
+    console.log(`│ Game Mode: ${reasoning.gameMode.padEnd(57)} │`);
     console.log(
-      "├─────────────────────────────────────────────────────────────────┤"
+      "├──────────────────────────────────────────────────────────────────────┤"
     );
     console.log(
       `│ Current Round Cards: ${String(reasoning.currentRoundCardsCount).padEnd(
-        42
+        47
       )} │`
     );
     console.log(
-      `│ Total Cards Played: ${String(reasoning.totalPlayedCards).padEnd(43)} │`
+      `│ Total Cards Played: ${String(reasoning.totalPlayedCards).padEnd(48)} │`
     );
     console.log(
       `│ Legal Moves Available: ${String(reasoning.legalMovesCount).padEnd(
-        40
+        45
       )} │`
     );
     console.log(
-      "├─────────────────────────────────────────────────────────────────┤"
+      "├──────────────────────────────────────────────────────────────────────┤"
     );
 
     if (reasoning.currentWinningCard) {
       console.log(
-        `│ Currently Winning: ${reasoning.currentWinningCard.padEnd(44)} │`
+        `│ Currently Winning: ${reasoning.currentWinningCard.padEnd(49)} │`
       );
       console.log(
         `│ Winning Player: ${(
           reasoning.currentWinningPlayer || "Unknown"
-        ).padEnd(47)} │`
+        ).padEnd(52)} │`
       );
     }
 
     console.log(
-      "├─────────────────────────────────────────────────────────────────┤"
+      "├──────────────────────────────────────────────────────────────────────┤"
     );
-    console.log(`│ STRATEGY: ${reasoning.strategy.padEnd(53)} │`);
+    console.log(`│ STRATEGY: ${reasoning.strategy.padEnd(58)} │`);
     console.log(
-      "├─────────────────────────────────────────────────────────────────┤"
+      "├──────────────────────────────────────────────────────────────────────┤"
     );
     console.log(
-      "│ REASONING:                                                      │"
+      "│ REASONING:                                                           │"
     );
 
     // Wrap reasoning text to fit in box
-    const maxWidth = 63;
+    const maxWidth = 68;
     const words = reasoning.reasoning.split(" ");
     let line = "";
 
@@ -375,11 +375,11 @@ export class TeamBotAgent {
     }
 
     console.log(
-      "├─────────────────────────────────────────────────────────────────┤"
+      "├──────────────────────────────────────────────────────────────────────┤"
     );
-    console.log(`│ SELECTED CARD: ${reasoning.selectedCard.padEnd(48)} │`);
+    console.log(`│ SELECTED CARD: ${reasoning.selectedCard.padEnd(53)} │`);
     console.log(
-      "└─────────────────────────────────────────────────────────────────┘\n"
+      "└──────────────────────────────────────────────────────────────────────┘\n"
     );
   }
 

@@ -1974,34 +1974,34 @@ export class GameCore {
     let teamBScoreChange = 0;
     let scoreResetOccurred = false;
 
-    //Determine score change based on bid range
-    let winPoinsts, losePoints;
+    // Determine score change based on bid range
+    let winPoints, losePoints;
     if (finalBid >= 28 && finalBid <= 39) {
-      winPoinsts = 1;
+      winPoints = 1;
       losePoints = -2;
     } else if (finalBid >= 40 && finalBid <= 47) {
-      winPoinsts = 2;
+      winPoints = 2;
       losePoints = -3;
     } else if (finalBid >= 48 && finalBid <= 57) {
-      winPoinsts = 3;
+      winPoints = 3;
       losePoints = -4;
     } else if (finalBid === 56) {
-      winPoinsts = 4;
+      winPoints = 4;
       losePoints = -5;
     } else {
       // Default fallback for any unexpected bid values
-      winPoinsts = 1;
+      winPoints = 1;
       losePoints = -2;
     }
 
     if (biddingTeamAchievedBid) {
-      // Bidding team achieved their bid: they get winPoinsts, other team gets -winPoinsts
+      // Bidding team achieved their bid: they get winPoints, other team gets -winPoints
       if (biddingTeam === "A") {
-        teamAScoreChange = winPoinsts;
-        teamBScoreChange = -winPoinsts;
+        teamAScoreChange = winPoints;
+        teamBScoreChange = -winPoints;
       } else {
-        teamBScoreChange = winPoinsts;
-        teamAScoreChange = -winPoinsts;
+        teamBScoreChange = winPoints;
+        teamAScoreChange = -winPoints;
       }
     } else {
       // Bidding team failed to achieve their bid: they losePoints, other team gets -losePoints
@@ -2173,7 +2173,6 @@ export class GameCore {
     game["currentTurn"] = starterIndex;
     game["maxTurn"] = MAX_PLAYERS - 1;
     game["droppedCards"] = [];
-    game["dropdetails"] = [];
     game["teamACards"] = [];
     game["teamBCards"] = [];
     game["tableCards"] = [];
@@ -2590,7 +2589,7 @@ export class GameCore {
         if (this.botTimers[gameId]) {
           delete this.botTimers[gameId];
         }
-      }, 1000);
+      }, 1);
 
       // Store timer for cleanup if needed
       this.botTimers[gameId] = botTimer;

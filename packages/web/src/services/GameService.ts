@@ -22,11 +22,11 @@ import * as io from "socket.io-client";
 
 const ifDevelopment = process.env.NODE_ENV === "development";
 const connection = ifDevelopment
-  // ? "http://24.211.235.185:90" 
-  ? "http://localhost:4500/"
+  ? // ? "http://24.211.235.185:90"
+    "http://localhost:4500/"
   : // "http://192.168.1.220:4500/"
-  // "http://localhost:4500/"
-  document.location.protocol + "//" + document.location.host;
+    // "http://localhost:4500/"
+    document.location.protocol + "//" + document.location.host;
 
 const ioClient: SocketIOClient.Socket = io(connection, {
   timeout: 200000,
@@ -62,7 +62,11 @@ class GameService {
    * @param token The token.
    * @param gameId The game id.
    */
-  public reconnect(playerId: string, token?: string, gameId?: string): Promise<any> {
+  public reconnect(
+    playerId: string,
+    token?: string,
+    gameId?: string
+  ): Promise<any> {
     return this.sendRequest(reconnectPayload(playerId, token, gameId));
   }
 
@@ -72,8 +76,14 @@ class GameService {
    * @param playerId The playerId id requesting connection.
    * @param approvingPlayerId The Id of player giving approval.
    */
-  public approveReconnection(gameId: string, playerId: string, approvingPlayerId: string): Promise<any> {
-    return this.sendRequest(reconnectApprovePayload(gameId, playerId, approvingPlayerId));
+  public approveReconnection(
+    gameId: string,
+    playerId: string,
+    approvingPlayerId: string
+  ): Promise<any> {
+    return this.sendRequest(
+      reconnectApprovePayload(gameId, playerId, approvingPlayerId)
+    );
   }
 
   /**
@@ -82,17 +92,27 @@ class GameService {
    * @param playerId The playerId id requesting connection.
    * @param denyingPlayerId The Id of player denying approval.
    */
-  public denyReconnection(gameId: string, playerId: string, denyingPlayerId: string): Promise<any> {
-    return this.sendRequest(reconnectDenyPayload(gameId, playerId, denyingPlayerId));
+  public denyReconnection(
+    gameId: string,
+    playerId: string,
+    denyingPlayerId: string
+  ): Promise<any> {
+    return this.sendRequest(
+      reconnectDenyPayload(gameId, playerId, denyingPlayerId)
+    );
   }
 
   /**
-  * Add bots to the current game.
-  * @param botcount The number of bots to add (1-5).
-  * @param gameId The game id.
-  * @param startImmediately Whether to start immediately or wait for more players
-  */
-  public addBots(botcount: number, gameId: string, startImmediately?: boolean): Promise<any> {
+   * Add bots to the current game.
+   * @param botcount The number of bots to add (1-5).
+   * @param gameId The game id.
+   * @param startImmediately Whether to start immediately or wait for more players
+   */
+  public addBots(
+    botcount: number,
+    gameId: string,
+    startImmediately?: boolean
+  ): Promise<any> {
     return this.sendRequest(addBotsPayload(botcount, gameId, startImmediately));
   }
 
@@ -246,9 +266,11 @@ class GameService {
         }
 
         // Handle specific success responses that should not be treated as errors
-        if (result.code === "RECONNECT_PENDING_APPROVAL" ||
+        if (
+          result.code === "RECONNECT_PENDING_APPROVAL" ||
           result.code === "RECONNECT_APPROVED" ||
-          result.code === "RECONNECT_DENIED") {
+          result.code === "RECONNECT_DENIED"
+        ) {
           resolve(result);
           return;
         }
