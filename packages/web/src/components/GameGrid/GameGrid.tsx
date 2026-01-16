@@ -15,6 +15,9 @@ interface IProps {
 interface IState {
   timerRemaining: number;
   isRoundReveal: boolean;
+  currentBiddingValue: number;
+  currentBiddingsuit: string;
+  biddingHistory: Array<{ suit: string; value: number }>;
 }
 
 @inject("store")
@@ -27,19 +30,51 @@ class GameGrid extends React.Component<IProps, IState> {
   private roundInterval: any = null;
   private roundRevealStarted: boolean = false;
   private lastDropCount: number = 0;
+  private lastBidHistoryLength: number = 0;
 
   constructor(props: IProps) {
     super(props);
-    this.state = { timerRemaining: 0, isRoundReveal: false };
+    this.state = {
+      timerRemaining: 0,
+      isRoundReveal: false,
+      currentBiddingValue: 28,
+      currentBiddingsuit: "",
+      biddingHistory: [],
+    };
   }
 
   componentDidUpdate(prevProps: IProps, prevState: IState) {
-    const { dropCardPlayer, players } = this.store.game;
+    const {
+      dropCardPlayer,
+      players,
+      bidHistory,
+      isBiddingPhase,
+      currentBiddingPlayerId,
+    } = this.store.game;
+    const { playerId } = this.store.user;
     const currentDropCount = dropCardPlayer ? dropCardPlayer.length : 0;
     const playersCount = players ? players.length : 0;
+    const currentBidHistoryLength = bidHistory ? bidHistory.length : 0;
 
     // Debug
     // console.debug(`[GameGrid] dropCounts: last=${this.lastDropCount}, current=${currentDropCount}, players=${playersCount}, revealBlocked=${this.revealBlocked}, roundRevealStarted=${this.roundRevealStarted}, timer=${this.state.timerRemaining}`);
+
+    // Detect start of a new game - when bidHistory is reset to empty (new game started)
+    // Only reset if it's NOT currently this player's turn to avoid interfering with active bidding
+    const isMyBiddingTurn =
+      isBiddingPhase && currentBiddingPlayerId === playerId;
+    if (
+      this.lastBidHistoryLength > 0 &&
+      currentBidHistoryLength === 0 &&
+      !isMyBiddingTurn
+    ) {
+      // Reset local bidding state for new game
+      this.setState({
+        currentBiddingValue: 28,
+        currentBiddingsuit: "",
+        biddingHistory: [],
+      } as any);
+    }
 
     // Detect start of a new round (drop count went from >0 to 0)
     if (this.lastDropCount > 0 && currentDropCount === 0) {
@@ -53,7 +88,12 @@ class GameGrid extends React.Component<IProps, IState> {
 
     // When all players have dropped and no reveal has started yet, start the timer
     // Start only on the transition when lastDropCount < playersCount -> currentDropCount === playersCount
-    if (currentDropCount === playersCount && playersCount > 0 && !this.roundRevealStarted && this.lastDropCount < playersCount) {
+    if (
+      currentDropCount === playersCount &&
+      playersCount > 0 &&
+      !this.roundRevealStarted &&
+      this.lastDropCount < playersCount
+    ) {
       this.roundRevealStarted = true;
       // console.debug("[GameGrid] Starting reveal timer");
       this.setState({ isRoundReveal: true, timerRemaining: 5 }, () => {
@@ -77,6 +117,7 @@ class GameGrid extends React.Component<IProps, IState> {
     }
 
     this.lastDropCount = currentDropCount;
+    this.lastBidHistoryLength = currentBidHistoryLength;
   }
 
   public render() {
@@ -99,7 +140,7 @@ class GameGrid extends React.Component<IProps, IState> {
       biddingTeam,
       biddingPlayer,
       teamAScore,
-      teamBScore
+      teamBScore,
     } = this.store.game;
 
     const { gameId, playerId } = this.store.user;
@@ -138,7 +179,7 @@ class GameGrid extends React.Component<IProps, IState> {
       { symbol: "♥", name: "H", label: "Hearts" },
       { symbol: "♠", name: "E", label: "Spade" },
       { symbol: "♦", name: "D", label: "Diamond" },
-      { symbol: "♣", name: "C", label: "Clubs" }
+      { symbol: "♣", name: "C", label: "Clubs" },
     ];
 
     return (
@@ -151,23 +192,32 @@ class GameGrid extends React.Component<IProps, IState> {
                 <div className="round-timer">{this.state.timerRemaining}</div>
               )}
               {isGameComplete && winnerMessage && (
-                <div className="game-winner-message" style={{
-                  position: 'absolute',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  backgroundColor: 'rgb(0,0,0,0.8)',
-                  color: 'white',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                  zIndex: 1000,
-                  maxWidth: '400px'
-                }}>
+                <div
+                  className="game-winner-message"
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    backgroundColor: "rgb(0,0,0,0.8)",
+                    color: "white",
+                    padding: "20px",
+                    borderRadius: "10px",
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    zIndex: 1000,
+                    maxWidth: "400px",
+                  }}
+                >
                   <div>{winnerMessage}</div>
                   {gameCompleteData && (
-                    <div style={{ marginTop: '10px', fontSize: '14px', fontWeight: 'normal' }}>
+                    <div
+                      style={{
+                        marginTop: "10px",
+                        fontSize: "14px",
+                        fontWeight: "normal",
+                      }}
+                    >
                       <div>Final Bid: {finalBid}</div>
                       <div>Team A Points: {gameCompleteData.teamAPoints}</div>
                       <div>Team B Points: {gameCompleteData.teamBPoints}</div>
@@ -179,113 +229,87 @@ class GameGrid extends React.Component<IProps, IState> {
           </Grid.Column>
           <Grid.Column>
             <div className="myCards">
-              {this.renderCards(cards, true, false, undefined, this.state.isRoundReveal && this.state.timerRemaining > 0)}
+              {this.renderCards(
+                cards,
+                true,
+                false,
+                undefined,
+                this.state.isRoundReveal && this.state.timerRemaining > 0
+              )}
             </div>
           </Grid.Column>
         </Grid.Row>
 
         <Grid centered={true}>
-          <Grid.Row centered={true} columns={1} className="biddingGrid" style={{ marginTop: "-2rem" }}>
-            <Grid.Column textAlign="center" mobile={16} tablet={16} computer={16} style={{ display: "flex", alignItems: "center", flexDirection: "column" }}>
-              <Button.Group fluid={true} style={{ width: "25%", display: "block" }}>
-                {(() => {
-                  // Check for active bid or fallback to final bid
-                  const hasCurrentBid = currentBet && parseInt(currentBet) >= 28 && currentBetPlayerId;
-                  const hasFinalBid = !hasCurrentBid && finalBid && finalBid >= 28;
+          <Grid.Row
+            centered={true}
+            columns={1}
+            className="biddingGrid"
+            style={{ marginTop: "-2rem" }}
+          >
+            <Grid.Column
+              textAlign="center"
+              mobile={16}
+              tablet={16}
+              computer={16}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexDirection: "column",
+              }}
+            >
+              {(() => {
+                const { isBiddingPhase, currentBiddingPlayerId } =
+                  this.store.game;
+                const { playerId } = this.store.user;
+                const isYourBiddingTurn =
+                  isBiddingPhase && currentBiddingPlayerId === playerId;
 
-                  // Try to get player name from various sources
-                  let playerName = "";
-                  if (hasCurrentBid) {
-                    playerName = currentBetPlayerId;
-                  } else if (hasFinalBid) {
-                    if (biddingPlayer) {
-                      playerName = biddingPlayer;
-                    } else if (biddingTeam) {
-                      // Fallback to first player in bidding team
-                      const teamPlayers = biddingTeam === "A"
-                        ? [firstPlayer, thirdPlayer, fifthPlayer]
-                        : [secondPlayer, fourthPlayer, lastPlayer];
-                      playerName = teamPlayers[0] || "";
-                    }
-                  }
+                if (isBiddingPhase) {
+                  return this.renderBiddingUI(isYourBiddingTurn);
+                } else {
+                  return this.renderNormalGameUI();
+                }
+              })()}
 
-                  const bidValue = hasCurrentBid ? currentBet : (hasFinalBid ? finalBid.toString() : "?");
-                  const suitInfo = suits.find(s => s.name === (trumpSuit || "N"));
-
-                  // Handle suit display - for Noes, just show "Noes", for others show "label sumbol"
-                  let suitDisplay = "";
-                  if (suitInfo) {
-                    if (suitInfo.name === "N") {
-                      suitDisplay = "Noes";
-                    } else {
-                      suitDisplay = `${suitInfo.label} ${suitInfo.symbol}`;
-                    }
-                  }
-
-                  const label = (hasCurrentBid || hasFinalBid) && playerName
-                    ? `${playerName}'s bids (${suitDisplay})`
-                    : "No Bids Yet";
-
-                  const betValue = (hasCurrentBid || hasFinalBid) ? bidValue : "?";
-
-                  return (
-                    <Button as="div" className="bidStatus" labelPosition="left" style={{ width: "100%" }} disabled={gameStarted}>
-                      <Label as="a" basic={true} color="red" pointing="right" style={{ width: "90%", justifyContent: "center" }}>
-                        {label}
-                      </Label>
-                      <Button color="red">{betValue}</Button>
-                    </Button>
-                  );
-                })()}
-              </Button.Group>
-              <Button.Group fluid={true} style={{ width: "100%", display: "block" }}>
-                <Button
-                  icon
-                  color='red'
-                  onClick={this.decrement.bind(this, currentBet)}
-                  disabled={Number(currentBet) === 28 || gameStarted}
-                >
-                  <Icon name="minus" />
-                </Button>
-                <Button as='div' labelPosition='right' disabled={gameStarted}>
-                  {suits.map((suit) => (
-                    <Label
-                      as='a'
-                      basic={trumpSuit === suit.name ? false : true}
-                      pointing={suit.name === "N" ? "left" : "right"}
-                      key={suit.name}
-                      color={trumpSuit === suit.name ? "green" : "red"}
-                      onClick={() => this.handleTrumpSuitClick(suit.name)}
-                      title={suit.label}
-                    >
-                      {suit.label} {suit.symbol}
-                    </Label>
-                  ))}
-                </Button>
-                <Button
-                  icon
-                  color="red"
-                  onClick={this.increment.bind(this, currentBet)}
-                  disabled={Number(currentBet) === 56 || gameStarted}>
-                  <Icon name="plus" />
-                </Button>
-              </Button.Group>
-
-              <Button.Group fluid={true} style={{ width: "25%", display: "flex", justifyContent: "center" }}>
+              <Button.Group
+                fluid={true}
+                style={{
+                  width: "25%",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
                 <Button as="div" labelPosition="left" disabled={gameStarted}>
-                  <Label as="a" basic={true} color="red" pointing="right" style={{ width: "90%", justifyContent: "center" }}>
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="red"
+                    pointing="right"
+                    style={{ width: "90%", justifyContent: "center" }}
+                  >
                     {firstPlayer}'s Team
                   </Label>
                   <Button color="red">
-                    {teamAScore !== undefined ? teamAScore : (10 - Number(gameScore))}
+                    {teamAScore !== undefined
+                      ? teamAScore
+                      : 10 - Number(gameScore)}
                   </Button>
                 </Button>
                 <Button.Or text="VS" />
                 <Button as="div" labelPosition="right" disabled={gameStarted}>
                   <Button color="red">
-                    {teamBScore !== undefined ? teamBScore : (10 - Number(gameScore))}
+                    {teamBScore !== undefined
+                      ? teamBScore
+                      : 10 - Number(gameScore)}
                   </Button>
-                  <Label as="a" basic={true} color="red" pointing="left" style={{ width: "90%", justifyContent: "center" }}>
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="red"
+                    pointing="left"
+                    style={{ width: "90%", justifyContent: "center" }}
+                  >
                     {lastPlayer}'s Team
                   </Label>
                 </Button>
@@ -305,7 +329,6 @@ class GameGrid extends React.Component<IProps, IState> {
                 data-show-value="true"
                 onChange={this.updateScore.bind(event)}
               />
-
             </Grid.Column>
           </Grid.Row>
         </Grid>
@@ -318,7 +341,16 @@ class GameGrid extends React.Component<IProps, IState> {
                   <Label as="a" basic={true} color="black" pointing="right">
                     Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
                   </Label>
-                  <Button color={isGameComplete && biddingTeam === "A" ? (gameCompleteData?.biddingTeamAchievedBid ? "green" : "red") : "black"} className="teamAPoints">
+                  <Button
+                    color={
+                      isGameComplete && biddingTeam === "A"
+                        ? gameCompleteData?.biddingTeamAchievedBid
+                          ? "green"
+                          : "red"
+                        : "black"
+                    }
+                    className="teamAPoints"
+                  >
                     {gameCompleteData ? gameCompleteData.teamAPoints : 0}
                   </Button>
                 </Button>
@@ -333,7 +365,16 @@ class GameGrid extends React.Component<IProps, IState> {
                   <Label as="a" basic={true} color="black" pointing="right">
                     Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
                   </Label>
-                  <Button color={isGameComplete && biddingTeam === "B" ? (gameCompleteData?.biddingTeamAchievedBid ? "green" : "red") : "black"} className="teamBPoints">
+                  <Button
+                    color={
+                      isGameComplete && biddingTeam === "B"
+                        ? gameCompleteData?.biddingTeamAchievedBid
+                          ? "green"
+                          : "red"
+                        : "black"
+                    }
+                    className="teamBPoints"
+                  >
                     {gameCompleteData ? gameCompleteData.teamBPoints : 0}
                   </Button>
                 </Button>
@@ -372,7 +413,7 @@ class GameGrid extends React.Component<IProps, IState> {
             </Button.Group>
           </Grid.Row>
         </Grid>
-      </Dimmer.Dimmable >
+      </Dimmer.Dimmable>
     );
   }
 
@@ -409,6 +450,427 @@ class GameGrid extends React.Component<IProps, IState> {
   private handleTrumpSuitClick(suit: string) {
     this.store.selectTrumpSuit(suit);
   }
+
+  private renderBiddingUI(isYourBiddingTurns: boolean) {
+    const suits = [
+      { symbol: "Noes", name: "N", label: "" },
+      { symbol: "♥", name: "H", label: "Hearts" },
+      { symbol: "♠", name: "E", label: "Spade" },
+      { symbol: "♦", name: "D", label: "Diamond" },
+      { symbol: "♣", name: "C", label: "Clubs" },
+    ];
+
+    const {
+      currentBiddingPlayerId,
+      bidHistory,
+      bidDouble,
+      bidReDouble,
+      currentBet,
+      trumpSuit,
+    } = this.store.game;
+    const { currentBiddingValue, currentBiddingsuit } = this.state;
+
+    // Determine current bid from history
+    let lastBidValue = 28;
+    let lastBidsuit = "W";
+    let lastBiddingPlayer = "";
+    let hasActualBid = false;
+
+    if (bidHistory && bidHistory.length) {
+      for (let i = bidHistory.length - 1; i >= 0; i--) {
+        const entry = bidHistory[i];
+        if (entry.action === "bid") {
+          lastBidValue = entry.bidValue || 28;
+          lastBidsuit = entry.suit || "N";
+          lastBiddingPlayer = entry.playerId || "";
+          hasActualBid = true;
+          break;
+        }
+      }
+    }
+
+    const currentSuitInfo = suits.find((s) => s.name === currentBiddingsuit);
+    const lastSuitInfo = suits.find((s) => s.name === lastBidsuit);
+    const displayedSuitInfo = suits.find(
+      (s) => s.name === (currentBiddingsuit || lastBidsuit)
+    );
+
+    //Only show bid value if player has made selections, otherwise empty
+
+    const hasPlayerMadeSelections = this.state.biddingHistory.length > 0;
+
+    return (
+      <>
+        {/* Show current his with player name and any double/re-double status */}
+        <Button.Group
+          fluid={true}
+          style={{ width: "100%", display: "block", marginBottom: "18px" }}
+        >
+          <Label
+            as="a"
+            color="blue"
+            pointing="right"
+            style={{ width: "100%", justifyContent: "center" }}
+          >
+            {hasActualBid
+              ? `${lastBiddingPlayer} bids: ${lastBidValue} ${
+                  lastSuitInfo?.name === "N"
+                    ? "Noes"
+                    : `${lastSuitInfo?.label} ${lastSuitInfo?.symbol}`
+                }`
+              : "No Bids Yet"}
+            {bidDouble && " (Double)"}
+            {bidReDouble && " (Re-Double)"}
+          </Label>
+        </Button.Group>
+
+        {isYourBiddingTurn && (
+          <>
+            {/* Suit Selection */}
+            <Button.Group
+              fluid={true}
+              style={{ width: "100%", display: "block", marginBottom: "10px" }}
+            >
+              {suits.map((suit) => (
+                <Label
+                  as="a"
+                  basic={currentBiddingsuit === suit.name ? false : true}
+                  key={suit.name}
+                  color={currentBiddingsuit === suit.name ? "green" : "red"}
+                  onClick={() =>
+                    this.handleBiddingSuitClick(
+                      suit.name,
+                      lastBidValue,
+                      lastBidsuit,
+                      hasActualBid
+                    )
+                  }
+                  style={{
+                    cursor: "pointer",
+                    padding: "8px 12px",
+                    margin: "2px",
+                  }}
+                >
+                  {suit.label} {suit.symbol}
+                </Label>
+              ))}
+            </Button.Group>
+
+            {/* Bid Value Display */}
+            <Button.Group
+              fluid={true}
+              style={{
+                width: "100%",
+                display: "flex",
+                justifyContent: "center",
+                margin: "10px",
+              }}
+            >
+              <Button disabled color="blue">
+                Your Bid:{" "}
+                {hasPlayerMadeSelections
+                  ? `${currentBiddingValue} ${
+                      displayedSuitInfo?.name === "N"
+                        ? "Noes"
+                        : `${displayedSuitInfo?.label} ${displayedSuitInfo?.symbol}`
+                    }`
+                  : "Not selected"}
+              </Button>
+            </Button.Group>
+
+            {/* Action Buttons */}
+            <Button.Group
+              fluid={true}
+              style={{ width: "100%", display: "block", marginBottom: "10px" }}
+            >
+              <Button
+                color="yellow"
+                onClick={this.handleBiddingUndo.bind(
+                  this,
+                  lastBidValue,
+                  lastBidsuit
+                )}
+                disabled={this.state.biddingHistory.length === 0}
+              >
+                <Icon name="undo" /> Undo
+              </Button>
+              <Button
+                color="green"
+                onClick={this.handleBiddingDone.bind(this)}
+                disabled={!hasPlayerMadeSelections}
+              >
+                <Icon name="arrow alternate circle right outline" /> Bid
+              </Button>
+              <Button
+                color="red"
+                onClick={this.handleBiddingPass.bind(
+                  this,
+                  lastBidValue,
+                  lastBidsuit
+                )}
+              >
+                <Icon name="hand paper outline" /> Pass
+              </Button>
+              {hasActualBid &&
+                lastBidValue > 0 &&
+                !bidDouble &&
+                !bidReDouble && (
+                  <Button
+                    color="yellow"
+                    onClick={this.handleBiddingDouble.bind(this)}
+                  >
+                    <Icon name="bolt" /> Double
+                  </Button>
+                )}
+              {bidDouble && !bidReDouble && (
+                <Button
+                  color="violet"
+                  onClick={this.handleBiddingReDouble.bind(this)}
+                >
+                  <Icon name="chess king" /> Re-Double
+                </Button>
+              )}
+            </Button.Group>
+          </>
+        )}
+      </>
+    );
+  }
+
+  private renderNormalGameUI() {
+    const {
+      currentBet,
+      currentBetPlayerId,
+      trumpSuit,
+      finalBid,
+      biddingTeam,
+      biddingPlayer,
+      gameScore,
+      bidDouble,
+      bidReDouble,
+    } = this.store.game;
+    const { players } = this.store.game;
+    const firstPlayer = players && players.length > 0 ? players[0] : "";
+    const secondPlayer = players && players.length > 1 ? players[1] : "";
+    const thirdPlayer = players && players.length > 2 ? players[2] : "";
+    const fourthPlayer = players && players.length > 3 ? players[3] : "";
+    const fifthPlayer = players && players.length > 4 ? players[4] : "";
+    const lastPlayer =
+      players && players.length > 0 ? players[players.length - 1] : "";
+
+    const suits = [
+      { symbol: "Noes", name: "N", label: "" },
+      { symbol: "♥", name: "H", label: "Hearts" },
+      { symbol: "♠", name: "E", label: "Spade" },
+      { symbol: "♦", name: "D", label: "Diamond" },
+      { symbol: "♣", name: "C", label: "Clubs" },
+    ];
+
+    // Check for active bid or fallback to final bid
+    const hasCurrentBid =
+      currentBet && parseInt(currentBet) >= 28 && currentBetPlayerId;
+    const hasFinalBid = hasCurrentBid && finalBid && finalBid >= 28;
+
+    // Try to get player name from various sources
+    let playerName = "";
+    if (hasCurrentBid) {
+      playerName = currentBetPlayerId;
+    } else if (hasFinalBid) {
+      if (biddingPlayer) {
+        playerName = biddingPlayer;
+      } else if (biddingTeam) {
+        // Fallback to first player in bidding team T
+        const teamPlayers =
+          biddingTeam === "A"
+            ? [firstPlayer, thirdPlayer, fifthPlayer]
+            : [secondPlayer, fourthPlayer, lastPlayer];
+        playerName = teamPlayers[0] || "";
+      }
+    }
+
+    const bidValue = hasCurrentBid
+      ? currentBet
+      : hasFinalBid
+      ? finalBid.toString()
+      : "?";
+    const suitInfo = suits.find((ss) => ss.name === (trumpSuit || "N"));
+
+    // Handle suit display for Noes, just show "Noes", for others show "label symbol"
+
+    let suitDisplay = "";
+
+    if (suitInfo) {
+      if (suitInfo.name === "N") {
+        suitDisplay = "Noes";
+      } else {
+        suitDisplay = `${suitInfo.label} ${suitInfo.symbol}`;
+      }
+    }
+
+    const label =
+      (hasCurrentBid || hasFinalBid) && playerName
+        ? `${playerName}'s bid: ${bidValue} ${suitDisplay}${
+            bidDouble ? " (Double)" : ""
+          }${bidReDouble ? " (Re-Double)" : ""}`
+        : "Game Starting...";
+
+    return (
+      <Button.Group
+        fluid={true}
+        style={{ width: "100%", display: "block", marginBottom: "10px" }}
+      >
+        <Label
+          as="a"
+          basic={true}
+          color="blue"
+          pointing="right"
+          style={{ width: "100%", justifyContent: "center" }}
+        >
+          {label}
+        </Label>
+      </Button.Group>
+    );
+  }
+
+  private handleBiddingSuitClick = (
+    suit: string,
+    lastBidValue: number,
+    lastBidsuit: string,
+    hasActualBid: boolean
+  ) => {
+    this.setState(
+      (prevState) => {
+        let newValue;
+
+        // If no suit has been selected yet by this player (first selection)
+        if (prevState.currentBiddingsuit == "") {
+          // If there's already a bid in history (even 28 Noes from a pass), increment
+          // Otherwise, start at 28 (very first player, no bids yet)
+          newValue = hasActualBid ? lastBidValue + 1 : 28;
+        } else if (prevState.currentBiddingsuit != suit) {
+          // Switching to a different suit, increment from last bid
+          newValue = lastBidValue + 1;
+        } else {
+          // Continuing same suit, increment further
+          newValue = prevState.currentBiddingValue + 1;
+        }
+
+        // Cap at 56
+        newValue = Math.min(newValue, 56);
+
+        return {
+          currentBiddingsuit: suit,
+          currentBiddingValue: newValue,
+        } as any;
+      },
+      () => {
+        // Save to history
+        this.setState(
+          (prevState) =>
+            ({
+              biddingHistory: [
+                ...prevState.biddingHistory,
+                {
+                  suit: suit,
+                  value: this.state.currentBiddingValue,
+                },
+              ],
+            } as any)
+        );
+      }
+    );
+  };
+
+  private handleBiddingUndo = (lastBidValue: number, lastBidsuit: string) => {
+    if (this.state.biddingHistory.length === 0) {
+      return;
+    }
+
+    const newHistory = [...this.state.biddingHistory];
+    newHistory.pop();
+
+    // Restore to previous state
+    if (newHistory.length > 0) {
+      const lastEntry = newHistory[newHistory.length - 1];
+      this.setState({
+        biddingHistory: newHistory,
+        currentBiddingValue: lastEntry.value,
+        currentBiddingsuit: lastEntry.suit,
+      } as any);
+    } else {
+      // Reset to no selection
+      this.setState({
+        biddingHistory: newHistory,
+        currentBiddingValue: 28,
+        currentBiddingsuit: "", // No suit selected
+      } as any);
+    }
+  };
+
+  private handleBiddingDone = () => {
+    const { currentBiddingValue, currentBiddingsuit } = this.state;
+    this.store.biddingAction("bid", currentBiddingValue, currentBiddingsuit);
+    // Reset local bidding state
+    this.setState({
+      currentBiddingValue: 28,
+      currentBiddingsuit: "",
+      biddingHistory: [] as any,
+    } as any);
+  };
+
+  private handleBiddingPass = () => {
+    // Check if there's any bid in the global bidding history
+    const { bidHistory } = this.store.game;
+    let hasAnyBid = false;
+
+    if (bidHistory && bidHistory.length > 0) {
+      for (let i = bidHistory.length - 1; i >= 0; i--) {
+        const entry = bidHistory[i];
+        if (entry.action === "bid") {
+          hasAnyBid = true;
+          break;
+        }
+      }
+    }
+
+    // Only default to 28 Noes if NO ONE has bid yet (very first player of the game)
+    if (
+      !hasAnyBid &&
+      this.state.currentBiddingsuit === "" &&
+      this.state.biddingHistory.length === 0
+    ) {
+      this.store.biddingAction("bid", 28, "N");
+    } else {
+      this.store.biddingAction("pass");
+    }
+
+    // Reset local bidding state
+    this.setState({
+      currentBiddingValue: 28,
+      currentBiddingsuit: "",
+      biddingHistory: [],
+    } as any);
+  };
+
+  private handleBiddingDouble = () => {
+    this.store.biddingAction("double");
+    // Reset local bidding state
+    this.setState({
+      currentBiddingValue: 28,
+      currentBiddingsuit: "",
+      biddingHistory: [],
+    } as any);
+  };
+
+  private handleBiddingReDouble = () => {
+    this.store.biddingAction("re-double");
+    // Reset Local bidding state
+    this.setState({
+      currentBiddingValue: 28,
+      currentBiddingsuit: "",
+      biddingHistory: [],
+    } as any);
+  };
 
   private addNameToCardOnTable = (card: string, dropCardPlayer: string[]) => {
     const playerCardCombo = dropCardPlayer.find(

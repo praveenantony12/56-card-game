@@ -1,4 +1,5 @@
 export * from "./BasePayload";
+export * from "./BiddingActionRequestPayload";
 export * from "./DropCardRequestPayload";
 export * from "./IncrementBetByPlayerRequestPayload";
 export * from "./UpdateGameScoreRequestPayload";

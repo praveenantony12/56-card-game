@@ -29,10 +29,12 @@ class Store implements IStore {
   private async attemptAutoReconnection() {
     // Give some time for mobx-persist to restore the persisted data
     setTimeout(async () => {
-      if (this.userInfo.token &&
+      if (
+        this.userInfo.token &&
         this.userInfo.gameId &&
         this.userInfo.playerId &&
-        !this.userInfo.isSignedIn) {
+        !this.userInfo.isSignedIn
+      ) {
         this.isReconnecting = true;
         try {
           await this.reconnect();
@@ -91,7 +93,10 @@ class Store implements IStore {
 
     try {
       // For joining existing games, pass the game ID to the player
-      const gameIdParam = this.gameInfo.gameMode === 'join' ? this.gameInfo.gameIdToJoin : undefined;
+      const gameIdParam =
+        this.gameInfo.gameMode === "join"
+          ? this.gameInfo.gameIdToJoin
+          : undefined;
       const userInfo = await this.gameService.signIn(userId, gameIdParam);
 
       this.userInfo = userInfo;
@@ -114,17 +119,22 @@ class Store implements IStore {
       }
     } catch (error) {
       // Convert error object to string if necessary
-      const errorMessage = typeof error === "string" ? error :
-        (error as any)?.message || JSON.stringify(error) ||
-        "Unknown sign in error";
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : (error as any)?.message ||
+            JSON.stringify(error) ||
+            "Unknown sign in error";
       this.gameInfo.error = errorMessage;
     }
   }
 
   public async reconnect() {
-    if (!this.userInfo.token ||
+    if (
+      !this.userInfo.token ||
       !this.userInfo.gameId ||
-      !this.userInfo.playerId) {
+      !this.userInfo.playerId
+    ) {
       throw new Error("Missing session data for reconnection");
     }
 
@@ -139,7 +149,9 @@ class Store implements IStore {
 
       // Check if this is a pending approval response
       if (response && response.code === "RECONNECT_PENDING_APPROVAL") {
-        this.gameInfo.notification = response.payload?.message || "Reconnection request sent to other players for approval";
+        this.gameInfo.notification =
+          response.payload?.message ||
+          "Reconnection request sent to other players for approval";
         this.gameInfo.isPendingReconnection = true;
         return; // Don't mark as signed in yet
       }
@@ -158,9 +170,12 @@ class Store implements IStore {
       this.gameInfo.isPendingReconnection = false;
     } catch (error) {
       // Convert error object to string if necessary
-      const errorMessage = typeof error === "string" ? error :
-        (error as any)?.message || JSON.stringify(error) ||
-        "Unknown sign in error";
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : (error as any)?.message ||
+            JSON.stringify(error) ||
+            "Unknown sign in error";
       this.gameInfo.error = errorMessage;
       throw new Error(errorMessage);
     }
@@ -174,8 +189,10 @@ class Store implements IStore {
         this.userInfo.playerId as string
       );
     } catch (error) {
-      const errorMessage = typeof error === "string" ? error :
-        (error as any)?.message || "Failed to approve reconnection";
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : (error as any)?.message || "Failed to approve reconnection";
       this.gameInfo.error = errorMessage;
     }
   }
@@ -188,8 +205,10 @@ class Store implements IStore {
         this.userInfo.playerId as string
       );
     } catch (error) {
-      const errorMessage = typeof error === "string" ? error :
-        (error as any)?.message || "Failed to deny reconnection";
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : (error as any)?.message || "Failed to deny reconnection";
       this.gameInfo.error = errorMessage;
     }
   }
@@ -205,14 +224,19 @@ class Store implements IStore {
       );
 
       if (response.code === common.RESPONSE_CODES.loginSuccess) {
-        // Bot selection successful, hide the selection UI 
+        // Bot selection successful, hide the selection UI
         this.gameInfo.showBotSelection = false;
-        this.gameInfo.notification = response.payload?.message || `Game started with ${botCount} bot players`;
+        this.gameInfo.notification =
+          response.payload?.message ||
+          `Game started with ${botCount} bot players`;
       }
     } catch (error) {
-      const errorMessage = typeof error === "string" ? error :
-        (error as any)?.message || JSON.stringify(error) ||
-        "Failed to add bots";
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : (error as any)?.message ||
+            JSON.stringify(error) ||
+            "Failed to add bots";
       this.gameInfo.error = errorMessage;
     }
   }
@@ -351,11 +375,12 @@ class Store implements IStore {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
     try {
-      const ack: common.SuccessResponse = await this.gameService.incrementBetByPlayer(
-        playerBet,
-        gameId as string,
-        token as string
-      );
+      const ack: common.SuccessResponse =
+        await this.gameService.incrementBetByPlayer(
+          playerBet,
+          gameId as string,
+          token as string
+        );
 
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log("this.gameInfo.playerBet ===> " + this.gameInfo.currentBet);
@@ -371,15 +396,42 @@ class Store implements IStore {
     this.clearNotifications();
 
     try {
-      const ack: common.SuccessResponse = await this.gameService.selectTrumpSuit(
-        trumpSuit,
-        gameId as string,
-        token as string,
-        playerId as string
-      );
+      const ack: common.SuccessResponse =
+        await this.gameService.selectTrumpSuit(
+          trumpSuit,
+          gameId as string,
+          token as string,
+          playerId as string
+        );
 
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log("Trump suit selected: " + trumpSuit);
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
+  public async biddingAction(
+    action: "bid" | "pass" | "double" | "re-double",
+    bidValue?: number,
+    suit?: string
+  ) {
+    const { gameId, token } = this.userInfo;
+    this.clearNotifications();
+
+    try {
+      const ack: common.SuccessResponse = await this.gameService.biddingAction(
+        action,
+        gameId as string,
+        token as string,
+        bidValue,
+        suit
+      );
+
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log("Bidding action performed: " + action);
       }
     } catch (error) {
       console.log("error ===> " + error);
@@ -391,11 +443,12 @@ class Store implements IStore {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
     try {
-      const ack: common.SuccessResponse = await this.gameService.updateGameScore(
-        gameScore,
-        gameId as string,
-        token as string
-      );
+      const ack: common.SuccessResponse =
+        await this.gameService.updateGameScore(
+          gameScore,
+          gameId as string,
+          token as string
+        );
 
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log("this.gameInfo.gameScore ===> " + this.gameInfo.gameScore);
@@ -430,12 +483,19 @@ class Store implements IStore {
       finalBid: undefined,
       biddingTeam: undefined,
       biddingPlayer: undefined,
+      isBiddingPhase: true,
+      currentBiddingPlayerId: undefined,
+      bidHistory: [],
+      bidPassCount: 0,
+      lastBiddingTeam: undefined,
+      bidDouble: false,
+      bidReDouble: false,
       showBotSelection: false,
       gameMode: null,
       gameIdToJoin: undefined,
       isGameCreator: false,
       sharedGameId: undefined,
-      showGameModeSelection: true
+      showGameModeSelection: true,
     };
     this.userInfo = {};
     this.userInfo.isSignedIn = false;
@@ -446,7 +506,7 @@ class Store implements IStore {
   ) => {
     this.clearNotifications();
 
-    console.log('[STORE] Recieved response:', response);
+    console.log("[STORE] Recieved response:", response);
 
     const error = (response as common.ErrorResponse).message;
 
@@ -457,32 +517,44 @@ class Store implements IStore {
 
     // Handle special response codes that don't go through action based routing
     const responseCode = (response as common.SuccessResponse).code;
-    console.log('[STORE] Response Code:', responseCode);
+    console.log("[STORE] Response Code:", responseCode);
 
-    if (responseCode === "RESPONSE_SUCCESS" || responseCode === "RECONNECT_SUCCESS" || responseCode === "LOGIN_SUCCESS") {
+    if (
+      responseCode === "RESPONSE_SUCCESS" ||
+      responseCode === "RECONNECT_SUCCESS" ||
+      responseCode === "LOGIN_SUCCESS"
+    ) {
       const payload = (response as common.SuccessResponse).payload;
-      console.log('[STORE] Login response payload:', payload);
+      console.log("[STORE] Login response payload:", payload);
 
       // Update user info from payload
-      this.userInfo = { ...this.userInfo, ...(response as common.SuccessResponse).payload };
+      this.userInfo = {
+        ...this.userInfo,
+        ...(response as common.SuccessResponse).payload,
+      };
       this.userInfo.isSignedIn = true;
       this.gameInfo.isPendingReconnection = false;
 
       // Handle game creator status and shared game ID
       if (payload.isGameCreator !== undefined) {
-        this, this.gameInfo.isGameCreator = payload.isGameCreator;
+        this, (this.gameInfo.isGameCreator = payload.isGameCreator);
         if (payload.isGameCreator && payload.gameId) {
           this.gameInfo.sharedGameId = payload.gameId;
           // Show bot seelction for game creators
           this.gameInfo.showBotSelection = false;
-          console.log(`[STORE] Game Creator set up - Game ID: ${payload.gameId}, showing bot selection`);
+          console.log(
+            `[STORE] Game Creator set up - Game ID: ${payload.gameId}, showing bot selection`
+          );
         } else {
           // Joiners wait for the creator to start the game
           this.gameInfo.showBotSelection = false;
-          console.log('[STORE] Game joiner setup - waiting for creator');
+          console.log("[STORE] Game joiner setup - waiting for creator");
         }
       } else {
-        console.log('[STORE] No isGameCreator in payload, payload keys:', Object.keys(payload));
+        console.log(
+          "[STORE] No isGameCreator in payload, payload keys:",
+          Object.keys(payload)
+        );
       }
 
       // Extract nested game state and update gameInfo
@@ -507,7 +579,7 @@ class Store implements IStore {
           teamAScore: gameState.teamAScore || 0,
           teamBScore: gameState.teamBScore || 0,
           gamePaused: gameState.gamePaused || false,
-        }
+        };
       }
 
       // Set canStartGame if we have cards (indicating the game is in progress)
@@ -532,7 +604,9 @@ class Store implements IStore {
         break;
 
       case common.MESSAGES.turnInfo:
-        this.gameInfo.currentPlayerId = (data as common.INotifyTurn).currentPlayerId;
+        this.gameInfo.currentPlayerId = (
+          data as common.INotifyTurn
+        ).currentPlayerId;
         this.gameInfo.yourTurn =
           this.userInfo.playerId === this.gameInfo.currentPlayerId;
         break;
@@ -561,7 +635,9 @@ class Store implements IStore {
         break;
 
       case common.MESSAGES.dropCardPlayer:
-        this.gameInfo.dropCardPlayer = (data as common.IDropCardPlayer).dropCardPlayer;
+        this.gameInfo.dropCardPlayer = (
+          data as common.IDropCardPlayer
+        ).dropCardPlayer;
         break;
 
       case common.MESSAGES.teamACards:
@@ -586,7 +662,9 @@ class Store implements IStore {
         break;
 
       case common.MESSAGES.trumpSuitSelected:
-        this.gameInfo.playerTrumpSuit = (data as common.ITrumpSuitSelected).playerTrumpSuit;
+        this.gameInfo.playerTrumpSuit = (
+          data as common.ITrumpSuitSelected
+        ).playerTrumpSuit;
         this.gameInfo.trumpSuit = (data as common.ITrumpSuitSelected).trumpSuit;
         break;
 
@@ -601,7 +679,7 @@ class Store implements IStore {
         // Handle reconnection request notificaiton
         this.gameInfo.notification = {
           action: "reconnection_request",
-          data: data
+          data: data,
         };
         break;
 
@@ -614,27 +692,33 @@ class Store implements IStore {
       case common.MESSAGES.playerReconnected:
         // Handle player reconnected notificaiton from server
         const playerReconnectedData = data as any;
-        this.gameInfo.notification = playerReconnectedData.message || "A player has successfully reconnected to the game";
+        this.gameInfo.notification =
+          playerReconnectedData.message ||
+          "A player has successfully reconnected to the game";
         break;
 
       case common.MESSAGES.gamePaused:
         // Handle game paused notification (when a player disconnects)
         const pausedData = data as any;
-        this.gameInfo.notification = pausedData.message || "Game has been paused due to player disconnection";
+        this.gameInfo.notification =
+          pausedData.message ||
+          "Game has been paused due to player disconnection";
         this.gameInfo.gamePaused = true;
         break;
 
       case common.MESSAGES.gameResumed:
         // Handle game resumed notification (when all players are back)
         const resumeData = data as any;
-        this.gameInfo.notification = resumeData.message || "Game has been resumed";
+        this.gameInfo.notification =
+          resumeData.message || "Game has been resumed";
         this.gameInfo.gamePaused = true;
         break;
 
       case common.MESSAGES.playerDisconnected:
         // Handle player disconnection notificaiton
         const disconnectionData = data as any;
-        this.gameInfo.notification = disconnectionData.message || "A player has disconnected";
+        this.gameInfo.notification =
+          disconnectionData.message || "A player has disconnected";
         this.gameInfo.gamePaused = true;
         break;
 
@@ -651,7 +735,7 @@ class Store implements IStore {
           teamAScore: gameCompleteData.teamAScore,
           teamBScore: gameCompleteData.teamBScore,
           scoreResetOccurred: gameCompleteData.scoreResetOccurred,
-        }
+        };
         // Update the team scores
         this.gameInfo.teamAScore = gameCompleteData.teamAScore;
         this.gameInfo.teamBScore = gameCompleteData.teamBScore;
@@ -663,21 +747,62 @@ class Store implements IStore {
         this.gameInfo.teamBScore = teamScores.teamBScore;
         break;
 
+      case "biddingPhaseStart":
+        // Bidding phase has started
+        const biddingStartData = data as any;
+        this.gameInfo.isBiddingPhase = true;
+        this.gameInfo.currentBiddingPlayerId =
+          biddingStartData.currentBiddingPlayerId;
+        this.gameInfo.bidHistory = [];
+        this.gameInfo.bidPassCount = 0;
+        break;
+
+      case "biddingAction":
+        // Update bidding state after an action
+        const biddingActionData = data as any;
+        this.gameInfo.currentBiddingPlayerId =
+          biddingActionData.currentBetPlayerId;
+        this.gameInfo.bidHistory = biddingActionData.bidHistory || [];
+        this.gameInfo.bidPassCount = biddingActionData.bidPassCount || 0;
+        this.gameInfo.currentBet = biddingActionData.currentBet;
+        this.gameInfo.trumpSuit = biddingActionData.trumpSuit;
+        this.gameInfo.lastBiddingTeam = biddingActionData.lastBiddingTeam;
+        this.gameInfo.bidDouble = biddingActionData.bidDouble || false;
+        this.gameInfo.bidReDouble = biddingActionData.bidReDouble || false;
+        break;
+
+      case "biddingPhaseEnd":
+        // Bidding phase has ended
+        const biddingEndData = data as any;
+        this.gameInfo.isBiddingPhase = false;
+        this.gameInfo.finalBid = biddingEndData.finalBid;
+        this.gameInfo.trumpSuit = biddingEndData.trumpSuit;
+        this.gameInfo.biddingTeam = biddingEndData.biddingTeam;
+        this.gameInfo.biddingPlayer = biddingEndData.biddingPlayer;
+        this.gameInfo.bidDouble = biddingEndData.bidDouble || false;
+        this.gameInfo.bidReDouble = biddingEndData.bidReDouble || false;
+        break;
+
       default:
-        console.log("Default case. Shouldn't hit this. Action:", action, "Data:", data);
+        console.log(
+          "Default case. Shouldn't hit this. Action:",
+          action,
+          "Data:",
+          data
+        );
         break;
     }
   };
 
   // Game mode selection methods
   public setGameModeCreate = () => {
-    this.gameInfo.gameMode = 'create';
+    this.gameInfo.gameMode = "create";
     this.gameInfo.isGameCreator = true;
     this.gameInfo.showGameModeSelection = false;
   };
 
   public setGameModeJoin = (gameId: string) => {
-    this.gameInfo.gameMode = 'join';
+    this.gameInfo.gameMode = "join";
     this.gameInfo.gameIdToJoin = gameId;
     this.gameInfo.isGameCreator = false;
     this.gameInfo.showGameModeSelection = false;

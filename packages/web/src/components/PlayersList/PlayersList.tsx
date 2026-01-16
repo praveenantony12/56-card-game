@@ -30,7 +30,8 @@ class PlayersList extends React.Component<IProps, {}> {
   };
 
   private renderList() {
-    const { players, currentPlayerId } = this.gameInfo;
+    const { players, currentPlayerId, isBiddingPhase, currentBiddingPlayerId } =
+      this.gameInfo;
     const { droppedCards } = this.store.game;
 
     const canSelectPlayer =
@@ -41,6 +42,16 @@ class PlayersList extends React.Component<IProps, {}> {
     }
 
     const rows = players.map((player) => {
+      const isCurrentBiddingPlayer =
+        isBiddingPhase && player === currentBiddingPlayerId;
+      const status = isBiddingPhase
+        ? isCurrentBiddingPlayer
+          ? "Bid"
+          : "Wait to Bid"
+        : player === currentPlayerId
+        ? "Play"
+        : "Wait";
+
       return (
         <Grid.Column textAlign="center" key={player}>
           {/* <Segment
@@ -51,24 +62,52 @@ class PlayersList extends React.Component<IProps, {}> {
             as="div"
             labelPosition="right"
             disabled={
-              canSelectPlayer || player === currentPlayerId ? false : true
+              isBiddingPhase
+                ? isCurrentBiddingPlayer
+                  ? false
+                  : true
+                : canSelectPlayer || player === currentPlayerId
+                ? false
+                : true
             }
             onClick={
-              canSelectPlayer
+              isBiddingPhase
+                ? isCurrentBiddingPlayer
+                  ? this.handlePlayerSelectClick.bind(this, player)
+                  : false
+                : canSelectPlayer
                 ? this.handlePlayerSelectClick.bind(this, player)
                 : false
             }
           >
-            <Button color={player === currentPlayerId ? "green" : "white"}>
+            <Button
+              color={
+                isBiddingPhase
+                  ? isCurrentBiddingPlayer
+                    ? "yellow"
+                    : "grey"
+                  : player === currentPlayerId
+                  ? "green"
+                  : "white"
+              }
+            >
               <Icon name={player.startsWith("Bot_") ? "user secret" : "user"} />
               {player}
             </Button>
             <Label
               as="a"
-              color={player === currentPlayerId ? "red" : "black"}
+              color={
+                isBiddingPhase
+                  ? isCurrentBiddingPlayer
+                    ? "yellow"
+                    : "grey"
+                  : player === currentPlayerId
+                  ? "red"
+                  : "black"
+              }
               pointing="left"
             >
-              {player === currentPlayerId ? "Play" : "Wait"}
+              {status}
             </Label>
           </Button>
           {/* </Segment> */}

@@ -995,6 +995,15 @@ export class GameCore {
     gameObject.restartProtectionActive = true;
     gameObject.recentlyRestarted = false; // Not a restart, but initial start
 
+    // Initialize bidding phase with the same starting player as the round
+    gameObject.biddingPhase = true;
+    gameObject.currentBiddingPlayerId =
+      gameObject.players[this.gameStartIndex].playerId;
+    gameObject.bidHistory = [];
+    gameObject.bidPassCount = 0;
+    gameObject.bidDouble = false;
+    gameObject.bidReDouble = false;
+
     this.inMemoryStore.saveGame(gameId, gameObject);
 
     gameObject.players.forEach((player) => {
@@ -1010,6 +1019,19 @@ export class GameCore {
     gameObj.dropCardPlayer = [];
     this.inMemoryStore.saveGame(gameId, gameObj);
 
+    // Notify all players about bidding phase start
+    const biddingStartPayload: GameActionResponse = {
+      action: "biddingPhaseStart",
+      data: {
+        currentBiddingPlayerId: gameObject.currentBiddingPlayerId,
+      },
+    };
+    const biddingPhaseResponse = successResponse(
+      RESPONSE_CODES.gameNotification,
+      biddingStartPayload
+    );
+    this.ioServer.to(gameId).emit("data", biddingPhaseResponse);
+
     // Notify all players about restart protection status from game start
     const restartProtectionPayload = {
       action: "RESTART_PROTECTION",
@@ -1024,7 +1046,8 @@ export class GameCore {
     );
     this.ioServer.to(gameId).emit("data", restartProtectionResponse);
 
-    this.notifyTurn(gameId);
+    // Check if first player is a bot and auto-start bidding
+    this.checkAndPlayBotBiddingTurn(gameId);
   }
 
   /**
@@ -1252,10 +1275,23 @@ export class GameCore {
       return;
     }
 
+    const gameObject = this.inMemoryStore.fetchGame(gameId);
+
+    // Check if bidding phase is still active
+    if (gameObject.biddingPhase) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "Bidding phase is still active. complete bidding before playing cards."
+        )
+      );
+      return;
+    }
+
     const currentGameIns = new Game(this.inMemoryStore, gameId, card, token);
 
     // Set default bid and trump final bid if not set yet (first card drop indicates game has started)
-    const gameObject = this.inMemoryStore.fetchGame(gameId);
     const isFirstCardOfGame =
       (!gameObject.teamACards || gameObject.teamACards.length === 0) &&
       (!gameObject.teamBCards || gameObject.teamBCards.length === 0) &&
@@ -2309,6 +2345,14 @@ export class GameCore {
         teamAScore: game.teamAScore,
         teamBScore: game.teamBScore,
         gamePaused: game.gamePaused,
+        // Bidding phase state
+        isBiddingPhase: game.isBiddingPhase || false,
+        currentBiddingPlayerId: game.playerWithCurrentBet,
+        bidHistory: game.bidHistory || [],
+        bidPassCount: game.bidPassCount || 0,
+        lastBiddingTeam: game.lastBiddingTeam,
+        bidDouble: game.bidDouble || false,
+        bidReDouble: game.bidReDouble || false,
       },
     };
   }
@@ -2663,6 +2707,410 @@ export class GameCore {
         // });
       }
     });
+  }
+
+  /**
+   * Handle bidding actions from players
+   * @param req The bidding action request payload
+   * @param cb The callback function
+   */
+  public onBiddingAction(req: any, cb: Function) {
+    const { gameId, token, action, bidValue, suit } = req;
+    const gameObj = this.inMemoryStore.fetchGame(gameId);
+
+    if (!gameObj) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found"));
+      return;
+    }
+
+    // Find the player making the bid
+    const player = gameObj.players.find((p: IPlayer) => p.token === token);
+    if (!player) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Player not found"));
+      return;
+    }
+
+    // Initialize bidding state if needed
+
+    if (!gameObj.isBiddingPhase) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Not in bidding phase"));
+      return;
+    }
+
+    if (!gameObj.bidHistory) {
+      gameObj.bidHistory = [];
+    }
+
+    // Handle the bidding action
+    switch (action) {
+      case "bid":
+        // Check if this is the first bid (no previous bid actions in history)
+
+        const hasNoPreviousBids =
+          !gameObj.bidHistory ||
+          gameObj.bidHistory.every((entry) => entry.action !== "bid");
+
+        let finalBidValue = bidValue;
+        let finalSuit = suit;
+
+        // If first bid attempt, default to 28 Noes
+        if (hasNoPreviousBids) {
+          finalBidValue = 28;
+          finalSuit = "N";
+        }
+
+        // Validate bid value
+        if (
+          !finalBidValue ||
+          finalBidValue < 28 ||
+          finalBidValue > 56 ||
+          !finalSuit
+        ) {
+          cb(null, errorResponse(RESPONSE_CODES.failed, "Invalid bid"));
+          return;
+        }
+
+        gameObj.bidHistory.push({
+          playerId: player.playerId,
+          action: "bid",
+          bidValue: finalBidValue,
+          suit: finalSuit,
+        });
+
+        gameObj.currentBet = finalBidValue.toString();
+        gameObj.trumpSuit = finalSuit;
+        gameObj.bidPassCount = 0; // Reset pass count on new bid
+        gameObj.lastBiddingTeam = this.getPlayerTeam(gameObj, player.playerId);
+        gameObj.bidDouble = false;
+        gameObj.bidReDouble = false;
+
+        break;
+
+      case "pass":
+        gameObj.bidHistory.push({ playerId: player.playerId, action: "pass" });
+
+        gameObj.bidPassCount = (gameObj.bidPassCount || 0) + 1;
+
+        // Special case: if first player passes without any bid yet, set default bid to 28 Noes
+        const hasNoPreviousBidsForPass =
+          !gameObj.bidHistory ||
+          gameObj.bidHistory.every((entry) => entry.action !== "bid");
+        if (
+          hasNoPreviousBidsForPass &&
+          gameObj.bidHistory.filter((entry) => entry.action === "pass")
+            .length === 1
+        ) {
+          // This is the first pass with no bids, add default bid
+          gameObj.bidHistory.push({
+            playerId: player.playerId,
+            action: "bid",
+            bidValue: 28,
+            suit: "N",
+          });
+          gameObj.currentBet = "28";
+          gameObj.trumpSuit = "N";
+          gameObj.bidPassCount = 0;
+          gameObj.lastBiddingTeam = this.getPlayerTeam(
+            gameObj,
+            player.playerId
+          );
+        }
+        break;
+
+      case "double":
+        // Only opponent team can double
+        const currentBiddingTeam = gameObj.lastBiddingTeam;
+        const playerTeam = this.getPlayerTeam(gameObj, player.playerId);
+
+        if (playerTeam === currentBiddingTeam) {
+          cb(
+            null,
+            errorResponse(
+              RESPONSE_CODES.failed,
+              "Only opposing team can double"
+            )
+          );
+          return;
+        }
+
+        gameObj.bidHistory.push({
+          playerId: player.playerId,
+          action: "double",
+        });
+
+        gameObj.bidDouble = true;
+
+        gameObj.bidPassCount = 0; // Reset pass count
+
+        break;
+
+      case "re-double":
+        // Only bidding team can re-double
+        if (!gameObj.bidDouble) {
+          cb(
+            null,
+            errorResponse(
+              RESPONSE_CODES.failed,
+              "Cannot re-double without double"
+            )
+          );
+          return;
+        }
+
+        const biddingTeam = gameObj.lastBiddingTeam;
+
+        if (this.getPlayerTeam(gameObj, player.playerId) != biddingTeam) {
+          cb(
+            null,
+            errorResponse(
+              RESPONSE_CODES.failed,
+              "Only bidding team can re-double"
+            )
+          );
+          return;
+        }
+
+        gameObj.bidHistory.push({
+          playerId: player.playerId,
+          action: "re-double",
+        });
+
+        gameObj.bidReDouble = true;
+        gameObj.bidDouble = false; // Re-double overwrites double
+
+        // Re-double ends bidding immediately
+        this.endBiddingPhase(gameId);
+
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.success, {
+            action: "biddingAction",
+            data: {
+              currentBiddingPlayerId: gameObj.currentBiddingPlayerId,
+              bidHistory: gameObj.bidHistory,
+              bidPassCount: gameObj.bidPassCount,
+              currentBet: gameObj.currentBet,
+              trumpSuit: gameObj.trumpSuit,
+              lastBiddingTeam: gameObj.lastBiddingTeam,
+              bidDouble: gameObj.bidDouble,
+              bidReDouble: gameObj.bidReDouble,
+            },
+          })
+        );
+
+        this.inMemoryStore.saveGame(gameId, gameObj);
+        return;
+
+      default:
+        cb(null, errorResponse(RESPONSE_CODES.failed, "Invalid action"));
+        return;
+    }
+
+    // Move to next player for bidding
+    gameObj.currentBiddingPlayerId = this.getNextBiddingPlayer(gameObj);
+
+    // Check if bidding should end
+    if (this.shouldBiddingEnd(gameObj)) {
+      this.endBiddingPhase(gameId);
+    }
+
+    // Save updated game state
+    this.inMemoryStore.saveGame(gameId, gameObj);
+
+    // Broadcast bidding update to all players
+    const biddingPayload: GameActionResponse = {
+      action: "biddingAction",
+      data: {
+        currentBiddingPlayerId: gameObj.currentBiddingPlayerId,
+        bidHistory: gameObj.bidHistory,
+        bidPassCount: gameObj.bidPassCount,
+        currentBet: gameObj.currentBet,
+        trumpSuit: gameObj.trumpSuit,
+        lastBiddingTeam: gameObj.lastBiddingTeam,
+        bidDouble: gameObj.bidDouble,
+        bidReDouble: gameObj.bidReDouble,
+      },
+    };
+
+    const response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      biddingPayload
+    );
+    this.ioServer.to(gameId).emit("data", response);
+
+    cb(null, response);
+
+    // Check if next player is a bot and auto-play their bid
+    this.checkAndPlayBotBiddingTurn(gameId);
+  }
+
+  /**
+   * Determine which team a player belongs to
+   * @param gameObj The game object
+   * @param playerId The player ID
+   * @returns "A" or "B" indicating the team
+   */
+
+  private getPlayerTeam(gameObj: GameModel, playerId: string): string {
+    const playerIndex = gameObj.players.findIndex(
+      (p: IPlayer) => p.playerId === playerId
+    );
+
+    // Team A: players at indices 0, 2, 4
+    // Team B: players at indices 1, 3, 5
+    return playerIndex % 2 === 0 ? "A" : "B";
+  }
+
+  /**
+   * Get the next player for bidding
+   * @param gameObj The game object
+   * @returns The next player ID
+   */
+  private getNextBiddingPlayer(gameObj: GameModel): string {
+    const currentPlayerIndex = gameObj.players.findIndex(
+      (p: IPlayer) => p.playerId === gameObj.currentBiddingPlayerId
+    );
+
+    const nextIndex = (currentPlayerIndex + 1) % gameObj.players.length;
+    return gameObj.players[nextIndex].playerId;
+  }
+
+  /**
+   * Check if bidding should end
+   * @param gameObj The game object
+   * @returns true if bidding should end
+   */
+
+  private shouldBiddingEnd(gameObj: GameModel): boolean {
+    if (!gameObj.bidHistory || gameObj.bidHistory.length === 0) {
+      return false;
+    }
+
+    // Find the last bid action (not pass, double, or re-double)
+    let lastBidIndex = -1;
+    for (let i = gameObj.bidHistory.length - 1; i >= 0; i--) {
+      if (gameObj.bidHistory[i].action === "bid") {
+        lastBidIndex = i;
+        break;
+      }
+    }
+
+    if (lastBidIndex === -1) {
+      // No bids yet
+      return false;
+    }
+
+    // Count consecutive passes and non-pass actions (double) after last bid
+    const actionsAfterLastBid = gameObj.bidHistory.slice(lastBidIndex + 1);
+    let consecutivePasses = 0;
+
+    for (const entry of actionsAfterLastBid) {
+      if (entry.action === "pass") {
+        consecutivePasses++;
+      } else if (entry.action === "double") {
+        // Double resets pass count - need 5 more passes after double
+        consecutivePasses = 0;
+      }
+      // Note: re-double is handled separately and bidding ends immediately
+    }
+
+    // Bidding ends if all the other 5 players have passed after the last bid
+    const totalPlayers = gameObj.players.length; // Should be 6
+    const requiredPasses = totalPlayers - 1; // 5 players need to pass
+    return consecutivePasses >= requiredPasses;
+  }
+
+  /**
+   * End the bidding phase and transition to game
+   * @param gameId The game ID
+   */
+  private endBiddingPhase(gameId: string): void {
+    const gameObj = this.inMemoryStore.fetchGame(gameId);
+    if (!gameObj) return;
+
+    gameObj.isBiddingPhase = false;
+
+    // Set final bid information
+    if (gameObj.currentBet) {
+      gameObj.finalBid = parseInt(gameObj.currentBet);
+    } else {
+      gameObj.finalBid = 28;
+      gameObj.trumpSuit = "N";
+    }
+
+    // Determine bidding team based on bid history
+    if (gameObj.bidHistory && gameObj.bidHistory.length > 0) {
+      const lastBidEntry = gameObj.bidHistory.find(
+        (entry) => entry.action === "bid"
+      );
+      if (lastBidEntry) {
+        gameObj.biddingPlayer = lastBidEntry.playerId;
+        gameObj.biddingTeam = this.getPlayerTeam(
+          gameObj,
+          lastBidEntry.playerId
+        );
+      }
+    }
+    this.inMemoryStore.saveGame(gameId, gameObj);
+
+    // Notify all players that bidding phase has ended
+    const endBiddingPayload: GameActionResponse = {
+      action: "biddingPhaseEnd",
+
+      data: {
+        finalBid: gameObj.finalBid,
+        trumpSuit: gameObj.trumpSuit,
+        biddingTeam: gameObj.biddingTeam,
+        biddingPlayer: gameObj.biddingPlayer,
+        bidDouble: gameObj.bidDouble || false,
+        bidReDouble: gameObj.bidReDouble || false,
+      },
+    };
+
+    const response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      endBiddingPayload
+    );
+    this.ioServer.to(gameId).emit("data", response);
+
+    // Start normal game turn
+    this.notifyTurn(gameId);
+  }
+
+  /**
+   * Check if it's a bot's turn during bidding and auto-play if needed
+   * @param gameId The game ID
+   */
+  public checkAndPlayBotBiddingTurn(gameId: string): void {
+    const game = this.inMemoryStore.fetchGame(gameId);
+    if (!game || !game.currentBiddingPlayerId) return;
+
+    const currentBiddingPlayer = game.players.find(
+      (p) => p.playerId === game.currentBiddingPlayerId
+    );
+
+    if (currentBiddingPlayer && currentBiddingPlayer.isBotAgent) {
+      // Bots just pass for now
+      setTimeout(() => {
+        const botPlayer = game.players.find(
+          (p: IPlayer) =>
+            p.isBotAgent && p.playerId === game.currentBiddingPlayerId
+        );
+        if (botPlayer) {
+          // Simulate a bot passing
+          this.onBiddingAction(
+            {
+              gameId,
+              token: botPlayer.token,
+              action: "pass",
+            },
+            (error: any, result: any) => {
+              // Bot action processed
+            }
+          );
+        }
+      }, 1000); // Small delay to simulate thinking time
+    }
   }
 
   /**

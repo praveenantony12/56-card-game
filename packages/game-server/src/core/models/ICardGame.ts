@@ -32,6 +32,19 @@ export interface ICardGame {
   gameCreatedAt?: Date;
   gamePausedAt?: boolean;
   pausedAt?: Date;
+  // Bidding phase state
+  isBiddingPhase?: boolean;
+  currentBiddingPlayerId?: string;
+  bidHistory?: Array<{
+    playerId: string;
+    action: "bid" | "pass" | "double" | "re-double";
+    bidValue?: number;
+    suit?: string;
+  }>;
+  bidPassCount?: number;
+  lastBiddingTeam?: string;
+  bidDouble?: boolean;
+  bidReDouble?: boolean;
 
   // This is to store the card details by userId/token.
   [token: string]: any;

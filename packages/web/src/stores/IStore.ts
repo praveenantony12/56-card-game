@@ -6,7 +6,7 @@ export interface IStore {
 
   user: IUser;
 
-  isAttemptingReconnection: boolean
+  isAttemptingReconnection: boolean;
 
   isPendingReconnectionApproval: boolean;
 
@@ -14,7 +14,7 @@ export interface IStore {
 
   reconnect(): Promise<any>;
 
-  addBots(botCount: number, startImmediately?: boolean): Promise<any>
+  addBots(botCount: number, startImmediately?: boolean): Promise<any>;
 
   dropCard(card: string): Promise<any>;
 
@@ -29,6 +29,12 @@ export interface IStore {
   selectPlayer(player: string): Promise<any>;
 
   selectTrumpSuit(trumpSuit: string): Promise<any>;
+
+  biddingAction(
+    action: "bid" | "pass" | "double" | "re-double",
+    bidValue?: number,
+    suit?: string
+  ): Promise<any>;
 
   restartGame(gameId: string): Promise<any>;
 

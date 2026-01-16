@@ -229,6 +229,33 @@ class GameService {
   }
 
   /**
+   * Sends a bidding action to the game server.
+   * @param action The bidding action
+   * @param gameId The gameId
+   * @param token The user token
+   * @param bidValue The bid value (if action is "bid")
+   * @param suit The suit (if action is "bid")
+   */
+  public biddingAction(
+    action: "bid" | "pass" | "double" | "re-double",
+    gameId: string,
+    token: string,
+    bidValue?: number,
+    suit?: string
+  ): Promise<any> {
+    return this.sendRequest({
+      type: "biddingAction",
+      payload: {
+        gameId,
+        token,
+        action,
+        bidValue,
+        suit,
+      },
+    });
+  }
+
+  /**
    * Leave game. It will disconnect the socket from server.
    */
   public leaveGame() {

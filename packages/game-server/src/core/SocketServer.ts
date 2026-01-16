@@ -81,8 +81,13 @@ export class SocketServer {
         break;
 
       case MESSAGES.login:
-        const loginRequest = (payload as SignInRequest);
-        await this.gameCore.addPlayerToGamePool(socket, loginRequest.userId, loginRequest.gameId, cb);
+        const loginRequest = payload as SignInRequest;
+        await this.gameCore.addPlayerToGamePool(
+          socket,
+          loginRequest.userId,
+          loginRequest.gameId,
+          cb
+        );
         break;
 
       case MESSAGES.addBots:
@@ -98,7 +103,7 @@ export class SocketServer {
           cb,
           reconnectRequest.token,
           reconnectRequest.gameId
-        )
+        );
         break;
 
       case MESSAGES.reconnectApprove:
@@ -134,7 +139,8 @@ export class SocketServer {
         break;
 
       case MESSAGES.incrementBetByPlayer:
-        const incrementBetByPlayerRequest = payload as IncrementBetByPlayerRequestPayload;
+        const incrementBetByPlayerRequest =
+          payload as IncrementBetByPlayerRequestPayload;
         this.gameCore.onIncrementBetByPlayer(incrementBetByPlayerRequest, cb);
         break;
 
@@ -161,6 +167,11 @@ export class SocketServer {
       case MESSAGES.selectTrumpSuit:
         const selectTrumpSuitRequest = payload as SelectTrumpSuitRequestPayload;
         this.gameCore.onSelectTrumpSuit(selectTrumpSuitRequest, cb);
+        break;
+
+      case "biddingAction":
+        const biddingActionRequest = payload as any;
+        this.gameCore.onBiddingAction(biddingActionRequest, cb);
         break;
 
       default:
@@ -197,9 +208,7 @@ export class SocketServer {
         socket.id
       );
     } else {
-      LoggerService.log(
-        "Disconnected", "Player was not in active game"
-      );
+      LoggerService.log("Disconnected", "Player was not in active game");
     }
   }
 }

@@ -32,6 +32,19 @@ export interface IGame {
   winnerMessage?: string;
   isPendingReconnection?: boolean;
   gamePaused?: boolean;
+  // Bidding phase state
+  isBiddingPhase?: boolean;
+  currentBiddingPlayerId?: string;
+  bidHistory?: Array<{
+    playerId: string;
+    action: "bid" | "pass" | "double" | "re-double";
+    bidValue?: number;
+    suit?: string;
+  }>;
+  bidPassCount?: number;
+  lastBiddingTeam?: string;
+  bidDouble?: boolean;
+  bidReDouble?: boolean;
   gameCompleteData?: {
     biddingTeamAchievedBid: boolean;
     teamAPoints: number;
@@ -40,7 +53,7 @@ export interface IGame {
     teamBScore: number;
     scoreResetOccurred: boolean;
   };
-  gameMode?: 'create' | 'join' | null;
+  gameMode?: "create" | "join" | null;
   gameIdToJoin?: string;
   isGameCreator?: boolean;
   sharedGameId?: string;
