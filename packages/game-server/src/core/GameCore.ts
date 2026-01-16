@@ -996,7 +996,7 @@ export class GameCore {
     gameObject.recentlyRestarted = false; // Not a restart, but initial start
 
     // Initialize bidding phase with the same starting player as the round
-    gameObject.biddingPhase = true;
+    gameObject.isBiddingPhase = true;
     gameObject.currentBiddingPlayerId =
       gameObject.players[this.gameStartIndex].playerId;
     gameObject.bidHistory = [];
@@ -1278,12 +1278,12 @@ export class GameCore {
     const gameObject = this.inMemoryStore.fetchGame(gameId);
 
     // Check if bidding phase is still active
-    if (gameObject.biddingPhase) {
+    if (gameObject.isBiddingPhase) {
       cb(
         null,
         errorResponse(
           RESPONSE_CODES.failed,
-          "Bidding phase is still active. complete bidding before playing cards."
+          "Bidding phase is still active. Complete bidding before playing cards."
         )
       );
       return;
@@ -2347,7 +2347,7 @@ export class GameCore {
         gamePaused: game.gamePaused,
         // Bidding phase state
         isBiddingPhase: game.isBiddingPhase || false,
-        currentBiddingPlayerId: game.playerWithCurrentBet,
+        currentBiddingPlayerId: game.currentBiddingPlayerId,
         bidHistory: game.bidHistory || [],
         bidPassCount: game.bidPassCount || 0,
         lastBiddingTeam: game.lastBiddingTeam,
@@ -2633,7 +2633,7 @@ export class GameCore {
         if (this.botTimers[gameId]) {
           delete this.botTimers[gameId];
         }
-      }, 1);
+      }, 1000);
 
       // Store timer for cleanup if needed
       this.botTimers[gameId] = botTimer;
@@ -2731,7 +2731,6 @@ export class GameCore {
     }
 
     // Initialize bidding state if needed
-
     if (!gameObj.isBiddingPhase) {
       cb(null, errorResponse(RESPONSE_CODES.failed, "Not in bidding phase"));
       return;
@@ -2745,7 +2744,6 @@ export class GameCore {
     switch (action) {
       case "bid":
         // Check if this is the first bid (no previous bid actions in history)
-
         const hasNoPreviousBids =
           !gameObj.bidHistory ||
           gameObj.bidHistory.every((entry) => entry.action !== "bid");
@@ -2787,7 +2785,10 @@ export class GameCore {
         break;
 
       case "pass":
-        gameObj.bidHistory.push({ playerId: player.playerId, action: "pass" });
+        gameObj.bidHistory.push({
+          playerId: player.playerId,
+          action: "pass",
+        });
 
         gameObj.bidPassCount = (gameObj.bidPassCount || 0) + 1;
 
@@ -2815,6 +2816,7 @@ export class GameCore {
             player.playerId
           );
         }
+
         break;
 
       case "double":
@@ -2839,7 +2841,6 @@ export class GameCore {
         });
 
         gameObj.bidDouble = true;
-
         gameObj.bidPassCount = 0; // Reset pass count
 
         break;
@@ -2858,8 +2859,7 @@ export class GameCore {
         }
 
         const biddingTeam = gameObj.lastBiddingTeam;
-
-        if (this.getPlayerTeam(gameObj, player.playerId) != biddingTeam) {
+        if (this.getPlayerTeam(gameObj, player.playerId) !== biddingTeam) {
           cb(
             null,
             errorResponse(
@@ -2950,12 +2950,10 @@ export class GameCore {
    * @param playerId The player ID
    * @returns "A" or "B" indicating the team
    */
-
   private getPlayerTeam(gameObj: GameModel, playerId: string): string {
     const playerIndex = gameObj.players.findIndex(
       (p: IPlayer) => p.playerId === playerId
     );
-
     // Team A: players at indices 0, 2, 4
     // Team B: players at indices 1, 3, 5
     return playerIndex % 2 === 0 ? "A" : "B";
@@ -2980,7 +2978,6 @@ export class GameCore {
    * @param gameObj The game object
    * @returns true if bidding should end
    */
-
   private shouldBiddingEnd(gameObj: GameModel): boolean {
     if (!gameObj.bidHistory || gameObj.bidHistory.length === 0) {
       return false;
@@ -3008,13 +3005,13 @@ export class GameCore {
       if (entry.action === "pass") {
         consecutivePasses++;
       } else if (entry.action === "double") {
-        // Double resets pass count - need 5 more passes after double
+        // Double resets the pass count - need 5 more passes after double
         consecutivePasses = 0;
       }
       // Note: re-double is handled separately and bidding ends immediately
     }
 
-    // Bidding ends if all the other 5 players have passed after the last bid
+    // Bidding ends when all the other 5 players have passed consecutively after the last bid
     const totalPlayers = gameObj.players.length; // Should be 6
     const requiredPasses = totalPlayers - 1; // 5 players need to pass
     return consecutivePasses >= requiredPasses;
@@ -3051,12 +3048,12 @@ export class GameCore {
         );
       }
     }
+
     this.inMemoryStore.saveGame(gameId, gameObj);
 
     // Notify all players that bidding phase has ended
     const endBiddingPayload: GameActionResponse = {
       action: "biddingPhaseEnd",
-
       data: {
         finalBid: gameObj.finalBid,
         trumpSuit: gameObj.trumpSuit,
@@ -3078,20 +3075,21 @@ export class GameCore {
   }
 
   /**
-   * Check if it's a bot's turn during bidding and auto-play if needed
+   * Check if it's a bot's turn to bid and auto-bid if needed
    * @param gameId The game ID
    */
-  public checkAndPlayBotBiddingTurn(gameId: string): void {
+  private checkAndPlayBotBiddingTurn(gameId: string): void {
     const game = this.inMemoryStore.fetchGame(gameId);
-    if (!game || !game.currentBiddingPlayerId) return;
+    if (!game || !game.isBiddingPhase) return;
 
     const currentBiddingPlayer = game.players.find(
-      (p) => p.playerId === game.currentBiddingPlayerId
+      (p: IPlayer) => p.playerId === game.currentBiddingPlayerId
     );
 
     if (currentBiddingPlayer && currentBiddingPlayer.isBotAgent) {
       // Bots just pass for now
       setTimeout(() => {
+        // Find the socket for the bot player
         const botPlayer = game.players.find(
           (p: IPlayer) =>
             p.isBotAgent && p.playerId === game.currentBiddingPlayerId
@@ -3104,12 +3102,12 @@ export class GameCore {
               token: botPlayer.token,
               action: "pass",
             },
-            (error: any, result: any) => {
+            (err: any, result: any) => {
               // Bot action processed
             }
           );
         }
-      }, 1000); // Small delay to simulate thinking time
+      }, 1000); // Small delay to simulate thinking time for bots
     }
   }
 
