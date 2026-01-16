@@ -431,7 +431,7 @@ class Store implements IStore {
       );
 
       if (ack.code === common.RESPONSE_CODES.success) {
-        console.log("Bidding action performed: " + action);
+        console.log(`Bidding action performed: ${action}`);
       }
     } catch (error) {
       console.log("error ===> " + error);
@@ -761,7 +761,7 @@ class Store implements IStore {
         // Update bidding state after an action
         const biddingActionData = data as any;
         this.gameInfo.currentBiddingPlayerId =
-          biddingActionData.currentBetPlayerId;
+          biddingActionData.currentBiddingPlayerId;
         this.gameInfo.bidHistory = biddingActionData.bidHistory || [];
         this.gameInfo.bidPassCount = biddingActionData.bidPassCount || 0;
         this.gameInfo.currentBet = biddingActionData.currentBet;
