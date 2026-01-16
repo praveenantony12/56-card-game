@@ -1026,12 +1026,11 @@ export class GameCore {
         currentBiddingPlayerId: gameObject.currentBiddingPlayerId,
       },
     };
-    const biddingPhaseResponse = successResponse(
+    const biddingStartResponse = successResponse(
       RESPONSE_CODES.gameNotification,
       biddingStartPayload
     );
-    this.ioServer.to(gameId).emit("data", biddingPhaseResponse);
-
+    this.ioServer.to(gameId).emit("data", biddingStartResponse);
     // Notify all players about restart protection status from game start
     const restartProtectionPayload = {
       action: "RESTART_PROTECTION",
