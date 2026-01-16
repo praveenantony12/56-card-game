@@ -690,9 +690,7 @@ class GameGrid extends React.Component<IProps, IState> {
     const suitInfo = suits.find((s) => s.name === (trumpSuit || "N"));
 
     // Handle suit display - for Noes, just show "Noes", for others show "label symbol"
-
     let suitDisplay = "";
-
     if (suitInfo) {
       if (suitInfo.name === "N") {
         suitDisplay = "Noes";
@@ -738,7 +736,7 @@ class GameGrid extends React.Component<IProps, IState> {
 
         // If no suit has been selected yet by this player (first selection)
         if (prevState.currentBiddingsuit === "") {
-          // If there's already a bid in history (even 28 Noes from a pass), increment
+          // If there's already a bid in history (even 28 Noes from a pass), increment from it
           // Otherwise, start at 28 (very first player, no bids yet)
           newValue = hasActualBid ? lastBidValue + 1 : 28;
         } else if (prevState.currentBiddingsuit !== suit) {
