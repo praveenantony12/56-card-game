@@ -2742,21 +2742,10 @@ export class GameCore {
     // Handle the bidding action
     switch (action) {
       case "bid":
-        // Check if this is the first bid (no previous bid actions in history)
-        const hasNoPreviousBids =
-          !gameObj.bidHistory ||
-          gameObj.bidHistory.every((entry) => entry.action !== "bid");
-
         let finalBidValue = bidValue;
         let finalSuit = suit;
 
-        // If first bid attempt, default to 28 Noes
-        if (hasNoPreviousBids) {
-          finalBidValue = 28;
-          finalSuit = "N";
-        }
-
-        // Validate bid value
+        // Validate bid value and suit are provided
         if (
           !finalBidValue ||
           finalBidValue < 28 ||
