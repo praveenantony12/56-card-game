@@ -169,7 +169,7 @@ export class SocketServer {
         this.gameCore.onSelectTrumpSuit(selectTrumpSuitRequest, cb);
         break;
 
-      case "biddingAction":
+      case MESSAGES.biddingAction:
         const biddingActionRequest = payload as any;
         this.gameCore.onBiddingAction(biddingActionRequest, cb);
         break;

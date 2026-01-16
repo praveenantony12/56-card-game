@@ -40,4 +40,5 @@ export const MESSAGES = {
   teamScores: "TEAM_SCORES",
   selectTrumpSuit: "SELECT_TRUMP_SUIT",
   trumpSuitSelected: "TRUMP_SUIT_SELECTED",
+  biddingAction: "BIDDING_ACTION",
 };

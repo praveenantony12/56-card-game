@@ -14,6 +14,7 @@ import {
   restartGamePayload,
   selectPlayerPayload,
   selectTrumpSuitPayload,
+  MESSAGES,
   SuccessResponse,
   updateGameScorePayload,
 } from "@rcg/common";
@@ -244,7 +245,7 @@ class GameService {
     suit?: string
   ): Promise<any> {
     return this.sendRequest({
-      type: "biddingAction",
+      operation: MESSAGES.biddingAction,
       payload: {
         gameId,
         token,
