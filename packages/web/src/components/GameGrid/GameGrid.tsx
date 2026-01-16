@@ -451,7 +451,7 @@ class GameGrid extends React.Component<IProps, IState> {
     this.store.selectTrumpSuit(suit);
   }
 
-  private renderBiddingUI(isYourBiddingTurns: boolean) {
+  private renderBiddingUI(isYourBiddingTurn: boolean) {
     const suits = [
       { symbol: "Noes", name: "N", label: "" },
       { symbol: "♥", name: "H", label: "Hearts" },
@@ -472,11 +472,11 @@ class GameGrid extends React.Component<IProps, IState> {
 
     // Determine current bid from history
     let lastBidValue = 28;
-    let lastBidsuit = "W";
+    let lastBidsuit = "N";
     let lastBiddingPlayer = "";
     let hasActualBid = false;
 
-    if (bidHistory && bidHistory.length) {
+    if (bidHistory && bidHistory.length > 0) {
       for (let i = bidHistory.length - 1; i >= 0; i--) {
         const entry = bidHistory[i];
         if (entry.action === "bid") {
@@ -495,19 +495,19 @@ class GameGrid extends React.Component<IProps, IState> {
       (s) => s.name === (currentBiddingsuit || lastBidsuit)
     );
 
-    //Only show bid value if player has made selections, otherwise empty
-
+    // Only show bid value if player has made selections, otherwise empty
     const hasPlayerMadeSelections = this.state.biddingHistory.length > 0;
 
     return (
       <>
-        {/* Show current his with player name and any double/re-double status */}
+        {/* Show current bid with player name and any double/re-double status */}
         <Button.Group
           fluid={true}
-          style={{ width: "100%", display: "block", marginBottom: "18px" }}
+          style={{ width: "100%", display: "block", marginBottom: "10px" }}
         >
           <Label
             as="a"
+            basic={true}
             color="blue"
             pointing="right"
             style={{ width: "100%", justifyContent: "center" }}
@@ -545,6 +545,7 @@ class GameGrid extends React.Component<IProps, IState> {
                       hasActualBid
                     )
                   }
+                  title={suit.label}
                   style={{
                     cursor: "pointer",
                     padding: "8px 12px",
@@ -563,7 +564,7 @@ class GameGrid extends React.Component<IProps, IState> {
                 width: "100%",
                 display: "flex",
                 justifyContent: "center",
-                margin: "10px",
+                marginBottom: "10px",
               }}
             >
               <Button disabled color="blue">
@@ -601,14 +602,7 @@ class GameGrid extends React.Component<IProps, IState> {
               >
                 <Icon name="arrow alternate circle right outline" /> Bid
               </Button>
-              <Button
-                color="red"
-                onClick={this.handleBiddingPass.bind(
-                  this,
-                  lastBidValue,
-                  lastBidsuit
-                )}
-              >
+              <Button color="red" onClick={this.handleBiddingPass.bind(this)}>
                 <Icon name="hand paper outline" /> Pass
               </Button>
               {hasActualBid &&
@@ -669,7 +663,7 @@ class GameGrid extends React.Component<IProps, IState> {
     // Check for active bid or fallback to final bid
     const hasCurrentBid =
       currentBet && parseInt(currentBet) >= 28 && currentBetPlayerId;
-    const hasFinalBid = hasCurrentBid && finalBid && finalBid >= 28;
+    const hasFinalBid = !hasCurrentBid && finalBid && finalBid >= 28;
 
     // Try to get player name from various sources
     let playerName = "";
@@ -679,7 +673,7 @@ class GameGrid extends React.Component<IProps, IState> {
       if (biddingPlayer) {
         playerName = biddingPlayer;
       } else if (biddingTeam) {
-        // Fallback to first player in bidding team T
+        // Fallback to first player in bidding team
         const teamPlayers =
           biddingTeam === "A"
             ? [firstPlayer, thirdPlayer, fifthPlayer]
@@ -693,9 +687,9 @@ class GameGrid extends React.Component<IProps, IState> {
       : hasFinalBid
       ? finalBid.toString()
       : "?";
-    const suitInfo = suits.find((ss) => ss.name === (trumpSuit || "N"));
+    const suitInfo = suits.find((s) => s.name === (trumpSuit || "N"));
 
-    // Handle suit display for Noes, just show "Noes", for others show "label symbol"
+    // Handle suit display - for Noes, just show "Noes", for others show "label symbol"
 
     let suitDisplay = "";
 
@@ -743,11 +737,11 @@ class GameGrid extends React.Component<IProps, IState> {
         let newValue;
 
         // If no suit has been selected yet by this player (first selection)
-        if (prevState.currentBiddingsuit == "") {
+        if (prevState.currentBiddingsuit === "") {
           // If there's already a bid in history (even 28 Noes from a pass), increment
           // Otherwise, start at 28 (very first player, no bids yet)
           newValue = hasActualBid ? lastBidValue + 1 : 28;
-        } else if (prevState.currentBiddingsuit != suit) {
+        } else if (prevState.currentBiddingsuit !== suit) {
           // Switching to a different suit, increment from last bid
           newValue = lastBidValue + 1;
         } else {
@@ -814,7 +808,7 @@ class GameGrid extends React.Component<IProps, IState> {
     this.setState({
       currentBiddingValue: 28,
       currentBiddingsuit: "",
-      biddingHistory: [] as any,
+      biddingHistory: [],
     } as any);
   };
 
@@ -843,7 +837,6 @@ class GameGrid extends React.Component<IProps, IState> {
     } else {
       this.store.biddingAction("pass");
     }
-
     // Reset local bidding state
     this.setState({
       currentBiddingValue: 28,
@@ -864,7 +857,7 @@ class GameGrid extends React.Component<IProps, IState> {
 
   private handleBiddingReDouble = () => {
     this.store.biddingAction("re-double");
-    // Reset Local bidding state
+    // Reset local bidding state
     this.setState({
       currentBiddingValue: 28,
       currentBiddingsuit: "",
