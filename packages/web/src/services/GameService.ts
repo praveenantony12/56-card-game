@@ -12,6 +12,7 @@ import {
   reconnectDenyPayload,
   ResponseType,
   restartGamePayload,
+  forfeitGamePayload,
   selectPlayerPayload,
   selectTrumpSuitPayload,
   MESSAGES,
@@ -23,9 +24,9 @@ import * as io from "socket.io-client";
 
 const ifDevelopment = process.env.NODE_ENV === "development";
 const connection = ifDevelopment
-  ? // ? "http://24.211.235.185:90"
-    "http://localhost:4500/"
-  : // "http://192.168.1.220:4500/"
+  ? "http://24.211.235.185:90"
+  : // "http://localhost:4500/"
+    // "http://192.168.1.220:4500/"
     // "http://localhost:4500/"
     document.location.protocol + "//" + document.location.host;
 
@@ -209,6 +210,15 @@ class GameService {
    */
   public restartGame(gameId: string): Promise<any> {
     return this.sendRequest(restartGamePayload(gameId));
+  }
+
+  /**
+   * Forfeits the game for the player's team.
+   * @param gameId The gameId
+   * @param playerId The player id
+   */
+  public forfeitGame(gameId: string, playerId: string): Promise<any> {
+    return this.sendRequest(forfeitGamePayload(gameId, playerId));
   }
 
   /**

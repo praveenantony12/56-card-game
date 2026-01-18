@@ -11,6 +11,7 @@ import {
   SelectPlayerRequestPayload,
   SelectTrumpSuitRequestPayload,
   RestartGameRequestPayload,
+  ForfeitGameRequestPayload,
   AddBotsRequestPayload,
   // TableCardsRequestPayload
 } from "@rcg/common";
@@ -162,6 +163,11 @@ export class SocketServer {
       case MESSAGES.restartGame:
         const restartGameRequest = payload as RestartGameRequestPayload;
         this.gameCore.onRestartGame(restartGameRequest, cb);
+        break;
+
+      case MESSAGES.forfeitGame:
+        const forfeitGameRequest = payload as ForfeitGameRequestPayload;
+        this.gameCore.onForfeitGame(forfeitGameRequest, cb);
         break;
 
       case MESSAGES.selectTrumpSuit:

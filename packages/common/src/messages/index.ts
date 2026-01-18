@@ -20,6 +20,7 @@ export const MESSAGES = {
   deckWonByTeamA: "DECK_WON_BY_TEAM_A",
   deckWonByTeamB: "DECK_WON_BY_TEAM_B",
   restartGame: "RESTART_GAME",
+  forfeitGame: "FORFEIT_GAME",
   selectPlayer: "SELECT_PLAYER",
   cardDropAccepted: "CARD_DROP_ACCEPTED",
   gameOver: "GAME_OVER",

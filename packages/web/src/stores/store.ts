@@ -349,6 +349,56 @@ class Store implements IStore {
     }
   }
 
+  public async forfeitGame(gameId: string) {
+    this.clearNotifications();
+
+    try {
+      const ack: common.SuccessResponse = await this.gameService.forfeitGame(
+        gameId,
+        this.userInfo.playerId as string
+      );
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log("Forfeit request initiated");
+        // Show waiting notification to the player who initiated forfeit
+        this.gameInfo.notification = {
+          action: "FORFEIT_WAITING",
+          data: {
+            message:
+              "Forfeit request sent to your teammates. Waiting for their approval...",
+          },
+        };
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
+  public async approveForfeit() {
+    const gameId = this.userInfo.gameId as string;
+    const playerId = this.userInfo.playerId as string;
+    this.clearNotifications();
+
+    try {
+      const ack: common.SuccessResponse = await this.gameService.forfeitGame(
+        gameId,
+        playerId
+      );
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log("Forfeit approved");
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
+  public async denyForfeit() {
+    // For now, we just clear the notification
+    // In a more advanced implementation, we could add an explicit deny action
+    this.clearNotifications();
+  }
+
   public async selectPlayer(playerId: string) {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
@@ -781,6 +831,34 @@ class Store implements IStore {
         this.gameInfo.biddingPlayer = biddingEndData.biddingPlayer;
         this.gameInfo.bidDouble = biddingEndData.bidDouble || false;
         this.gameInfo.bidReDouble = biddingEndData.bidReDouble || false;
+        break;
+
+      case "FORFEIT_REQUEST":
+        // Handle forfeit request notification
+        this.gameInfo.notification = {
+          action: "FORFEIT_REQUEST",
+          data: data,
+        };
+        break;
+
+      case "FORFEIT_APPROVAL_UPDATE":
+        // Handle forfeit approval update notification
+        this.gameInfo.notification = {
+          action: "FORFEIT_APPROVAL_UPDATE",
+          data: data,
+        };
+        break;
+
+      case "GAME_FORFEITED":
+        // Handle game forfeited notification
+        const forfeitData = data as any;
+        this.gameInfo.isGameComplete = true;
+        this.gameInfo.teamAScore = forfeitData.teamAScore;
+        this.gameInfo.teamBScore = forfeitData.teamBScore;
+        this.gameInfo.notification = {
+          action: "GAME_FORFEITED",
+          data: data,
+        };
         break;
 
       default:

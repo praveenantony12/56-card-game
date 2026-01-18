@@ -263,7 +263,9 @@ class GameGrid extends React.Component<IProps, IState> {
                   this.store.game;
                 const { playerId } = this.store.user;
                 const isYourBiddingTurn =
-                  isBiddingPhase && currentBiddingPlayerId === playerId;
+                  isBiddingPhase && currentBiddingPlayerId === playerId
+                    ? true
+                    : false;
 
                 if (isBiddingPhase) {
                   return this.renderBiddingUI(isYourBiddingTurn);
@@ -401,6 +403,14 @@ class GameGrid extends React.Component<IProps, IState> {
                 }
               >
                 Restart Game
+              </Button>
+              <Button.Or />
+              <Button
+                color="orange"
+                onClick={this.handleForfeitGameClick.bind(this, gameId)}
+                disabled={typeof cards === "undefined" || cards.length === 0}
+              >
+                Forfeit Game
               </Button>
               <Button.Or />
               <Button
@@ -904,6 +914,10 @@ class GameGrid extends React.Component<IProps, IState> {
 
   private handleRestartGameClick = (gameId: string) => {
     this.store.restartGame(gameId);
+  };
+
+  private handleForfeitGameClick = (gameId: string) => {
+    this.store.forfeitGame(gameId);
   };
 
   private viewAllCards = () => {

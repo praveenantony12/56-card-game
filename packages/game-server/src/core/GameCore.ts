@@ -7,6 +7,7 @@ import {
   GameActionResponse,
   RESPONSE_CODES,
   RestartGameRequestPayload,
+  ForfeitGameRequestPayload,
   SelectPlayerRequestPayload,
   incrementBetByPlayerPayload,
   AddBotsRequestPayload,
@@ -1254,6 +1255,361 @@ export class GameCore {
     console.log(
       `[RESTART] Game ${gameId} restarted successfully. New starter: ${currentPlayers[newStarterIndex]?.playerId}`
     );
+  }
+
+  /**
+   * Handles game forfeit request from a player.
+   * @param req The forfeitGameRequest.
+   */
+  public onForfeitGame(req: ForfeitGameRequestPayload, cb: Function) {
+    const { gameId, playerId } = req;
+
+    // Get current game object
+    const currentGameObj = this.inMemoryStore.fetchGame(gameId);
+    if (!currentGameObj) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found"));
+      return;
+    }
+
+    // Check if game is completed or not started
+    if (currentGameObj.isGameComplete) {
+      cb(
+        null,
+        errorResponse(RESPONSE_CODES.failed, "Cannot forfeit a completed game")
+      );
+      return;
+    }
+
+    // Find the player's position to determine team
+    const players = currentGameObj.players || [];
+    let playerIndex = -1;
+    let playerTeam = "";
+
+    for (let i = 0; i < players.length; i++) {
+      if (players[i].playerId === playerId) {
+        playerIndex = i;
+        // Team A: positions 0, 2, 4
+        // Team B: positions 1, 3, 5
+        playerTeam = i % 2 === 0 ? "TeamA" : "TeamB";
+        break;
+      }
+    }
+
+    if (playerIndex === -1) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Player not found"));
+      return;
+    }
+
+    // If forfeit not yet requested, initiate it
+    if (!currentGameObj.forfeitRequestedBy) {
+      currentGameObj.forfeitRequestedBy = playerId;
+      currentGameObj.forfeitApprovals = {};
+      currentGameObj.forfeitInProgress = true;
+
+      // Initialize approvals for all team members
+      for (let i = 0; i < players.length; i++) {
+        const isTeammate =
+          (i % 2 === 0 && playerTeam === "TeamA") ||
+          (i % 2 === 1 && playerTeam === "TeamB");
+        if (isTeammate && players[i].playerId !== playerId) {
+          currentGameObj.forfeitApprovals[players[i].playerId] = false;
+        }
+      }
+
+      // Save the updated game state
+      this.inMemoryStore.saveGame(gameId, currentGameObj);
+
+      // Send forfeit request notification ONLY to other team members (not the requester)
+      const forfeitRequestPayload = {
+        action: "FORFEIT_REQUEST",
+        data: {
+          requestedBy: playerId,
+          team: playerTeam,
+          approvals: currentGameObj.forfeitApprovals,
+          message: `Player ${playerId} has requested to forfeit the game. Team members, please approve or deny.`,
+        },
+      };
+
+      const response = successResponse(
+        RESPONSE_CODES.gameNotification,
+        forfeitRequestPayload
+      );
+
+      // Send to each OTHER team member individually (not to the requester)
+      for (let i = 0; i < players.length; i++) {
+        const isTeammate =
+          (i % 2 === 0 && playerTeam === "TeamA") ||
+          (i % 2 === 1 && playerTeam === "TeamB");
+        if (isTeammate && players[i].playerId !== playerId) {
+          // Send to this team member's socket
+          this.ioServer.to(players[i].socketId).emit("data", response);
+        }
+      }
+
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, {
+          message: "Forfeit request sent to team members",
+          forfeitApprovals: currentGameObj.forfeitApprovals,
+        })
+      );
+      return;
+    }
+
+    // If forfeit is in progress, this is an approval
+    if (!currentGameObj.forfeitApprovals) {
+      cb(
+        null,
+        errorResponse(RESPONSE_CODES.failed, "No active forfeit request")
+      );
+      return;
+    }
+
+    // Register approval
+    if (playerId in currentGameObj.forfeitApprovals) {
+      currentGameObj.forfeitApprovals[playerId] = true;
+    }
+
+    // Check if all team members have approved
+    const allApproved = Object.values(currentGameObj.forfeitApprovals).every(
+      (approval) => approval === true
+    );
+
+    if (allApproved) {
+      // Execute forfeit - opposing team wins
+      const forfeitTeam = currentGameObj.forfeitRequestedBy
+        ? players.findIndex(
+            (p) => p.playerId === currentGameObj.forfeitRequestedBy
+          ) %
+            2 ===
+          0
+          ? "TeamA"
+          : "TeamB"
+        : playerTeam;
+      const winningTeam = forfeitTeam === "TeamA" ? "TeamB" : "TeamA";
+
+      // Get the bid amount for score calculation using tiered system
+      const finalBid = currentGameObj.finalBid || 28;
+      const biddingTeam = currentGameObj.biddingTeam;
+
+      // Determine point changes based on tiered scoring system
+      let winPoints, losePoints;
+      if (finalBid >= 28 && finalBid <= 39) {
+        winPoints = 1;
+        losePoints = -2;
+      } else if (finalBid >= 40 && finalBid <= 47) {
+        winPoints = 2;
+        losePoints = -3;
+      } else if (finalBid >= 48 && finalBid <= 57) {
+        winPoints = 3;
+        losePoints = -4;
+      } else if (finalBid === 56) {
+        winPoints = 4;
+        losePoints = -5;
+      } else {
+        winPoints = 1;
+        losePoints = -2;
+      }
+
+      let teamAScoreChange = 0;
+      let teamBScoreChange = 0;
+
+      if (forfeitTeam === biddingTeam) {
+        // Bidding team forfeited - they lose
+        if (biddingTeam === "TeamA") {
+          teamAScoreChange = losePoints;
+          teamBScoreChange = -losePoints;
+        } else {
+          teamAScoreChange = -losePoints;
+          teamBScoreChange = losePoints;
+        }
+      } else {
+        // Non-bidding team forfeited - bidding team wins
+        if (biddingTeam === "TeamA") {
+          teamAScoreChange = winPoints;
+          teamBScoreChange = -winPoints;
+        } else {
+          teamAScoreChange = -winPoints;
+          teamBScoreChange = winPoints;
+        }
+      }
+
+      // Update scores
+      currentGameObj.teamAScore =
+        (currentGameObj.teamAScore || 10) + teamAScoreChange;
+      currentGameObj.teamBScore =
+        (currentGameObj.teamBScore || 10) + teamBScoreChange;
+
+      // Mark game as complete
+      currentGameObj.isGameComplete = true;
+      currentGameObj.forfeitInProgress = false;
+      currentGameObj.recentlyRestarted = true;
+      currentGameObj.restartProtectionActive = true;
+
+      // Save game state
+      this.inMemoryStore.saveGame(gameId, currentGameObj);
+
+      // Notify all players of forfeit
+      const forfeitCompletePayload = {
+        action: "GAME_FORFEITED",
+        data: {
+          forfeitTeam,
+          winningTeam,
+          message: `Team ${forfeitTeam} has forfeited the game. Team ${winningTeam} wins!`,
+          teamAScore: currentGameObj.teamAScore,
+          teamBScore: currentGameObj.teamBScore,
+        },
+      };
+
+      const forfeitResponse = successResponse(
+        RESPONSE_CODES.gameNotification,
+        forfeitCompletePayload
+      );
+      this.ioServer.to(gameId).emit("data", forfeitResponse);
+
+      // Auto-restart game after forfeit
+      const currentPlayers = currentGameObj.players || [];
+
+      // Clear all existing bot timers for this game before restart
+      if (this.botTimers[gameId]) {
+        clearTimeout(this.botTimers[gameId]);
+        delete this.botTimers[gameId];
+      }
+
+      // Clear round timers
+      if (this.roundTimers[gameId]) {
+        clearTimeout(this.roundTimers[gameId]);
+        delete this.roundTimers[gameId];
+      }
+
+      // Move to next player clockwise for the new game
+      const currentStarterIndex = this.gameStartIndex;
+      const newStarterIndex = (currentStarterIndex + 1) % currentPlayers.length;
+      this.gameStartIndex = newStarterIndex;
+
+      // Prepare players for restart
+      const playersForRestart = currentPlayers
+        .filter((p) => !p.isDisconnected)
+        .map((player) => ({
+          ...player,
+        }));
+
+      // Send clear card notifications to all players BEFORE restarting
+      const teamAPayload: GameActionResponse = Payloads.sendTeamACards([]);
+      let response = successResponse(
+        RESPONSE_CODES.gameNotification,
+        teamAPayload
+      );
+      this.ioServer.to(gameId).emit("data", response);
+
+      const teamBPayload: GameActionResponse = Payloads.sendTeamBCards([]);
+      response = successResponse(RESPONSE_CODES.gameNotification, teamBPayload);
+      this.ioServer.to(gameId).emit("data", response);
+
+      const dropCardPayload: GameActionResponse = Payloads.sendDroppedCards([]);
+      response = successResponse(
+        RESPONSE_CODES.gameNotification,
+        dropCardPayload
+      );
+      this.ioServer.to(gameId).emit("data", response);
+
+      // Start the game with updated starter index
+      this.startGame(gameId, playersForRestart);
+
+      // Restore the preserved team scores after game creation
+      const gameObj = this.inMemoryStore.fetchGame(gameId);
+      gameObj.teamAScore = currentGameObj.teamAScore;
+      gameObj.teamBScore = currentGameObj.teamBScore;
+
+      // Clear any remaining dropped cards and table cards
+      gameObj.droppedCards = [];
+      gameObj.tableCards = [];
+      gameObj.dropDetails = [];
+      gameObj.dropCardPlayer = [];
+      this.dropCardPlayer = [];
+
+      this.inMemoryStore.saveGame(gameId, gameObj);
+
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, {
+          message: "Game forfeited successfully",
+        })
+      );
+    } else {
+      // Update approvals and notify
+      const forfeitUpdatePayload = {
+        action: "FORFEIT_APPROVAL_UPDATE",
+        data: {
+          approvals: currentGameObj.forfeitApprovals,
+          approvedCount: Object.values(currentGameObj.forfeitApprovals).filter(
+            (v) => v === true
+          ).length,
+          totalNeeded: Object.keys(currentGameObj.forfeitApprovals).length,
+        },
+      };
+
+      const updateResponse = successResponse(
+        RESPONSE_CODES.gameNotification,
+        forfeitUpdatePayload
+      );
+
+      // Send FORFEIT_REQUEST to teammates who haven't approved yet
+      for (let i = 0; i < players.length; i++) {
+        const isTeammate =
+          (i % 2 === 0 && playerTeam === "TeamA") ||
+          (i % 2 === 1 && playerTeam === "TeamB");
+        if (isTeammate) {
+          const teammate = players[i];
+          if (teammate.playerId === currentGameObj.forfeitRequestedBy) {
+            // Don't send to the requester, send them the progress update
+            this.ioServer.to(teammate.socketId).emit("data", updateResponse);
+          } else if (
+            currentGameObj.forfeitApprovals[teammate.playerId] === false
+          ) {
+            // Send FORFEIT_REQUEST to teammates who haven't approved
+            const forfeitRequestPayload = {
+              action: "FORFEIT_REQUEST",
+              data: {
+                requestedBy: currentGameObj.forfeitRequestedBy,
+                team: playerTeam,
+                approvals: currentGameObj.forfeitApprovals,
+                message: `Player ${currentGameObj.forfeitRequestedBy} has requested to forfeit the game. Team members, please approve or deny.`,
+              },
+            };
+            const requestResponse = successResponse(
+              RESPONSE_CODES.gameNotification,
+              forfeitRequestPayload
+            );
+            this.ioServer.to(teammate.socketId).emit("data", requestResponse);
+          } else {
+            // Already approved, send them the progress update
+            this.ioServer.to(teammate.socketId).emit("data", updateResponse);
+          }
+        }
+      }
+
+      // Send progress update to opposing team and spectators
+      for (let i = 0; i < players.length; i++) {
+        const isTeammate =
+          (i % 2 === 0 && playerTeam === "TeamA") ||
+          (i % 2 === 1 && playerTeam === "TeamB");
+        if (!isTeammate) {
+          this.ioServer.to(players[i].socketId).emit("data", updateResponse);
+        }
+      }
+
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, {
+          message: "Approval registered",
+          approvals: currentGameObj.forfeitApprovals,
+        })
+      );
+    }
+
+    // Save the game state after approval update
+    this.inMemoryStore.saveGame(gameId, currentGameObj);
   }
 
   /**

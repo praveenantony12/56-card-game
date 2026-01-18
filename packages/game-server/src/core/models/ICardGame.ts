@@ -46,6 +46,11 @@ export interface ICardGame {
   bidDouble?: boolean;
   bidReDouble?: boolean;
 
+  // Forfeit state
+  forfeitRequestedBy?: string;
+  forfeitApprovals?: { [playerId: string]: boolean };
+  forfeitInProgress?: boolean;
+
   // This is to store the card details by userId/token.
   [token: string]: any;
 }

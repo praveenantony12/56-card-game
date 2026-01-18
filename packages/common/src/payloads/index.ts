@@ -11,14 +11,14 @@ export const reconnectPayload = (
 ) => {
   return {
     operation: MESSAGES.reconnect,
-    payload: { playerId, token, gameId }
+    payload: { playerId, token, gameId },
   };
 };
 
 export const reconnectApprovePayload = (
   gameId: string,
   playerId: string,
-  approvingPlayerId: string,
+  approvingPlayerId: string
 ) => {
   return {
     operation: MESSAGES.reconnectApprove,
@@ -29,7 +29,7 @@ export const reconnectApprovePayload = (
 export const reconnectDenyPayload = (
   gameId: string,
   playerId: string,
-  denyingPlayerId: string,
+  denyingPlayerId: string
 ) => {
   return {
     operation: MESSAGES.reconnectDeny,
@@ -98,6 +98,10 @@ export const restartGamePayload = (gameId: string) => {
   return { operation: MESSAGES.restartGame, payload: { gameId } };
 };
 
+export const forfeitGamePayload = (gameId: string, playerId: string) => {
+  return { operation: MESSAGES.forfeitGame, payload: { gameId, playerId } };
+};
+
 export const selectPlayerPayload = (
   currentPlayerId: string,
   gameId: string,
@@ -130,4 +134,4 @@ export const addBotsPayload = (
     operation: MESSAGES.addBots,
     payload: { botCount, gameId, startImmediately },
   };
-}
+};

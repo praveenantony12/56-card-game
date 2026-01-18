@@ -49,4 +49,10 @@ export interface IStore {
   leaveGame(): void;
 
   clearNotifications(): void;
+
+  approveForfeit(): Promise<void>;
+
+  denyForfeit(): Promise<void>;
+
+  forfeitGame(gameId: string): Promise<void>;
 }
