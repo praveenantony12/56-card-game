@@ -139,6 +139,7 @@ class GameGrid extends React.Component<IProps, IState> {
       finalBid,
       biddingTeam,
       biddingPlayer,
+      bidHistory,
       teamAScore,
       teamBScore,
     } = this.store.game;
@@ -405,14 +406,14 @@ class GameGrid extends React.Component<IProps, IState> {
                 Restart Game
               </Button>
               <Button.Or />
-              <Button
+              {/* <Button
                 color="orange"
                 onClick={this.handleForfeitGameClick.bind(this, gameId)}
                 disabled={typeof cards === "undefined" || cards.length === 0}
               >
                 Forfeit Game
               </Button>
-              <Button.Or />
+              <Button.Or /> */}
               <Button
                 color="red"
                 onClick={this.viewAllCards.bind(this, gameId)}
@@ -652,6 +653,7 @@ class GameGrid extends React.Component<IProps, IState> {
       gameScore,
       bidDouble,
       bidReDouble,
+      bidHistory,
     } = this.store.game;
     const { players } = this.store.game;
     const firstPlayer = players && players.length > 0 ? players[0] : "";
@@ -680,10 +682,22 @@ class GameGrid extends React.Component<IProps, IState> {
     if (hasCurrentBid) {
       playerName = currentBetPlayerId;
     } else if (hasFinalBid) {
-      if (biddingPlayer) {
+      // Look for the last player who made a bid in bidHistory
+      if (bidHistory && bidHistory.length > 0) {
+        for (let i = bidHistory.length - 1; i >= 0; i--) {
+          const entry = bidHistory[i];
+          if (entry.action === "bid" && entry.playerId) {
+            playerName = entry.playerId;
+            break;
+          }
+        }
+      }
+      // Fallback to biddingPlayer if available
+      if (!playerName && biddingPlayer) {
         playerName = biddingPlayer;
-      } else if (biddingTeam) {
-        // Fallback to first player in bidding team
+      }
+      // Fallback to first player in bidding team
+      if (!playerName && biddingTeam) {
         const teamPlayers =
           biddingTeam === "A"
             ? [firstPlayer, thirdPlayer, fifthPlayer]
@@ -927,56 +941,6 @@ class GameGrid extends React.Component<IProps, IState> {
     teamCardImages.forEach((teamCardImage) => {
       teamCardImage.classList.remove("flip_image");
     });
-    this.calculatePoints();
-  };
-
-  private calculatePoints = () => {
-    const teamACardsDiv: any = document.querySelectorAll(".teamACards .card");
-    const teamBCardsDiv: any = document.querySelectorAll(".teamBCards .card");
-    const teamACards = [];
-    const teamBCards = [];
-    for (const card of teamACardsDiv) {
-      teamACards.push(card.id);
-    }
-    for (const card of teamBCardsDiv) {
-      teamBCards.push(card.id);
-    }
-
-    const mappedTeamACards = teamACards.map((card) => {
-      const cardType = card.slice(2) as keyof typeof POINTS;
-      let weight = (POINTS[cardType] as any) || 0;
-      // Add trump bonus: if card suit matches trump suit, add 10 points
-      // if (trumpSuit && card[1] === trumpSuit) {
-      //   weight += 10;
-      // }
-      return { card, weight };
-    });
-    const mappedTeamBCards = teamBCards.map((card) => {
-      const cardType = card.slice(2) as keyof typeof POINTS;
-      let weight = (POINTS[cardType] as any) || 0;
-      // Add trump bonus: if card suit matches trump suit, add 10 points
-      // if (trumpSuit && card[1] === trumpSuit) {
-      //   weight += 10;
-      // }
-      return { card, weight };
-    });
-    const totalTeamAPoints = mappedTeamACards.reduce(
-      /* tslint:disable:no-string-literal */
-      (a, b) => a + (b["weight"] || 0),
-      0
-      /* tslint:disable:no-string-literal */
-    );
-    const totalTeamBPoints = mappedTeamBCards.reduce(
-      /* tslint:disable:no-string-literal */
-      (a, b) => a + (b["weight"] || 0),
-      0
-      /* tslint:disable:no-string-literal */
-    );
-
-    const teamAPointsDiv: any = document.querySelectorAll(".teamAPoints");
-    const teamABointsDiv: any = document.querySelectorAll(".teamBPoints");
-    teamAPointsDiv[0].innerText = totalTeamAPoints;
-    teamABointsDiv[0].innerText = totalTeamBPoints;
   };
 }
 

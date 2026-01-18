@@ -855,6 +855,19 @@ class Store implements IStore {
         this.gameInfo.isGameComplete = true;
         this.gameInfo.teamAScore = forfeitData.teamAScore;
         this.gameInfo.teamBScore = forfeitData.teamBScore;
+        // Reset bidding and game state for the upcoming restart
+        this.gameInfo.isBiddingPhase = true;
+        this.gameInfo.bidHistory = [];
+        this.gameInfo.bidPassCount = 0;
+        this.gameInfo.currentBet = undefined;
+        this.gameInfo.trumpSuit = undefined;
+        this.gameInfo.bidDouble = false;
+        this.gameInfo.bidReDouble = false;
+        this.gameInfo.finalBid = undefined;
+        this.gameInfo.droppedCards = [];
+        this.gameInfo.teamACards = [];
+        this.gameInfo.teamBCards = [];
+        this.gameInfo.cards = [];
         this.gameInfo.notification = {
           action: "GAME_FORFEITED",
           data: data,

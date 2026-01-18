@@ -1005,6 +1005,10 @@ export class GameCore {
     gameObject.bidDouble = false;
     gameObject.bidReDouble = false;
 
+    // Ensure game is NOT marked as complete
+    gameObject.isGameComplete = false;
+    gameObject.isGameCompleted = false;
+
     this.inMemoryStore.saveGame(gameId, gameObject);
 
     gameObject.players.forEach((player) => {
@@ -1261,7 +1265,7 @@ export class GameCore {
    * Handles game forfeit request from a player.
    * @param req The forfeitGameRequest.
    */
-  public onForfeitGame(req: ForfeitGameRequestPayload, cb: Function) {
+  public async onForfeitGame(req: ForfeitGameRequestPayload, cb: Function) {
     const { gameId, playerId } = req;
 
     // Get current game object
@@ -1513,11 +1517,30 @@ export class GameCore {
       );
       this.ioServer.to(gameId).emit("data", response);
 
+      // CRITICAL: Delete the old game from the store before creating a new one
+      console.log(`[FORFEIT] Deleting old game state for gameId=${gameId}`);
+      this.inMemoryStore.deleteGame(gameId);
+
+      // Add a small delay to ensure delete is processed
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Verify the game was deleted
+      let verifyDeleted = this.inMemoryStore.fetchGame(gameId);
+      console.log(
+        `[FORFEIT] After delete, fetchGame returns:`,
+        verifyDeleted ? "FOUND (ERROR!)" : "undefined (correct)"
+      );
+
       // Start the game with updated starter index
       this.startGame(gameId, playersForRestart);
 
-      // Restore the preserved team scores after game creation
-      const gameObj = this.inMemoryStore.fetchGame(gameId);
+      // Get the game that was just created by startGame
+      let gameObj = this.inMemoryStore.fetchGame(gameId);
+      console.log(
+        `[FORFEIT] After startGame, isBiddingPhase=${gameObj.isBiddingPhase}, currentBiddingPlayerId=${gameObj.currentBiddingPlayerId}`
+      );
+
+      // Update scores from the forfeited game
       gameObj.teamAScore = currentGameObj.teamAScore;
       gameObj.teamBScore = currentGameObj.teamBScore;
 
@@ -1528,7 +1551,37 @@ export class GameCore {
       gameObj.dropCardPlayer = [];
       this.dropCardPlayer = [];
 
-      this.inMemoryStore.saveGame(gameId, gameObj);
+      // Clear forfeit-related state
+      gameObj.forfeitRequestedBy = undefined;
+      gameObj.forfeitApprovals = {};
+      gameObj.forfeitInProgress = false;
+
+      // Ensure game state is correct
+      gameObj.isBiddingPhase = true;
+      gameObj.isGameComplete = false;
+      gameObj.isGameCompleted = false;
+
+      console.log(
+        `[FORFEIT] Before final save: isBiddingPhase=${gameObj.isBiddingPhase}, isGameComplete=${gameObj.isGameComplete}, currentBiddingPlayerId=${gameObj.currentBiddingPlayerId}`
+      );
+
+      // Save with a fresh reference to avoid mutation issues
+      const gameObjToSave = {
+        ...gameObj,
+        isBiddingPhase: true,
+        isGameComplete: false,
+        isGameCompleted: false,
+        // Disable restart protection for forfeited games - allow immediate restart after first card
+        restartProtectionActive: false,
+      };
+
+      this.inMemoryStore.saveGame(gameId, gameObjToSave);
+
+      // Verify the save worked by fetching fresh
+      const verifyGameObj = this.inMemoryStore.fetchGame(gameId);
+      console.log(
+        `[FORFEIT] After save verification: isBiddingPhase=${verifyGameObj.isBiddingPhase}, isGameComplete=${verifyGameObj.isGameComplete}, currentBiddingPlayerId=${verifyGameObj.currentBiddingPlayerId}`
+      );
 
       cb(
         null,
@@ -1652,6 +1705,32 @@ export class GameCore {
       (!gameObject.teamBCards || gameObject.teamBCards.length === 0) &&
       (!gameObject.droppedCards || gameObject.droppedCards.length === 0);
 
+    console.log("isFirstCardOfGame: ", isFirstCardOfGame);
+    console.log("gameObject.finalBid: ", gameObject.finalBid);
+
+    // Disable restart protection as soon as the first card is played
+    if (isFirstCardOfGame && gameObject.restartProtectionActive) {
+      gameObject.restartProtectionActive = false;
+      gameObject.recentlyRestarted = false;
+      console.log(
+        `[RESTART] Protection disabled for game ${gameId} - first card played`
+      );
+
+      // Notify all players that restart protection is now disabled
+      const restartProtectionPayload = {
+        action: "RESTART_PROTECTION",
+        data: {
+          restartProtectionActive: false,
+          message: "Restart is now available again",
+        },
+      };
+      const restartProtectionResponse = successResponse(
+        RESPONSE_CODES.gameNotification,
+        restartProtectionPayload
+      );
+      this.ioServer.to(gameId).emit("data", restartProtectionResponse);
+    }
+
     if (isFirstCardOfGame && !gameObject.finalBid) {
       // Sets default to 28
       gameObject.finalBid = 28;
@@ -1659,29 +1738,6 @@ export class GameCore {
 
       // Set bidding player to the one who is dropping the first card (starting player)
       gameObject.biddingPlayer = playerId;
-
-      // Remove restart protection once first card is played after restart
-      if (gameObject.restartProtectionActive) {
-        gameObject.restartProtectionActive = false;
-        gameObject.recentlyRestarted = false;
-        console.log(
-          `[RESTART] Protection disabled for game ${gameId} - first card played`
-        );
-
-        // Notify all players that restart protection is now disabled
-        const restartProtectionPayload = {
-          action: "RESTART_PROTECTION",
-          data: {
-            restartProtectionActive: false,
-            message: "Restart is now available again",
-          },
-        };
-        const restartProtectionResponse = successResponse(
-          RESPONSE_CODES.gameNotification,
-          restartProtectionPayload
-        );
-        this.ioServer.to(gameId).emit("data", restartProtectionResponse);
-      }
       gameObject.playerWithCurrentBet = playerId;
 
       // Determine which team the bidding player belongs to
@@ -2573,12 +2629,21 @@ export class GameCore {
     game["playerWithCurrentBet"] = players[starterIndex]?.playerId;
     game["teamAScore"] = 10;
     game["teamBScore"] = 10;
+    game["isGameComplete"] = false;
     game["isGameCompleted"] = false;
 
     // Add new fields for reconnect support
     game["disconnectedPlayers"] = {};
     game["gameCreatedAt"] = new Date();
     game["gamePaused"] = false;
+
+    // Initialize bidding phase state
+    game["isBiddingPhase"] = false;
+    game["currentBiddingPlayerId"] = undefined;
+    game["bidHistory"] = [];
+    game["bidPassCount"] = 0;
+    game["bidDouble"] = false;
+    game["bidReDouble"] = false;
 
     const cards: string[][] = this.deck.getCardsForGame();
     const sortedCards = cards.map((handCards) =>
@@ -3085,8 +3150,16 @@ export class GameCore {
       return;
     }
 
-    // Initialize bidding state if needed
-    if (!gameObj.isBiddingPhase) {
+    // Initialize bidding state if needed - ensure it's actually a boolean true
+    if (gameObj.isBiddingPhase !== true) {
+      console.log(
+        `[BID ERROR] Game ${gameId} - isBiddingPhase is ${gameObj.isBiddingPhase}, expected true. Game state:`,
+        {
+          isBiddingPhase: gameObj.isBiddingPhase,
+          isGameComplete: gameObj.isGameComplete,
+          currentBiddingPlayerId: gameObj.currentBiddingPlayerId,
+        }
+      );
       cb(null, errorResponse(RESPONSE_CODES.failed, "Not in bidding phase"));
       return;
     }
