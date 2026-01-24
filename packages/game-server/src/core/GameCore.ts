@@ -1705,9 +1705,6 @@ export class GameCore {
       (!gameObject.teamBCards || gameObject.teamBCards.length === 0) &&
       (!gameObject.droppedCards || gameObject.droppedCards.length === 0);
 
-    console.log("isFirstCardOfGame: ", isFirstCardOfGame);
-    console.log("gameObject.finalBid: ", gameObject.finalBid);
-
     // Disable restart protection as soon as the first card is played
     if (isFirstCardOfGame && gameObject.restartProtectionActive) {
       gameObject.restartProtectionActive = false;
@@ -3452,11 +3449,15 @@ export class GameCore {
       gameObj.trumpSuit = "N";
     }
 
-    // Determine bidding team based on bid history
+    // Determine bidding team based on bid history - find the LAST bid, not the first
     if (gameObj.bidHistory && gameObj.bidHistory.length > 0) {
-      const lastBidEntry = gameObj.bidHistory.find(
-        (entry) => entry.action === "bid"
-      );
+      let lastBidEntry = null;
+      for (let i = gameObj.bidHistory.length - 1; i >= 0; i--) {
+        if (gameObj.bidHistory[i].action === "bid") {
+          lastBidEntry = gameObj.bidHistory[i];
+          break;
+        }
+      }
       if (lastBidEntry) {
         gameObj.biddingPlayer = lastBidEntry.playerId;
         gameObj.biddingTeam = this.getPlayerTeam(

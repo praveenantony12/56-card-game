@@ -217,8 +217,9 @@
 
 .cardTable {
   background: url("./cardTable4.png") no-repeat;
-  height: 35rem;
+  height: 32rem;
   background-position: center;
+  background-size: 60rem;
 }
 
 .cardOnTable {

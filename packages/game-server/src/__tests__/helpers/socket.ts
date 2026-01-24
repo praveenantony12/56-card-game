@@ -4,7 +4,7 @@ export class Socket {
   public static openClientConnection() {
     // return io("http://192.168.1.220:3000");
     // return io("http://localhost:3000");
-    return io("http://24.211.235.25:70/");
+    return io("http://24.211.235.185:70/");
   }
 
   public static sendData(

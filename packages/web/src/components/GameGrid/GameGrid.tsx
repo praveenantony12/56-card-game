@@ -1,6 +1,13 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
-import { Button, Dimmer, Grid, Icon, Label } from "semantic-ui-react";
+import {
+  Button,
+  Dimmer,
+  Grid,
+  GridColumn,
+  Icon,
+  Label,
+} from "semantic-ui-react";
 import POINTS from "../../constants/points";
 import { IStore } from "../../stores/IStore";
 import Card from "../Card/Card";
@@ -238,6 +245,11 @@ class GameGrid extends React.Component<IProps, IState> {
                 this.state.isRoundReveal && this.state.timerRemaining > 0
               )}
             </div>
+          </Grid.Column>
+          <Grid.Column>
+            <Button color="red" onClick={this.handleBiddingPass.bind(this)}>
+              <Icon name="hand paper outline" /> Pass
+            </Button>
           </Grid.Column>
         </Grid.Row>
 
@@ -611,7 +623,7 @@ class GameGrid extends React.Component<IProps, IState> {
                 onClick={this.handleBiddingDone.bind(this)}
                 disabled={!hasPlayerMadeSelections}
               >
-                <Icon name="arrow alternate circle right outline" /> Bid
+                <Icon name="arrow circle right" /> &nbsp; Bid
               </Button>
               <Button color="red" onClick={this.handleBiddingPass.bind(this)}>
                 <Icon name="hand paper outline" /> Pass
