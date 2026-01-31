@@ -5,6 +5,7 @@ import {
   Dimmer,
   Grid,
   GridColumn,
+  ButtonContent,
   Icon,
   Label,
 } from "semantic-ui-react";
@@ -190,11 +191,35 @@ class GameGrid extends React.Component<IProps, IState> {
       { symbol: "♣", name: "C", label: "Clubs" },
     ];
 
+    const { isBiddingPhase, currentBiddingPlayerId } = this.store.game;
+
+    const isYourBiddingTurn =
+      isBiddingPhase && currentBiddingPlayerId === playerId;
+
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
         <Grid.Row centered={true} columns={1}>
           <Grid.Column className="cardHeight cardTable">
             <div className="cardOnTable">
+              <Button.Group
+                className="handleBiddingPass"
+                style={{
+                  display:
+                    this.state.currentBiddingsuit !== "" ||
+                    gameStarted ||
+                    !isYourBiddingTurn
+                      ? "none"
+                      : "block",
+                }}
+                onClick={this.handleBiddingPass.bind(this)}
+              >
+                <Button as="div" labelPosition="left" color="red">
+                  <Label as="a" basic={true} color="black" pointing="right">
+                    Pass
+                  </Label>
+                  <Button color="red">Not Bidding</Button>
+                </Button>
+              </Button.Group>
               {this.renderCards(droppedCards, false, false, dropCardPlayer)}
               {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
                 <div className="round-timer">{this.state.timerRemaining}</div>
@@ -246,11 +271,6 @@ class GameGrid extends React.Component<IProps, IState> {
               )}
             </div>
           </Grid.Column>
-          <Grid.Column>
-            <Button color="red" onClick={this.handleBiddingPass.bind(this)}>
-              <Icon name="hand paper outline" /> Pass
-            </Button>
-          </Grid.Column>
         </Grid.Row>
 
         <Grid centered={true}>
@@ -258,7 +278,7 @@ class GameGrid extends React.Component<IProps, IState> {
             centered={true}
             columns={1}
             className="biddingGrid"
-            style={{ marginTop: "-2rem" }}
+            style={{ marginTop: "-3rem" }}
           >
             <Grid.Column
               textAlign="center"
@@ -624,9 +644,6 @@ class GameGrid extends React.Component<IProps, IState> {
                 disabled={!hasPlayerMadeSelections}
               >
                 <Icon name="arrow circle right" /> &nbsp; Bid
-              </Button>
-              <Button color="red" onClick={this.handleBiddingPass.bind(this)}>
-                <Icon name="hand paper outline" /> Pass
               </Button>
               {hasActualBid &&
                 lastBidValue > 0 &&

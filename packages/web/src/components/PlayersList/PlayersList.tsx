@@ -47,7 +47,7 @@ class PlayersList extends React.Component<IProps, {}> {
       const status = isBiddingPhase
         ? isCurrentBiddingPlayer
           ? "Bid"
-          : "Wait to Bid"
+          : "Wait"
         : player === currentPlayerId
         ? "Play"
         : "Wait";
