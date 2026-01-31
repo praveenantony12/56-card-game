@@ -1174,6 +1174,9 @@ export class GameCore {
     gameObj.finalBid = undefined;
     gameObj.biddingTeam = undefined;
     gameObj.biddingPlayer = undefined;
+    gameObj.bidHistory = [];
+    gameObj.bidPassCount = 0;
+    gameObj.currentBet = "27";
     this.inMemoryStore.saveGame(req.gameId, gameObj);
 
     // Send game completion reset notification to all players
@@ -1848,14 +1851,26 @@ export class GameCore {
     const { gameId, token } = req;
     const currentGameIns = new Game(this.inMemoryStore, gameId, "", token);
     const gameObj = this.inMemoryStore.fetchGame(req.gameId);
+
+    // Don't process increment bet during bidding phase - the new bidding action system handles that
+    if (gameObj.isBiddingPhase) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "Use biddingAction during bidding phase"
+        )
+      );
+      return;
+    }
+
     const player = currentGameIns.gameObj.players.find(
       (element) => element.token === currentGameIns.currentPlayerToken
     );
     gameObj.currentBet = req.playerBet;
     gameObj.playerWithCurrentBet = player.playerId;
 
-    // Check if this is the final bid (when all players have had a chance to bid)
-    // Store the final bid and bidding team info
+    // Legacy logic - only used outside of bidding phase now
     if (parseInt(req.playerBet) >= 28) {
       gameObj.finalBid = parseInt(req.playerBet);
       gameObj.biddingPlayer = player.playerId;
@@ -2641,6 +2656,9 @@ export class GameCore {
     game["bidPassCount"] = 0;
     game["bidDouble"] = false;
     game["bidReDouble"] = false;
+    game["finalBid"] = undefined;
+    game["biddingPlayer"] = undefined;
+    game["biddingTeam"] = undefined;
 
     const cards: string[][] = this.deck.getCardsForGame();
     const sortedCards = cards.map((handCards) =>

@@ -336,6 +336,18 @@ class Store implements IStore {
     // const { gameId } = this.userInfo;
     this.clearNotifications();
 
+    // Reset bidding-related state on restart to prevent persistence from previous game
+    this.gameInfo.isBiddingPhase = false;
+    this.gameInfo.currentBiddingPlayerId = undefined;
+    this.gameInfo.bidHistory = [];
+    this.gameInfo.bidPassCount = 0;
+    this.gameInfo.bidDouble = false;
+    this.gameInfo.bidReDouble = false;
+    this.gameInfo.finalBid = undefined;
+    this.gameInfo.biddingPlayer = undefined;
+    this.gameInfo.biddingTeam = undefined;
+    this.gameInfo.currentBet = "27";
+
     try {
       const ack: common.SuccessResponse = await this.gameService.restartGame(
         gameId
@@ -822,9 +834,11 @@ class Store implements IStore {
         break;
 
       case "biddingPhaseEnd":
-        // Bidding phase has ended
+        // Bidding phase has ended - clear current bet info and set final bid info
         const biddingEndData = data as any;
         this.gameInfo.isBiddingPhase = false;
+        this.gameInfo.currentBet = undefined; // Clear current bet when bidding phase ends
+        this.gameInfo.currentBetPlayerId = undefined; // Clear to prevent showing wrong player
         this.gameInfo.finalBid = biddingEndData.finalBid;
         this.gameInfo.trumpSuit = biddingEndData.trumpSuit;
         this.gameInfo.biddingTeam = biddingEndData.biddingTeam;
