@@ -35,6 +35,7 @@ export interface IGame {
   // Bidding phase state
   isBiddingPhase?: boolean;
   currentBiddingPlayerId?: string;
+  startingPlayerId?: string;
   bidHistory?: Array<{
     playerId: string;
     action: "bid" | "pass" | "double" | "re-double";

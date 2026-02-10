@@ -1029,6 +1029,7 @@ export class GameCore {
       action: "biddingPhaseStart",
       data: {
         currentBiddingPlayerId: gameObject.currentBiddingPlayerId,
+        startingPlayerId: gameObject.startingPlayerId,
       },
     };
     const biddingStartResponse = successResponse(
@@ -2652,6 +2653,7 @@ export class GameCore {
     // Initialize bidding phase state
     game["isBiddingPhase"] = false;
     game["currentBiddingPlayerId"] = undefined;
+    game["startingPlayerId"] = players[starterIndex]?.playerId;
     game["bidHistory"] = [];
     game["bidPassCount"] = 0;
     game["bidDouble"] = false;
@@ -2783,6 +2785,7 @@ export class GameCore {
         // Bidding phase state
         isBiddingPhase: game.isBiddingPhase || false,
         currentBiddingPlayerId: game.currentBiddingPlayerId,
+        startingPlayerId: game.startingPlayerId,
         bidHistory: game.bidHistory || [],
         bidPassCount: game.bidPassCount || 0,
         lastBiddingTeam: game.lastBiddingTeam,

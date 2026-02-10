@@ -9,3 +9,20 @@
 .playerSelectButton {
   opacity: 0.7 !important;
 }
+
+.startLabelContainer {
+  display: flex;
+  justify-content: center;
+}
+
+.startLabel {
+  font-weight: bold !important;
+  font-size: 0.75rem !important;
+  padding: 0.3rem 0.6rem !important;
+  box-shadow: 0 2px 6px rgba(33, 133, 208, 0.3) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  background-color: #2185d0 !important;
+  color: white !important;
+  border-radius: 4px !important;
+}

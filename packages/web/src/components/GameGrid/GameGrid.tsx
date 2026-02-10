@@ -548,12 +548,14 @@ class GameGrid extends React.Component<IProps, IState> {
           fluid={true}
           style={{ width: "100%", display: "block", marginBottom: "10px" }}
         >
-          <Label
-            as="a"
-            basic={true}
-            color="blue"
-            pointing="right"
-            style={{ width: "100%", justifyContent: "center" }}
+          <Button
+            color="black"
+            style={{
+              width: "25%",
+              justifyContent: "center",
+              color: "orange",
+              border: "1px solid orange",
+            }}
           >
             {hasActualBid
               ? `${lastBiddingPlayer} bids: ${lastBidValue} ${
@@ -564,7 +566,7 @@ class GameGrid extends React.Component<IProps, IState> {
               : "No Bids Yet"}
             {bidDouble && " (Double)"}
             {bidReDouble && " (Re-Double)"}
-          </Label>
+          </Button>
         </Button.Group>
 
         {isYourBiddingTurn && (
@@ -604,13 +606,13 @@ class GameGrid extends React.Component<IProps, IState> {
             <Button.Group
               fluid={true}
               style={{
-                width: "100%",
+                width: "25%",
                 display: "flex",
                 justifyContent: "center",
                 marginBottom: "10px",
               }}
             >
-              <Button disabled color="blue">
+              <Button disabled color="orange">
                 Your Bid:{" "}
                 {hasPlayerMadeSelections
                   ? `${currentBiddingValue} ${
@@ -738,8 +740,8 @@ class GameGrid extends React.Component<IProps, IState> {
     const bidValue = hasCurrentBid
       ? currentBet
       : hasFinalBid
-      ? finalBid.toString()
-      : "?";
+        ? finalBid.toString()
+        : "?";
     const suitInfo = suits.find((s) => s.name === (trumpSuit || "N"));
 
     // Handle suit display - for Noes, just show "Noes", for others show "label symbol"
@@ -764,15 +766,17 @@ class GameGrid extends React.Component<IProps, IState> {
         fluid={true}
         style={{ width: "100%", display: "block", marginBottom: "10px" }}
       >
-        <Label
-          as="a"
-          basic={true}
-          color="blue"
-          pointing="right"
-          style={{ width: "100%", justifyContent: "center" }}
+        <Button
+          color="black"
+          style={{
+            width: "25%",
+            justifyContent: "center",
+            color: "white",
+            border: "1px solid red",
+          }}
         >
           {label}
-        </Label>
+        </Button>
       </Button.Group>
     );
   }
@@ -820,7 +824,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   value: this.state.currentBiddingValue,
                 },
               ],
-            } as any)
+            }) as any
         );
       }
     );

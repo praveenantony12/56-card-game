@@ -626,6 +626,7 @@ class Store implements IStore {
           ...this.gameInfo,
           players: gameState.players || [],
           currentPlayerId: gameState.currentPlayerId, // include current player Id
+          startingPlayerId: gameState.startingPlayerId,
           droppedCards: gameState.droppedCards || [],
           dropCardPlayer: gameState.dropCardPlayer || [],
           teamACards: gameState.teamACards || [],
@@ -815,6 +816,7 @@ class Store implements IStore {
         this.gameInfo.isBiddingPhase = true;
         this.gameInfo.currentBiddingPlayerId =
           biddingStartData.currentBiddingPlayerId;
+        this.gameInfo.startingPlayerId = biddingStartData.startingPlayerId;
         this.gameInfo.bidHistory = [];
         this.gameInfo.bidPassCount = 0;
         break;

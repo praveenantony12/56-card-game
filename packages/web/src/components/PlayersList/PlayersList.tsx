@@ -30,8 +30,13 @@ class PlayersList extends React.Component<IProps, {}> {
   };
 
   private renderList() {
-    const { players, currentPlayerId, isBiddingPhase, currentBiddingPlayerId } =
-      this.gameInfo;
+    const {
+      players,
+      currentPlayerId,
+      isBiddingPhase,
+      currentBiddingPlayerId,
+      startingPlayerId,
+    } = this.gameInfo;
     const { droppedCards } = this.store.game;
 
     const canSelectPlayer =
@@ -41,9 +46,13 @@ class PlayersList extends React.Component<IProps, {}> {
       return null;
     }
 
+    const hasGameStarted = droppedCards && droppedCards.length > 0;
+    const showStartLabel = isBiddingPhase && !hasGameStarted;
+
     const rows = players.map((player) => {
       const isCurrentBiddingPlayer =
         isBiddingPhase && player === currentBiddingPlayerId;
+      const isStartingPlayer = player === startingPlayerId;
       const status = isBiddingPhase
         ? isCurrentBiddingPlayer
           ? "Bid"
@@ -54,10 +63,6 @@ class PlayersList extends React.Component<IProps, {}> {
 
       return (
         <Grid.Column textAlign="center" key={player}>
-          {/* <Segment
-            color={currentPlayerStrikeHighLightColor(player)}
-            id="players-list"
-          > */}
           <Button
             as="div"
             labelPosition="right"
@@ -110,7 +115,13 @@ class PlayersList extends React.Component<IProps, {}> {
               {status}
             </Label>
           </Button>
-          {/* </Segment> */}
+          {showStartLabel && isStartingPlayer && (
+            <div className="startLabelContainer">
+              <Label color="blue" className="startLabel">
+                Start
+              </Label>
+            </div>
+          )}
         </Grid.Column>
       );
     });
