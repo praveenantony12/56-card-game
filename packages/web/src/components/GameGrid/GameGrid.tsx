@@ -558,7 +558,7 @@ class GameGrid extends React.Component<IProps, IState> {
             }}
           >
             {hasActualBid
-              ? `${lastBiddingPlayer} bids: ${lastBidValue} ${
+              ? `${lastBiddingPlayer} bids  →  ${lastBidValue} ${
                   lastSuitInfo?.name === "N"
                     ? "Noes"
                     : `${lastSuitInfo?.label} ${lastSuitInfo?.symbol}`
@@ -756,7 +756,7 @@ class GameGrid extends React.Component<IProps, IState> {
 
     const label =
       (hasCurrentBid || hasFinalBid) && playerName
-        ? `${playerName}'s bid: ${bidValue} ${suitDisplay}${
+        ? `${playerName}'s bid  →  ${bidValue} ${suitDisplay}${
             bidDouble ? " (Double)" : ""
           }${bidReDouble ? " (Re-Double)" : ""}`
         : "Game Starting...";

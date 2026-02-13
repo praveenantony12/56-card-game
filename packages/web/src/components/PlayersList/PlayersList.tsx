@@ -58,8 +58,8 @@ class PlayersList extends React.Component<IProps, {}> {
           ? "Bid"
           : "Wait"
         : player === currentPlayerId
-        ? "Play"
-        : "Wait";
+          ? "Play"
+          : "Wait";
 
       return (
         <Grid.Column textAlign="center" key={player}>
@@ -72,8 +72,8 @@ class PlayersList extends React.Component<IProps, {}> {
                   ? false
                   : true
                 : canSelectPlayer || player === currentPlayerId
-                ? false
-                : true
+                  ? false
+                  : true
             }
             onClick={
               isBiddingPhase
@@ -81,8 +81,8 @@ class PlayersList extends React.Component<IProps, {}> {
                   ? this.handlePlayerSelectClick.bind(this, player)
                   : false
                 : canSelectPlayer
-                ? this.handlePlayerSelectClick.bind(this, player)
-                : false
+                  ? this.handlePlayerSelectClick.bind(this, player)
+                  : false
             }
           >
             <Button
@@ -92,8 +92,8 @@ class PlayersList extends React.Component<IProps, {}> {
                     ? "yellow"
                     : "grey"
                   : player === currentPlayerId
-                  ? "green"
-                  : "white"
+                    ? "green"
+                    : "white"
               }
             >
               <Icon name={player.startsWith("Bot_") ? "user secret" : "user"} />
@@ -104,11 +104,11 @@ class PlayersList extends React.Component<IProps, {}> {
               color={
                 isBiddingPhase
                   ? isCurrentBiddingPlayer
-                    ? "yellow"
-                    : "grey"
+                    ? "green"
+                    : "black"
                   : player === currentPlayerId
-                  ? "red"
-                  : "black"
+                    ? "red"
+                    : "black"
               }
               pointing="left"
             >
