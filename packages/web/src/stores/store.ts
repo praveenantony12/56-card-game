@@ -272,9 +272,8 @@ class Store implements IStore {
     this.clearNotifications();
 
     try {
-      const ack: common.SuccessResponse = await this.gameService.dropCardPlayer(
-        dropCardPlayer
-      );
+      const ack: common.SuccessResponse =
+        await this.gameService.dropCardPlayer(dropCardPlayer);
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log(
           "this.gameInfo.dropCardPlayer ===> " + this.gameInfo.dropCardPlayer
@@ -349,9 +348,8 @@ class Store implements IStore {
     this.gameInfo.currentBet = "27";
 
     try {
-      const ack: common.SuccessResponse = await this.gameService.restartGame(
-        gameId
-      );
+      const ack: common.SuccessResponse =
+        await this.gameService.restartGame(gameId);
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log("this.gameInfo.gameId ===> " + this.userInfo.gameId);
       }
@@ -599,7 +597,7 @@ class Store implements IStore {
 
       // Handle game creator status and shared game ID
       if (payload.isGameCreator !== undefined) {
-        this, (this.gameInfo.isGameCreator = payload.isGameCreator);
+        (this, (this.gameInfo.isGameCreator = payload.isGameCreator));
         if (payload.isGameCreator && payload.gameId) {
           this.gameInfo.sharedGameId = payload.gameId;
           // Show bot seelction for game creators
@@ -632,6 +630,7 @@ class Store implements IStore {
           teamACards: gameState.teamACards || [],
           teamBCards: gameState.teamBCards || [],
           currentBet: gameState.currentBet,
+          currentBetPlayerId: gameState.currentBetPlayerId,
           gameScore: gameState.gameScore || {},
           trumpSuit: gameState.trumpSuit,
           currentTurn: gameState.currentTurn,
@@ -642,6 +641,14 @@ class Store implements IStore {
           teamAScore: gameState.teamAScore || 0,
           teamBScore: gameState.teamBScore || 0,
           gamePaused: gameState.gamePaused || false,
+          // Bidding phase state - ensure these are set during reconnection
+          isBiddingPhase: gameState.isBiddingPhase || false,
+          currentBiddingPlayerId: gameState.currentBiddingPlayerId,
+          bidHistory: gameState.bidHistory || [],
+          bidPassCount: gameState.bidPassCount || 0,
+          lastBiddingTeam: gameState.lastBiddingTeam,
+          bidDouble: gameState.bidDouble || false,
+          bidReDouble: gameState.bidReDouble || false,
         };
       }
 
@@ -650,6 +657,18 @@ class Store implements IStore {
         this.gameInfo.cards = payload.cards;
         this.gameInfo.canStartGame = true;
         this.gameInfo.showBotSelection = false; // Hide bot selection when game starts
+      }
+
+      // Update yourTurn based on bidding phase or current turn
+      if (
+        this.gameInfo.isBiddingPhase &&
+        this.gameInfo.currentBiddingPlayerId
+      ) {
+        this.gameInfo.yourTurn =
+          this.userInfo.playerId === this.gameInfo.currentBiddingPlayerId;
+      } else if (this.gameInfo.currentPlayerId) {
+        this.gameInfo.yourTurn =
+          this.userInfo.playerId === this.gameInfo.currentPlayerId;
       }
 
       return;
