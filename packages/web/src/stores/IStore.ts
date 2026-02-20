@@ -33,7 +33,7 @@ export interface IStore {
   biddingAction(
     action: "bid" | "pass" | "double" | "re-double",
     bidValue?: number,
-    suit?: string
+    suit?: string,
   ): Promise<any>;
 
   restartGame(gameId: string): Promise<any>;
@@ -55,4 +55,6 @@ export interface IStore {
   denyForfeit(): Promise<void>;
 
   forfeitGame(gameId: string): Promise<void>;
+
+  getShareableGameUrl(gameId: string): string;
 }

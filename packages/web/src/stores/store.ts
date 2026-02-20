@@ -22,6 +22,8 @@ class Store implements IStore {
   constructor() {
     this.gameService = new GameService(this.subscribeToNotifications);
     this.initializeStore();
+    // Check URL parameters for game ID to join
+    this.checkAndApplyUrlParameters();
     // Attempt automatic reconnection after initialization
     this.attemptAutoReconnection();
   }
@@ -46,6 +48,24 @@ class Store implements IStore {
         }
       }
     }, 1000);
+  }
+
+  /**
+   * Check URL parameters for game ID and apply them to the store
+   * Allows direct joining via URL like: ?gameId=abc123
+   */
+  private checkAndApplyUrlParameters() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const gameIdFromUrl = urlParams.get("gameId");
+
+      if (gameIdFromUrl && gameIdFromUrl.trim()) {
+        console.log("[STORE] Game ID found in URL:", gameIdFromUrl);
+        this.setGameModeJoin(gameIdFromUrl.trim());
+      }
+    } catch (error) {
+      console.error("[STORE] Error parsing URL parameters:", error);
+    }
   }
 
   @computed
@@ -144,7 +164,7 @@ class Store implements IStore {
       const response = await this.gameService.reconnect(
         this.userInfo.playerId,
         this.userInfo.token,
-        this.userInfo.gameId
+        this.userInfo.gameId,
       );
 
       // Check if this is a pending approval response
@@ -186,7 +206,7 @@ class Store implements IStore {
       await this.gameService.approveReconnection(
         this.userInfo.gameId as string,
         playerId,
-        this.userInfo.playerId as string
+        this.userInfo.playerId as string,
       );
     } catch (error) {
       const errorMessage =
@@ -202,7 +222,7 @@ class Store implements IStore {
       await this.gameService.denyReconnection(
         this.userInfo.gameId as string,
         playerId,
-        this.userInfo.playerId as string
+        this.userInfo.playerId as string,
       );
     } catch (error) {
       const errorMessage =
@@ -220,7 +240,7 @@ class Store implements IStore {
       const response: common.SuccessResponse = await this.gameService.addBots(
         botCount,
         gameId as string,
-        startImmediately
+        startImmediately,
       );
 
       if (response.code === common.RESPONSE_CODES.loginSuccess) {
@@ -250,12 +270,12 @@ class Store implements IStore {
         card,
         gameId as string,
         token as string,
-        playerId as string
+        playerId as string,
       );
       if (ack.code === common.RESPONSE_CODES.success) {
         try {
           this.gameInfo.cards = (this.gameInfo.cards || []).filter(
-            (x) => x !== card
+            (x) => x !== card,
           );
         } catch (err) {
           console.log("Error caught while removing child node == > " + err);
@@ -276,7 +296,7 @@ class Store implements IStore {
         await this.gameService.dropCardPlayer(dropCardPlayer);
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log(
-          "this.gameInfo.dropCardPlayer ===> " + this.gameInfo.dropCardPlayer
+          "this.gameInfo.dropCardPlayer ===> " + this.gameInfo.dropCardPlayer,
         );
       }
     } catch (error) {
@@ -291,7 +311,7 @@ class Store implements IStore {
 
     try {
       const ack: common.SuccessResponse = await this.gameService.deckWonByTeamA(
-        gameId as string
+        gameId as string,
       );
 
       if (ack.code === common.RESPONSE_CODES.success) {
@@ -299,7 +319,7 @@ class Store implements IStore {
         //   x => x !== cards
         // );
         console.log(
-          "this.gameInfo.teamACards ===> " + this.gameInfo.teamACards
+          "this.gameInfo.teamACards ===> " + this.gameInfo.teamACards,
         );
       }
     } catch (error) {
@@ -314,7 +334,7 @@ class Store implements IStore {
 
     try {
       const ack: common.SuccessResponse = await this.gameService.deckWonByTeamB(
-        gameId as string
+        gameId as string,
       );
 
       if (ack.code === common.RESPONSE_CODES.success) {
@@ -322,7 +342,7 @@ class Store implements IStore {
         //   x => x !== cards
         // );
         console.log(
-          "this.gameInfo.teamBCards ===> " + this.gameInfo.teamBCards
+          "this.gameInfo.teamBCards ===> " + this.gameInfo.teamBCards,
         );
       }
     } catch (error) {
@@ -365,7 +385,7 @@ class Store implements IStore {
     try {
       const ack: common.SuccessResponse = await this.gameService.forfeitGame(
         gameId,
-        this.userInfo.playerId as string
+        this.userInfo.playerId as string,
       );
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log("Forfeit request initiated");
@@ -392,7 +412,7 @@ class Store implements IStore {
     try {
       const ack: common.SuccessResponse = await this.gameService.forfeitGame(
         gameId,
-        playerId
+        playerId,
       );
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log("Forfeit approved");
@@ -417,12 +437,12 @@ class Store implements IStore {
       const ack: common.SuccessResponse = await this.gameService.selectPlayer(
         playerId,
         gameId as string,
-        token as string
+        token as string,
       );
 
       if (ack.code === common.RESPONSE_CODES.success) {
         console.log(
-          "this.gameInfo.currentPlayerId ===> " + this.gameInfo.currentPlayerId
+          "this.gameInfo.currentPlayerId ===> " + this.gameInfo.currentPlayerId,
         );
       }
     } catch (error) {
@@ -439,7 +459,7 @@ class Store implements IStore {
         await this.gameService.incrementBetByPlayer(
           playerBet,
           gameId as string,
-          token as string
+          token as string,
         );
 
       if (ack.code === common.RESPONSE_CODES.success) {
@@ -461,7 +481,7 @@ class Store implements IStore {
           trumpSuit,
           gameId as string,
           token as string,
-          playerId as string
+          playerId as string,
         );
 
       if (ack.code === common.RESPONSE_CODES.success) {
@@ -476,7 +496,7 @@ class Store implements IStore {
   public async biddingAction(
     action: "bid" | "pass" | "double" | "re-double",
     bidValue?: number,
-    suit?: string
+    suit?: string,
   ) {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
@@ -487,7 +507,7 @@ class Store implements IStore {
         gameId as string,
         token as string,
         bidValue,
-        suit
+        suit,
       );
 
       if (ack.code === common.RESPONSE_CODES.success) {
@@ -507,7 +527,7 @@ class Store implements IStore {
         await this.gameService.updateGameScore(
           gameScore,
           gameId as string,
-          token as string
+          token as string,
         );
 
       if (ack.code === common.RESPONSE_CODES.success) {
@@ -562,7 +582,7 @@ class Store implements IStore {
   }
 
   private subscribeToNotifications = (
-    response: common.SuccessResponse | common.ErrorResponse
+    response: common.SuccessResponse | common.ErrorResponse,
   ) => {
     this.clearNotifications();
 
@@ -603,7 +623,7 @@ class Store implements IStore {
           // Show bot seelction for game creators
           this.gameInfo.showBotSelection = false;
           console.log(
-            `[STORE] Game Creator set up - Game ID: ${payload.gameId}, showing bot selection`
+            `[STORE] Game Creator set up - Game ID: ${payload.gameId}, showing bot selection`,
           );
         } else {
           // Joiners wait for the creator to start the game
@@ -613,7 +633,7 @@ class Store implements IStore {
       } else {
         console.log(
           "[STORE] No isGameCreator in payload, payload keys:",
-          Object.keys(payload)
+          Object.keys(payload),
         );
       }
 
@@ -914,7 +934,7 @@ class Store implements IStore {
           "Default case. Shouldn't hit this. Action:",
           action,
           "Data:",
-          data
+          data,
         );
         break;
     }
@@ -944,6 +964,19 @@ class Store implements IStore {
     this.gameInfo.isGameCreator = false;
     this.gameInfo.sharedGameId = undefined;
     this.gameInfo.showGameModeSelection = true;
+  };
+
+  /**
+   * Generate a shareable URL for the current game
+   * @param gameId The game ID to include in the URL
+   * @returns The full shareable URL
+   */
+  public getShareableGameUrl = (gameId: string): string => {
+    if (!gameId) {
+      return "";
+    }
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/?gameId=${encodeURIComponent(gameId)}`;
   };
 }
 

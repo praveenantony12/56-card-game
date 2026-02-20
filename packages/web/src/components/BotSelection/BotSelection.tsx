@@ -2,7 +2,6 @@ import { inject, observer } from "mobx-react";
 import * as React from "react";
 import {
   Button,
-  Card,
   Header,
   Icon,
   Message,
@@ -58,11 +57,11 @@ class BotSelection extends React.Component<IProps, IState> {
 
           {this.gameInfo.sharedGameId && (
             <Message positive style={{ marginBottom: "20px" }}>
-              <Message.Header>Share Game ID with Friends</Message.Header>
+              <Message.Header>Share Game with Friends</Message.Header>
               <p>
                 <strong>Game ID:</strong> {this.gameInfo.sharedGameId}
               </p>
-              <div style={{ marginTop: "10px" }}>
+              <div style={{ marginTop: "10px", marginBottom: "15px" }}>
                 <Input
                   fluid
                   value={this.gameInfo.sharedGameId}
@@ -77,9 +76,51 @@ class BotSelection extends React.Component<IProps, IState> {
                   }}
                 />
               </div>
-              <p style={{ marginTop: "10px", fontSize: "0.9em" }}>
+              <p
+                style={{
+                  marginTop: "10px",
+                  fontSize: "0.9em",
+                  marginBottom: "15px",
+                }}
+              >
                 Friends can use this Game ID to join your game!
               </p>
+
+              <div
+                style={{
+                  marginTop: "15px",
+                  paddingTop: "15px",
+                  borderTop: "1px solid #ddd",
+                }}
+              >
+                <p style={{ marginBottom: "8px" }}>
+                  <strong>Or share this link:</strong>
+                </p>
+                <Input
+                  fluid
+                  value={this.store.getShareableGameUrl(
+                    this.gameInfo.sharedGameId,
+                  )}
+                  readOnly
+                  action={{
+                    color: "blue",
+                    labelPosition: "right",
+                    icon: "copy outline",
+                    content: "Copy Link",
+                    onClick: () => this.copyShareableUrl(),
+                    "data-testid": "copy-link-button",
+                  }}
+                />
+                <p
+                  style={{
+                    marginTop: "8px",
+                    fontSize: "0.85em",
+                    color: "#666",
+                  }}
+                >
+                  Friends can click this link to join directly!
+                </p>
+              </div>
             </Message>
           )}
 
@@ -179,7 +220,7 @@ class BotSelection extends React.Component<IProps, IState> {
           .then(() => {
             // Temporarily change button text to show success
             const button = document.querySelector(
-              '[data-testid="copy-button"]'
+              '[data-testid="copy-button"]',
             ) as HTMLElement;
             if (button) {
               const originalText = button.textContent;
@@ -210,7 +251,61 @@ class BotSelection extends React.Component<IProps, IState> {
 
     // Show success message
     const button = document.querySelector(
-      '[data-testid="copy-button"]'
+      '[data-testid="copy-button"]',
+    ) as HTMLElement;
+    if (button) {
+      const originalText = button.textContent;
+      button.textContent = "Copied!";
+      setTimeout(() => {
+        button.textContent = originalText;
+      }, 2000);
+    }
+  };
+
+  private copyShareableUrl = () => {
+    if (this.gameInfo.sharedGameId) {
+      const shareableUrl = this.store.getShareableGameUrl(
+        this.gameInfo.sharedGameId,
+      );
+      // Check if navigator.clipboard is available (HTTPS or localhost)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard
+          .writeText(shareableUrl)
+          .then(() => {
+            // Temporarily change button text to show success
+            const button = document.querySelector(
+              '[data-testid="copy-link-button"]',
+            ) as HTMLElement;
+            if (button) {
+              const originalText = button.textContent;
+              button.textContent = "Copied!";
+              setTimeout(() => {
+                button.textContent = originalText;
+              }, 2000);
+            }
+          })
+          .catch(() => {
+            // Fallback for older browsers
+            this.useFallbackCopyUrl(shareableUrl);
+          });
+      } else {
+        // Fallback for non-secure contexts (IP addresses without HTTPS)
+        this.useFallbackCopyUrl(shareableUrl);
+      }
+    }
+  };
+
+  private useFallbackCopyUrl = (url: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = url;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+
+    // Show success message
+    const button = document.querySelector(
+      '[data-testid="copy-link-button"]',
     ) as HTMLElement;
     if (button) {
       const originalText = button.textContent;

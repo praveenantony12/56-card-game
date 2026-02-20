@@ -24,7 +24,7 @@ import * as io from "socket.io-client";
 
 const ifDevelopment = process.env.NODE_ENV === "development";
 const connection = ifDevelopment
-  ? "http://24.211.235.185:90"
+  ? "http://24.211.234.229:90"
   : // "http://localhost:4500/"
     // "http://192.168.1.220:4500/"
     // "http://localhost:4500/"
@@ -40,7 +40,7 @@ class GameService {
    * @param subscribeToNotifications The callback to subscribe notifications
    */
   constructor(
-    private subscribeToNotifications: (data: SuccessResponse, cb: any) => void
+    private subscribeToNotifications: (data: SuccessResponse, cb: any) => void,
   ) {
     ioClient.on("data", this.subscribeToNotifications);
 
@@ -67,7 +67,7 @@ class GameService {
   public reconnect(
     playerId: string,
     token?: string,
-    gameId?: string
+    gameId?: string,
   ): Promise<any> {
     return this.sendRequest(reconnectPayload(playerId, token, gameId));
   }
@@ -81,10 +81,10 @@ class GameService {
   public approveReconnection(
     gameId: string,
     playerId: string,
-    approvingPlayerId: string
+    approvingPlayerId: string,
   ): Promise<any> {
     return this.sendRequest(
-      reconnectApprovePayload(gameId, playerId, approvingPlayerId)
+      reconnectApprovePayload(gameId, playerId, approvingPlayerId),
     );
   }
 
@@ -97,10 +97,10 @@ class GameService {
   public denyReconnection(
     gameId: string,
     playerId: string,
-    denyingPlayerId: string
+    denyingPlayerId: string,
   ): Promise<any> {
     return this.sendRequest(
-      reconnectDenyPayload(gameId, playerId, denyingPlayerId)
+      reconnectDenyPayload(gameId, playerId, denyingPlayerId),
     );
   }
 
@@ -113,7 +113,7 @@ class GameService {
   public addBots(
     botcount: number,
     gameId: string,
-    startImmediately?: boolean
+    startImmediately?: boolean,
   ): Promise<any> {
     return this.sendRequest(addBotsPayload(botcount, gameId, startImmediately));
   }
@@ -128,7 +128,7 @@ class GameService {
     card: string,
     gameId: string,
     token: string,
-    playerId: string
+    playerId: string,
   ): Promise<any> {
     return this.sendRequest(dropCardPayload(card, gameId, token, playerId));
   }
@@ -160,7 +160,7 @@ class GameService {
   public selectPlayer(
     playerId: string,
     gameId: string,
-    token: string
+    token: string,
   ): Promise<any> {
     return this.sendRequest(selectPlayerPayload(playerId, gameId, token));
   }
@@ -174,10 +174,10 @@ class GameService {
   public incrementBetByPlayer(
     playerBet: string,
     gameId: string,
-    token: string
+    token: string,
   ): Promise<any> {
     return this.sendRequest(
-      incrementBetByPlayerPayload(playerBet, gameId, token)
+      incrementBetByPlayerPayload(playerBet, gameId, token),
     );
   }
 
@@ -190,7 +190,7 @@ class GameService {
   public updateGameScore(
     gameScore: string,
     gameId: string,
-    token: string
+    token: string,
   ): Promise<any> {
     return this.sendRequest(updateGameScorePayload(gameScore, gameId, token));
   }
@@ -232,10 +232,10 @@ class GameService {
     trumpSuit: string,
     gameId: string,
     token: string,
-    playerId: string
+    playerId: string,
   ): Promise<any> {
     return this.sendRequest(
-      selectTrumpSuitPayload(trumpSuit, gameId, token, playerId)
+      selectTrumpSuitPayload(trumpSuit, gameId, token, playerId),
     );
   }
 
@@ -252,7 +252,7 @@ class GameService {
     gameId: string,
     token: string,
     bidValue?: number,
-    suit?: string
+    suit?: string,
   ): Promise<any> {
     return this.sendRequest({
       operation: MESSAGES.biddingAction,

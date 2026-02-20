@@ -53,7 +53,7 @@ class WaitMesssage extends React.Component<IProps, {}> {
                 <Input
                   fluid
                   value={this.gameInfo.sharedGameId || ""}
-                  readonly
+                  readOnly
                   action={{
                     color: "teal",
                     labelPosition: "right",
@@ -63,11 +63,48 @@ class WaitMesssage extends React.Component<IProps, {}> {
                     "data-testid": "wait-copy-button",
                   }}
                 />
-                <p style={{ marginTop: "10px" }}>
+                <p style={{ marginTop: "10px", marginBottom: "15px" }}>
                   {" "}
                   Share this Game ID with friends so they can join your game!
                 </p>
-                <p>
+
+                <div
+                  style={{
+                    marginTop: "15px",
+                    paddingTop: "15px",
+                    borderTop: "1px solid #ddd",
+                  }}
+                >
+                  <p style={{ marginBottom: "8px" }}>
+                    <strong>Or share this link:</strong>
+                  </p>
+                  <Input
+                    fluid
+                    value={this.store.getShareableGameUrl(
+                      this.gameInfo.sharedGameId || "",
+                    )}
+                    readOnly
+                    action={{
+                      color: "blue",
+                      labelPosition: "right",
+                      icon: "copy outline",
+                      content: "Copy Link",
+                      onClick: () => this.copyShareableUrl(),
+                      "data-testid": "wait-copy-link-button",
+                    }}
+                  />
+                  <p
+                    style={{
+                      marginTop: "8px",
+                      fontSize: "0.85em",
+                      color: "#666",
+                    }}
+                  >
+                    Friends can click this link to join directly!
+                  </p>
+                </div>
+
+                <p style={{ marginTop: "15px", marginBottom: "0" }}>
                   The game will start automatically once 6 total players have
                   joined.
                 </p>
@@ -109,7 +146,7 @@ class WaitMesssage extends React.Component<IProps, {}> {
           .then(() => {
             // Temporarily change button text to show success
             const button = document.querySelector(
-              '[data - testid="wait-copy-button"]'
+              '[data - testid="wait-copy-button"]',
             ) as HTMLElement;
             if (button) {
               const originalText = button.textContent;
@@ -140,7 +177,7 @@ class WaitMesssage extends React.Component<IProps, {}> {
       document.execCommand("copy");
       // Show success feedback
       const button = document.querySelector(
-        '[data - testid="wait-copy-button"]'
+        '[data-testid="wait-copy-button"]',
       ) as HTMLElement;
       if (button) {
         const originalText = button.textContent;
@@ -151,6 +188,65 @@ class WaitMesssage extends React.Component<IProps, {}> {
       }
     } catch (err) {
       console.error("Failed to copy to clipboard:", err);
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  };
+
+  private copyShareableUrl = () => {
+    if (this.gameInfo.sharedGameId) {
+      const shareableUrl = this.store.getShareableGameUrl(
+        this.gameInfo.sharedGameId,
+      );
+      // Check if navigator.clipboard is available (HTTPS or localhost)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard
+          .writeText(shareableUrl)
+          .then(() => {
+            // Temporarily change button text to show success
+            const button = document.querySelector(
+              '[data-testid="wait-copy-link-button"]',
+            ) as HTMLElement;
+            if (button) {
+              const originalText = button.textContent;
+              button.textContent = "Copied!";
+              setTimeout(() => {
+                button.textContent = originalText;
+              }, 2000);
+            }
+          })
+          .catch(() => {
+            this.fallbackCopyUrlToClipboard(shareableUrl);
+          });
+      } else {
+        // Fallback for browsers without clipboard API support
+        this.fallbackCopyUrlToClipboard(shareableUrl);
+      }
+    }
+  };
+
+  private fallbackCopyUrlToClipboard = (url: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = url;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      // Show success feedback
+      const button = document.querySelector(
+        '[data-testid="wait-copy-link-button"]',
+      ) as HTMLElement;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = "Copied!";
+        setTimeout(() => {
+          button.textContent = originalText;
+        }, 2000);
+      }
+    } catch (err) {
+      console.error("Failed to copy URL to clipboard:", err);
     } finally {
       document.body.removeChild(textArea);
     }
