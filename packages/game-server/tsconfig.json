@@ -16,12 +16,16 @@
     ],
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "jest"
     ]
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx"
+  ],
+  "exclude": [
+    "src/__tests__"
   ],
   "paths": {
     "@rcg/common": "../common/src"

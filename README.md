@@ -9,7 +9,7 @@ A multiplayer card game built with Socket.IO + React + Node.js + TypeScript.
 1. **Build and test locally:** `./deploy.sh`
 2. **Push to GitHub:** `git push origin main`
 3. **Choose a platform:**
-   - **Render.com** (FREE, Bleeps after 15 min): https://render.com ➡ New Web Service ➡ Select repo
+   - **Render.com** (FREE, sleeps after 15 min): https://render.com ➡ New Web Service ➡ Select repo
    - **Fly.io** (FREE, no sleep): `brew install flyctl && flyct launch`
    - **Railway.app** ($5/mo, no sleep): https://railway.app ➡ New Project ➡ Deploy from GitHub
 
