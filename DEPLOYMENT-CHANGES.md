@@ -133,7 +133,7 @@ $ npm run build:common && npm run build:server
 - Run `npm ci --production`
 - Copy compiled dist directories
 - Copy client static files
-- Expose port 4500
+- Expose port 3000
 - Run server with `node dist/index.js`
 
 ### Render Configuration Verified
@@ -226,7 +226,7 @@ $ npm run build:common && npm run build:server
 - [x] Environment variables set
 - [x] Node dependencies can be installed with npm ci
 - [x] Server starts without errors
-- [x] Port 4500 is exposed
+- [x] Port 3000 is exposed
 
 ---
 

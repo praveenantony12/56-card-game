@@ -11,10 +11,13 @@ const app = express();
 
 app.use(express.static(path.join(__dirname, "../../client")));
 
-app.get("/", (req, res, next) => res.sendFile(__dirname + "./index.html"));
+app.get("/", (req, res, next) => res.sendFile(path.join(__dirname, "../../client/index.html")));
 
 const httpServer = http.createServer(app);
-const ioServer = io(httpServer, { pingTimeout: 200000, pingInterval: 300000 });
+const ioServer = io(httpServer, { 
+  pingTimeout: 200000, 
+  pingInterval: 300000 
+});
 
 let ioHandlers: SocketServer;
 

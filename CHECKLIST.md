@@ -72,7 +72,7 @@ Choose your platform and follow the guide:
 cd packages/game-server && node dist/index.js
 ```
 
-Then open http://localhost:4500 to verify everything works.
+Then open http://localhost:3000 to verify everything works.
 
 ### Deploy Commands:
 
