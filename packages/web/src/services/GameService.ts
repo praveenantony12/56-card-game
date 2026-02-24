@@ -24,13 +24,13 @@ import * as io from "socket.io-client";
 
 // Automatically connect to the same host as the web app in production
 // or use REACT_APP_SERVER_URL environment variable if set
+const isDevelopment = process.env.NODE_ENV === "development";
 
 const connection =
   process.env.REACT_APP_SERVER_URL ||
-  document.location.protocol + "//" + document.location.host;
-
-// For local development, you can uncomment the following line to connect to localhost
-// const connection = "http://localhost:4500";
+  (isDevelopment
+    ? "http://localhost:4500"
+    : document.location.protocol + "//" + document.location.host);
 
 console.log("🔌 Connecting to server at :", connection);
 

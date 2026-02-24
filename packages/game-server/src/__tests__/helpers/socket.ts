@@ -2,7 +2,8 @@ import * as io from "socket.io-client";
 
 export class Socket {
   public static openClientConnection() {
-    return io("http://localhost:3000");
+    const socketUrl = process.env.TEST_SOCKET_URL || "http://localhost:4500";
+    return io(socketUrl);
   }
 
   public static sendData(

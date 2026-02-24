@@ -5,10 +5,10 @@ Before deploying your card game, verify the following:
 ## ✅ Code Readiness
 
 - [ ] All dependencies are listed in package.json files
-- [ ] TypeScript compiles without errors (`npm run build:common && npm run build:serv
-- [ ] Tests pass (if any)`cd packages/game-server && npm test
+- [ ] TypeScript compiles without errors (`npm run build:common && npm run build:server && npm run build:client`)
+- [ ] Tests pass (if any) (`cd packages/game-server && npm test`)
 - [ ] No hardcoded localhost URLs in client code (checked ✔️)
-- [ ] Socket.I0 connection uses environment-aware URL (fixed ✔️)
+- [ ] Socket.IO connection uses environment-aware URL (fixed ✔️)
 
 ## ✅ Build Configuration
 
@@ -26,11 +26,11 @@ Before deploying your card game, verify the following:
   git push origin main
   ```
 - [ ] Repository is public (or hosting platform has access)
-- [ ].gitignore excludes node_modules, dist, build, env files (✔️)
+- [ ] .gitignore excludes node_modules, dist, build, and env files (✔️)
 
 ## ✅ Environment Variables
 
-- [ ] Review.env.example for required variables
+- [ ] Review `.env.example` for required variables
 - [ ] For production, no additional env vars needed (server and client on same domain)
 - [ ] If hosting client separately, set REACT_APP_SERVER_URL
 
@@ -62,8 +62,8 @@ Once deployed, test:
 
 Choose your platform and follow the guide:
 
-- [Quick Deploy Guide](QUICKSTART-DEPLOY.md) - Fast setup
-- [Full Deployment Guide](DEPLOYMENT.md) Detailed instructions
+- README deployment section - Quick setup
+- `render.yaml` / `fly.toml` - platform configs
 
 ### Test Local Build First:
 
@@ -87,13 +87,13 @@ git push origin main
 
 ```bash
 git push origin main
-#Then connect repo in Railway dashboard
+# Then connect repo in Railway dashboard
 ```
 
 **Fly.io:**
 
 ```bash
-/deploy,sh
+./deploy.sh
 flyctl launch
 flyctl open
 ```
