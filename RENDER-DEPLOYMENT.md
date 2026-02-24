@@ -79,7 +79,7 @@ git push origin main
    - **Environment**: Node
    - **Build Command**: `npm install && npm run build:common && npm run build:server`
    - **Start Command**: `cd packages/game-server && node dist/index.js`
-   - **Port**: 4500
+   - **Port**: 3000
    - **Plan**: Free
 7. Click **"Create Web Service"**
 8. **Wait 2-3 minutes** for build and deployment
@@ -95,6 +95,7 @@ git push origin main
 | **Environment**   | Node                                                          |
 | **Build Command** | `npm install && npm run build:common && npm run build:server` |
 | **Start Command** | `cd packages/game-server && node dist/index.js`               |
+| **Port**          | 3000                                                          |
 | **Instance Type** | Free                                                          |
 | **Region**        | US East (or your preference)                                  |
 
@@ -112,7 +113,7 @@ Installing dependencies...
 Building common package...
 Building server package...
 Launching application...
-Server started and listening at port 4500 ✅
+Server started and listening at port 3000 ✅
 ```
 
 ✅ When you see **"Service is running"**, deployment is complete!
@@ -198,7 +199,7 @@ Render Dashboard → Your Service → Logs (continuous feed)
 
 ### Common Log Messages
 
-✅ **Good**: `Server started and listening at port 4500`
+✅ **Good**: `Server started and listening at port 3000`
 
 ⚠️ **Warning**: First request takes 5-10 seconds (free tier cold start)
 

@@ -6,7 +6,7 @@ import { SocketServer } from "../core/SocketServer";
 import { LoggerService } from "../services/LoggerService";
 
 const path = require("path");
-const PORT = process.env.PORT || 4500;
+const PORT = process.env.PORT || 3000;
 const app = express();
 
 app.use(express.static(path.join(__dirname, "../../client")));
@@ -26,7 +26,7 @@ export function startServer(done: Function) {
   httpServer.listen(PORT, () => {
     LoggerService.log(
       "Server Started:",
-      "Server started and listening at port 4500"
+      `Server started and listening at port ${PORT}`
     );
   });
 
