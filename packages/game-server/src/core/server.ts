@@ -9,19 +9,23 @@ const path = require("path");
 // Port configuration:
 // - If PORT env var is set, use it (Render sets PORT=3000)
 // - Otherwise: use 4500 for development, 3000 for production
-const PORT = process.env.PORT 
-  ? parseInt(process.env.PORT, 10) 
-  : (process.env.NODE_ENV === "development" ? 4500 : 3000);
+const PORT = process.env.PORT
+  ? parseInt(process.env.PORT, 10)
+  : process.env.NODE_ENV === "development"
+    ? 4500
+    : 3000;
 const app = express();
 
 app.use(express.static(path.join(__dirname, "../../client")));
 
-app.get("/", (req, res, next) => res.sendFile(path.join(__dirname, "../../client/index.html")));
+app.get("/", (req, res, next) =>
+  res.sendFile(path.join(__dirname, "../../client/index.html")),
+);
 
 const httpServer = http.createServer(app);
-const ioServer = io(httpServer, { 
-  pingTimeout: 200000, 
-  pingInterval: 300000 
+const ioServer = io(httpServer, {
+  pingTimeout: 200000,
+  pingInterval: 300000,
 });
 
 let ioHandlers: SocketServer;
@@ -34,7 +38,7 @@ export function startServer(done: Function) {
   httpServer.listen(PORT, () => {
     LoggerService.log(
       "Server Started:",
-      `Server started and listening at port ${PORT}`
+      `Server started and listening at port ${PORT}`,
     );
   });
 
