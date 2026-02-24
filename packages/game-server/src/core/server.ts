@@ -6,7 +6,10 @@ import { SocketServer } from "../core/SocketServer";
 import { LoggerService } from "../services/LoggerService";
 
 const path = require("path");
-const PORT = process.env.PORT || 3000;
+// Use port 4500 for development, 3000 for production (Render)
+const isDevelopment = process.env.NODE_ENV !== "production";
+const DEFAULT_PORT = isDevelopment ? 4500 : 3000;
+const PORT = process.env.PORT || DEFAULT_PORT;
 const app = express();
 
 app.use(express.static(path.join(__dirname, "../../client")));
