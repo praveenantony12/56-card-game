@@ -2,7 +2,7 @@ export * from "./BasePayload";
 export * from "./BiddingActionRequestPayload";
 export * from "./DropCardRequestPayload";
 export * from "./IncrementBetByPlayerRequestPayload";
-export * from "./UpdateGameScoreRequestPayload";
+export * from "./updateGameScoreRequestPayload";
 export * from "./DropCardByPlayerRequestPayload";
 export * from "./DeckWonByTeamARequestPayload";
 export * from "./DeckWonByTeamBRequestPayload";
