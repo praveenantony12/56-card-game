@@ -21,6 +21,7 @@
     "react-draggable": "^4.2.0"
   },
   "devDependencies": {
+    "@types/express": "^4.17.17",
     "@types/socket.io": "^3.0.2"
   }
 }

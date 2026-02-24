@@ -9,11 +9,12 @@ const path = require("path");
 // Port configuration - prioritize NODE_ENV:
 // - Production (Render): Always use port 3000
 // - Development (local): Use 4500 (or override with PORT env var)
-const PORT = process.env.NODE_ENV === "production"
-  ? 3000
-  : process.env.PORT
-    ? parseInt(process.env.PORT, 10)
-    : 4500;
+const PORT =
+  process.env.NODE_ENV === "production"
+    ? 3000
+    : process.env.PORT
+      ? parseInt(process.env.PORT, 10)
+      : 4500;
 const app = express();
 
 app.use(express.static(path.join(__dirname, "../../client")));
