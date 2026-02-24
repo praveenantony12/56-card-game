@@ -22,16 +22,21 @@ import {
 
 import * as io from "socket.io-client";
 
-const ifDevelopment = process.env.NODE_ENV === "development";
-const connection = ifDevelopment
-  ? "http://24.211.234.229:90"
-  : // "http://localhost:4500/"
-    // "http://192.168.1.220:4500/"
-    // "http://localhost:4500/"
-    document.location.protocol + "//" + document.location.host;
+// Automatically connect to the same host as the web app in production
+// or use REACT_APP_SERVER_URL environment variable if set
+
+const connection =
+  process.env.REACT_APP_SERVER_URL ||
+  document.location.protocol + "//" + document.location.host;
+
+// For local development, you can uncomment the following line to connect to localhost
+// const connection = "http://localhost:4500";
+
+console.log("🔌 Connecting to server at :", connection);
 
 const ioClient: SocketIOClient.Socket = io(connection, {
   timeout: 200000,
+  transports: ["websocket", "polling"], // Try websocket first, then fallback to polling if websocket is not supported
 });
 
 class GameService {

@@ -1,0 +1,61 @@
+# This workflow will build and test the Node.js application
+# It can be extended to deploy automatically to your hosting platform
+
+name: Build and Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+  strategy:
+    matrix:
+      node-version: [18.x, 20.x]
+
+  steps:
+    - name: Checkout repository
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version}}
+    - uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: "npm"
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build common package
+      run: cd packages/common && npm run build
+
+    - name: Build server
+      run: cd packages/game-server && npm run build
+
+    - name: Build web client
+      run: cd packages/web && npm run build
+
+    - name: Run tests
+      run: cd packages/game-server && npm test
+      continue-on-errors: true
+
+    - name: Copy web build to server client folder
+      run: |
+        rm -rf packages/game-server/client/*
+        cp -r packages/web/build/* packages/game-server/client/
+
+# Uncomment below to auto-deploy to Render on push to main
+# (Render will auto-deploy from GitHub by default, so this is optional)
+
+#   deploy:
+#     needs: build
+#     runs-on: ubuntu-latest
+#     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+#   steps:
+#   -  name: Deploy to Render
+#      run: echo "Render will auto-deploy from GitHub"

@@ -2,9 +2,7 @@ import * as io from "socket.io-client";
 
 export class Socket {
   public static openClientConnection() {
-    // return io("http://192.168.1.220:3000");
-    // return io("http://localhost:3000");
-    return io("http://24.211.234.229:70/");
+    return io("http://localhost:3000");
   }
 
   public static sendData(

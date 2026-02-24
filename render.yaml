@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: 56-card-game
+    env: node
+    regions: oregon
+    plan: free
+    buildCommand: npm install && npm run build:common && npm run build:server && nom run build:client
+    startCommand: cd packages/game-server && node dist/index.js
+    envVars:
+      - key: NODE ENV
+        value: production
+      - key: PORT
+        value: 4500
+    autoDeploy: true
