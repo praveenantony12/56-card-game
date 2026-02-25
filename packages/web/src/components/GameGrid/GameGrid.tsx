@@ -26,6 +26,8 @@ interface IState {
   currentBiddingValue: number;
   currentBiddingsuit: string;
   biddingHistory: Array<{ suit: string; value: number }>;
+  bidSelectionType: "direct" | "modifier" | null;
+  bidModifier: number;
 }
 
 @inject("store")
@@ -45,9 +47,11 @@ class GameGrid extends React.Component<IProps, IState> {
     this.state = {
       timerRemaining: 0,
       isRoundReveal: false,
-      currentBiddingValue: 28,
+      currentBiddingValue: 0,
       currentBiddingsuit: "",
       biddingHistory: [],
+      bidSelectionType: null,
+      bidModifier: 0,
     };
   }
 
@@ -78,9 +82,11 @@ class GameGrid extends React.Component<IProps, IState> {
     ) {
       // Reset local bidding state for new game
       this.setState({
-        currentBiddingValue: 28,
+        currentBiddingValue: 0,
         currentBiddingsuit: "",
         biddingHistory: [],
+        bidSelectionType: null,
+        bidModifier: 0,
       } as any);
     }
 
@@ -267,7 +273,7 @@ class GameGrid extends React.Component<IProps, IState> {
                 true,
                 false,
                 undefined,
-                this.state.isRoundReveal && this.state.timerRemaining > 0
+                this.state.isRoundReveal && this.state.timerRemaining > 0,
               )}
             </div>
           </Grid.Column>
@@ -535,11 +541,20 @@ class GameGrid extends React.Component<IProps, IState> {
     const currentSuitInfo = suits.find((s) => s.name === currentBiddingsuit);
     const lastSuitInfo = suits.find((s) => s.name === lastBidsuit);
     const displayedSuitInfo = suits.find(
-      (s) => s.name === (currentBiddingsuit || lastBidsuit)
+      (s) => s.name === (currentBiddingsuit || lastBidsuit),
     );
 
-    // Only show bid value if player has made selections, otherwise empty
-    const hasPlayerMadeSelections = this.state.biddingHistory.length > 0;
+    // Check if player has selected a bid value (not just suit)
+    const hasBidValueSelected =
+      currentBiddingValue > 0 &&
+      currentBiddingValue >= 28 &&
+      currentBiddingValue <= 56;
+    const hasPlayerMadeSelections = hasBidValueSelected;
+
+    // Determine bid style for the last bid displayed
+    const lastBidStyle = hasActualBid
+      ? this.getBidStyleFromHistory(lastBidValue, bidHistory)
+      : "";
 
     return (
       <>
@@ -558,11 +573,12 @@ class GameGrid extends React.Component<IProps, IState> {
             }}
           >
             {hasActualBid
-              ? `${lastBiddingPlayer} bids  →  ${lastBidValue} ${
-                  lastSuitInfo?.name === "N"
-                    ? "Noes"
-                    : `${lastSuitInfo?.label} ${lastSuitInfo?.symbol}`
-                }`
+              ? `${lastBiddingPlayer} bids → ${this.formatBidValueDisplay(
+                  lastBidStyle,
+                  lastBidsuit,
+                  lastSuitInfo,
+                  lastBidValue,
+                )}`
               : "No Bids Yet"}
             {bidDouble && " (Double)"}
             {bidReDouble && " (Re-Double)"}
@@ -571,6 +587,126 @@ class GameGrid extends React.Component<IProps, IState> {
 
         {isYourBiddingTurn && (
           <>
+            {/* Bid Value Buttons (28-56) in 12x3 grid */}
+            <div style={{ marginBottom: "10px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(12, 1fr)",
+                  gap: "5px",
+                }}
+              >
+                {Array.from({ length: 29 }, (_, i) => 28 + i).map(
+                  (bidValue) => (
+                    <Button
+                      key={bidValue}
+                      color={
+                        currentBiddingValue === bidValue ? "green" : "grey"
+                      }
+                      disabled={hasActualBid && bidValue <= lastBidValue}
+                      onClick={() =>
+                        this.handleBidNumberClick(
+                          bidValue,
+                          lastBidValue,
+                          lastBidsuit,
+                        )
+                      }
+                      style={{
+                        padding: "8px 4px",
+                        fontSize: "12px",
+                        opacity: bidValue <= lastBidValue ? 0.5 : 1,
+                      }}
+                    >
+                      {bidValue}
+                    </Button>
+                  ),
+                )}
+                <Button
+                  key="+"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(0)}
+                  disabled={currentBiddingValue > 55}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +
+                </Button>
+                <Button
+                  key="+1"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(1)}
+                  disabled={currentBiddingValue > 55}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +1
+                </Button>
+                <Button
+                  key="+2"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(2)}
+                  disabled={currentBiddingValue > 54}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +2
+                </Button>
+                <Button
+                  key="+3"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(3)}
+                  disabled={currentBiddingValue > 53}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +3
+                </Button>
+                <Button
+                  key="+4"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(4)}
+                  disabled={currentBiddingValue > 52}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +4
+                </Button>
+                <Button
+                  key="+5"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(5)}
+                  disabled={currentBiddingValue > 51}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +5
+                </Button>
+                <Button
+                  key="resetBid"
+                  color={"red"}
+                  onClick={() => this.handleResetBid()}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </div>
+
             {/* Suit Selection */}
             <Button.Group
               fluid={true}
@@ -582,14 +718,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   basic={currentBiddingsuit === suit.name ? false : true}
                   key={suit.name}
                   color={currentBiddingsuit === suit.name ? "green" : "red"}
-                  onClick={() =>
-                    this.handleBiddingSuitClick(
-                      suit.name,
-                      lastBidValue,
-                      lastBidsuit,
-                      hasActualBid
-                    )
-                  }
+                  onClick={() => this.handleBiddingSuitClick(suit.name)}
                   title={suit.label}
                   style={{
                     cursor: "pointer",
@@ -615,11 +744,12 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button disabled color="orange">
                 Your Bid:{" "}
                 {hasPlayerMadeSelections
-                  ? `${currentBiddingValue} ${
-                      displayedSuitInfo?.name === "N"
-                        ? "Noes"
-                        : `${displayedSuitInfo?.label} ${displayedSuitInfo?.symbol}`
-                    }`
+                  ? this.formatBidDisplay(
+                      currentBiddingValue,
+                      currentBiddingsuit,
+                      lastBidValue,
+                      displayedSuitInfo,
+                    )
                   : "Not selected"}
               </Button>
             </Button.Group>
@@ -634,7 +764,7 @@ class GameGrid extends React.Component<IProps, IState> {
                 onClick={this.handleBiddingUndo.bind(
                   this,
                   lastBidValue,
-                  lastBidsuit
+                  lastBidsuit,
                 )}
                 disabled={this.state.biddingHistory.length === 0}
               >
@@ -672,6 +802,74 @@ class GameGrid extends React.Component<IProps, IState> {
       </>
     );
   }
+
+  private getBidStyleFromHistory = (
+    finalBidValue: number,
+    bidHistory: any[],
+  ): string => {
+    // Determine if the final bid was a modifier bid or direct bid
+    if (!bidHistory || bidHistory.length === 0) {
+      return finalBidValue.toString();
+    }
+
+    // Find the final bid entry
+    let finalBidIndex = -1;
+    let previousBidValue = 28;
+
+    for (let i = bidHistory.length - 1; i >= 0; i--) {
+      const entry = bidHistory[i];
+      if (entry.action === "bid") {
+        if (finalBidIndex === -1) {
+          finalBidIndex = i;
+        } else {
+          previousBidValue = entry.bidValue || 28;
+          break;
+        }
+      }
+    }
+
+    if (finalBidIndex <= 0) {
+      // First bid - could be modifier or direct
+      // For first player: if bidValue = 28 + max(0, modifier - 1)
+      // Then: modifier = bidValue - 28 + 1
+      // But we can't distinguish between direct 28 and + or +1
+      // So check if it matches a modifier pattern
+      const modifierFromFormula = finalBidValue - 28 + 1;
+
+      if (modifierFromFormula >= 0 && modifierFromFormula <= 5) {
+        // It could be a modifier bid
+        // For bidValue 28: modifier = 1, which is +1 (but could also be direct 28 or +)
+        // For bidValue 29: modifier = 2, which is +2
+        // For bidValue 30: modifier = 3, which is +3
+        // We default to direct for 28, and modifier for 29+
+        if (finalBidValue === 28) {
+          return "28"; // Default to direct
+        } else {
+          const modifier = modifierFromFormula;
+          if (modifier === 1) {
+            return "+1";
+          } else {
+            return `+${modifier}`;
+          }
+        }
+      }
+      return finalBidValue.toString();
+    } else {
+      // Not the first bid - calculate modifier from difference
+      const modifier = finalBidValue - previousBidValue;
+      if (modifier === 0) {
+        return finalBidValue.toString(); // Direct bid
+      } else if (modifier > 0) {
+        if (modifier === 1) {
+          return `+1`;
+        } else {
+          return `+${modifier}`;
+        }
+      } else {
+        return finalBidValue.toString();
+      }
+    }
+  };
 
   private renderNormalGameUI() {
     const {
@@ -754,9 +952,15 @@ class GameGrid extends React.Component<IProps, IState> {
       }
     }
 
+    // Determine bid style (direct bid or modifier bid)
+    const bidStyle = this.getBidStyleFromHistory(
+      finalBid || parseInt(bidValue),
+      bidHistory,
+    );
+
     const label =
       (hasCurrentBid || hasFinalBid) && playerName
-        ? `${playerName}'s bid  →  ${bidValue} ${suitDisplay}${
+        ? `${playerName}'s bid → ${suitDisplay} [${bidValue}]${
             bidDouble ? " (Double)" : ""
           }${bidReDouble ? " (Re-Double)" : ""}`
         : "Game Starting...";
@@ -781,53 +985,111 @@ class GameGrid extends React.Component<IProps, IState> {
     );
   }
 
-  private handleBiddingSuitClick = (
-    suit: string,
+  private handleBidNumberClick = (
+    bidValue: number,
     lastBidValue: number,
     lastBidsuit: string,
-    hasActualBid: boolean
   ) => {
-    this.setState(
-      (prevState) => {
-        let newValue;
+    // Set the exact bid value, default suit to Noes if not selected
+    this.setState({
+      currentBiddingValue: bidValue,
+      currentBiddingsuit: this.state.currentBiddingsuit || "N",
+      bidSelectionType: "direct",
+      bidModifier: 0,
+    } as any);
+  };
 
-        // If no suit has been selected yet by this player (first selection)
-        if (prevState.currentBiddingsuit === "") {
-          // If there's already a bid in history (even 28 Noes from a pass), increment from it
-          // Otherwise, start at 28 (very first player, no bids yet)
-          newValue = hasActualBid ? lastBidValue + 1 : 28;
-        } else if (prevState.currentBiddingsuit !== suit) {
-          // Switching to a different suit, increment from last bid
-          newValue = lastBidValue + 1;
-        } else {
-          // Continuing same suit, increment further
-          newValue = prevState.currentBiddingValue + 1;
+  private handleModifierClick = (modifier: number) => {
+    // modifier values: 0 for +, 1 for +1, 2 for +2, etc.
+    // Always calculate from the last bid value, not from current selection
+    let lastBidValue = 28;
+    const { bidHistory } = this.store.game;
+    let hasActualBid = false;
+
+    if (bidHistory && bidHistory.length > 0) {
+      for (let i = bidHistory.length - 1; i >= 0; i--) {
+        const entry = bidHistory[i];
+        if (entry.action === "bid") {
+          lastBidValue = entry.bidValue || 28;
+          hasActualBid = true;
+          break;
         }
-
-        // Cap at 56
-        newValue = Math.min(newValue, 56);
-
-        return {
-          currentBiddingsuit: suit,
-          currentBiddingValue: newValue,
-        } as any;
-      },
-      () => {
-        // Save to history
-        this.setState(
-          (prevState) =>
-            ({
-              biddingHistory: [
-                ...prevState.biddingHistory,
-                {
-                  suit: suit,
-                  value: this.state.currentBiddingValue,
-                },
-              ],
-            }) as any
-        );
       }
-    );
+    }
+
+    let newValue: number;
+    if (hasActualBid) {
+      // Subsequent players: actualBid = lastBidValue + numJacks
+      newValue = Math.min(lastBidValue + modifier, 56);
+    } else {
+      // First player: actualBid = 28 + max(0, numJacks - 1)
+      // So + and +1 both give 28, +2 gives 29, +3 gives 30, etc.
+      newValue = Math.min(28 + Math.max(0, modifier - 1), 56);
+    }
+
+    this.setState({
+      currentBiddingValue: newValue,
+      currentBiddingsuit: this.state.currentBiddingsuit || "N",
+      bidSelectionType: "modifier",
+      bidModifier: modifier,
+    } as any);
+  };
+
+  private handleBiddingSuitClick = (suit: string) => {
+    // Only set the suit, don't change the bid value
+    this.setState({
+      currentBiddingsuit: suit,
+    } as any);
+  };
+
+  private handleResetBid = () => {
+    // Reset the bid selection to start fresh
+    this.setState({
+      currentBiddingValue: 0, // 0 means no selection yet
+      currentBiddingsuit: "",
+      bidSelectionType: null,
+      bidModifier: 0,
+    } as any);
+  };
+
+  private formatSuitDisplay = (suit: string, suitInfo: any): string => {
+    if (suit === "" || !suitInfo) {
+      return "Noes";
+    }
+    if (suitInfo?.name === "N") {
+      return "Noes";
+    }
+    return `${suitInfo?.label} ${suitInfo?.symbol}`;
+  };
+
+  private formatBidValueDisplay = (
+    bidStyle: string,
+    suit: string,
+    suitInfo: any,
+    bidValue: number,
+  ): string => {
+    const suitDisplay = this.formatSuitDisplay(suit, suitInfo);
+    return `${bidStyle} ${suitDisplay} [${bidValue}]`;
+  };
+
+  private formatBidDisplay = (
+    bidValue: number,
+    suit: string,
+    lastBidValue: number,
+    suitInfo: any,
+  ): string => {
+    let bidStyle: string;
+    if (this.state.bidSelectionType === "modifier") {
+      if (this.state.bidModifier === 0) {
+        bidStyle = "+";
+      } else {
+        bidStyle = `+${this.state.bidModifier}`;
+      }
+    } else {
+      bidStyle = bidValue.toString();
+    }
+
+    return this.formatBidValueDisplay(bidStyle, suit, suitInfo, bidValue);
   };
 
   private handleBiddingUndo = (lastBidValue: number, lastBidsuit: string) => {
@@ -845,25 +1107,33 @@ class GameGrid extends React.Component<IProps, IState> {
         biddingHistory: newHistory,
         currentBiddingValue: lastEntry.value,
         currentBiddingsuit: lastEntry.suit,
+        bidSelectionType: null,
+        bidModifier: 0,
       } as any);
     } else {
       // Reset to no selection
       this.setState({
         biddingHistory: newHistory,
-        currentBiddingValue: 28,
+        currentBiddingValue: 0,
         currentBiddingsuit: "", // No suit selected
+        bidSelectionType: null,
+        bidModifier: 0,
       } as any);
     }
   };
 
   private handleBiddingDone = () => {
     const { currentBiddingValue, currentBiddingsuit } = this.state;
-    this.store.biddingAction("bid", currentBiddingValue, currentBiddingsuit);
+    // Default to Noes if no suit selected
+    const suit = currentBiddingsuit || "N";
+    this.store.biddingAction("bid", currentBiddingValue, suit);
     // Reset local bidding state
     this.setState({
-      currentBiddingValue: 28,
+      currentBiddingValue: 0,
       currentBiddingsuit: "",
       biddingHistory: [],
+      bidSelectionType: null,
+      bidModifier: 0,
     } as any);
   };
 
@@ -894,9 +1164,11 @@ class GameGrid extends React.Component<IProps, IState> {
     }
     // Reset local bidding state
     this.setState({
-      currentBiddingValue: 28,
+      currentBiddingValue: 0,
       currentBiddingsuit: "",
       biddingHistory: [],
+      bidSelectionType: null,
+      bidModifier: 0,
     } as any);
   };
 
@@ -904,9 +1176,11 @@ class GameGrid extends React.Component<IProps, IState> {
     this.store.biddingAction("double");
     // Reset local bidding state
     this.setState({
-      currentBiddingValue: 28,
+      currentBiddingValue: 0,
       currentBiddingsuit: "",
       biddingHistory: [],
+      bidSelectionType: null,
+      bidModifier: 0,
     } as any);
   };
 
@@ -914,15 +1188,17 @@ class GameGrid extends React.Component<IProps, IState> {
     this.store.biddingAction("re-double");
     // Reset local bidding state
     this.setState({
-      currentBiddingValue: 28,
+      currentBiddingValue: 0,
       currentBiddingsuit: "",
       biddingHistory: [],
+      bidSelectionType: null,
+      bidModifier: 0,
     } as any);
   };
 
   private addNameToCardOnTable = (card: string, dropCardPlayer: string[]) => {
     const playerCardCombo = dropCardPlayer.find(
-      (element) => element.indexOf(card) > -1
+      (element) => element.indexOf(card) > -1,
     );
     if (playerCardCombo && playerCardCombo.split("-").length > 1) {
       return playerCardCombo.split("-")[1];
@@ -936,7 +1212,7 @@ class GameGrid extends React.Component<IProps, IState> {
     isClickable: boolean = false,
     flipOver: boolean = false,
     dropCardPlayer?: string[],
-    disableAllCards: boolean = false
+    disableAllCards: boolean = false,
   ) {
     if (!cards) {
       return null;
