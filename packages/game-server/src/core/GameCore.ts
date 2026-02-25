@@ -76,7 +76,7 @@ export class GameCore {
     socket: IOSocket,
     playerId: string,
     gameIdToJoin: string | undefined,
-    cb: Function
+    cb: Function,
   ) {
     try {
       // Validate inputs
@@ -103,7 +103,7 @@ export class GameCore {
             playerId,
             cb,
             disconnectedPlayer.token,
-            gameId
+            gameId,
           );
         }
       }
@@ -114,21 +114,21 @@ export class GameCore {
       if (gameIdToJoin) {
         // Player wants to join an existing game
         console.log(
-          `[GAME CORE] ${playerId} attempting to join game: ${gameIdToJoin}`
+          `[GAME CORE] ${playerId} attempting to join game: ${gameIdToJoin}`,
         );
 
         // Check if the game exists and has space for more players
         const existingGame = this.inMemoryStore.fetchGame(gameIdToJoin);
         if (!existingGame) {
           throw new Error(
-            "Game not found. Please check the Game ID and try again."
+            "Game not found. Please check the Game ID and try again.",
           );
         }
 
         // Check if game already started or is full
         if (existingGame.isGameStarted) {
           throw new Error(
-            "Game has already started and cannot accept new players."
+            "Game has already started and cannot accept new players.",
           );
         }
 
@@ -149,10 +149,10 @@ export class GameCore {
         ) {
           // Post-game start structure - count humans vs bots
           currentHumanCount = existingGame.players.filter(
-            (p: IPlayer) => !p.isBotAgent
+            (p: IPlayer) => !p.isBotAgent,
           ).length;
           currentBotCount = existingGame.players.filter(
-            (p: IPlayer) => p.isBotAgent
+            (p: IPlayer) => p.isBotAgent,
           ).length;
         }
 
@@ -164,7 +164,7 @@ export class GameCore {
 
         targetGameId = gameIdToJoin;
         console.log(
-          `[GAME CORE) ${playerId} successfully joining game: ${targetGameId}`
+          `[GAME CORE) ${playerId} successfully joining game: ${targetGameId}`,
         );
       } else {
         // Player is creating a new game
@@ -172,7 +172,7 @@ export class GameCore {
         isGameCreator = true;
         this.currentGameId = targetGameId;
         console.log(
-          `[GAME CORE] ${playerId} is creating a new game: ${targetGameId}`
+          `[GAME CORE] ${playerId} is creating a new game: ${targetGameId}`,
         );
 
         // Create a new game record in the store for other players to join
@@ -188,7 +188,7 @@ export class GameCore {
         };
         this.inMemoryStore.saveGame(targetGameId, newGame);
         console.log(
-          `[GAME CORE] Created new game record in store: ${targetGameId}`
+          `[GAME CORE] Created new game record in store: ${targetGameId}`,
         );
       }
 
@@ -213,7 +213,7 @@ export class GameCore {
           });
           this.inMemoryStore.saveGame(targetGameId, game);
           console.log(
-            `[GAME CORE] Added ${playerId} to existing game ${targetGameId}, total players: ${game.gamePlayersInfo.length}`
+            `[GAME CORE] Added ${playerId} to existing game ${targetGameId}, total players: ${game.gamePlayersInfo.length}`,
           );
         }
       } else {
@@ -229,7 +229,7 @@ export class GameCore {
           this.inMemoryStore.saveGame(targetGameId, game);
         }
         console.log(
-          `[GAME CORE] Added ${playerId} to new game pool and game record for game ${targetGameId}`
+          `[GAME CORE] Added ${playerId} to new game pool and game record for game ${targetGameId}`,
         );
       }
 
@@ -248,7 +248,7 @@ export class GameCore {
       // For game creators, they will see bot selection UI
       // For joiners, they wait for the creator to start the game or auto-start when full
       console.log(
-        `[GAME CORE] Login successful for ${playerId} in game ${targetGameId} (creator: ${isGameCreator})`
+        `[GAME CORE] Login successful for ${playerId} in game ${targetGameId} (creator: ${isGameCreator})`,
       );
 
       // Check if we should auto-start the game (when 6 total players reached)
@@ -260,12 +260,12 @@ export class GameCore {
         console.log(
           `[GAME CORE] Game ${targetGameId} now has ${totalPlayers}/6 players (${
             updatedGame.gamePlayersInfo.length
-          } humans + ${updatedGame.botCount || 0} bots)`
+          } humans + ${updatedGame.botCount || 0} bots)`,
         );
 
         if (totalPlayers === MAX_PLAYERS && !updatedGame.isGameStarted) {
           console.log(
-            `[GAME CORE] Auto-starting game ${targetGameId} - 6 players reached!`
+            `[GAME CORE] Auto-starting game ${targetGameId} - 6 players reached!`,
           );
 
           // Get all human players
@@ -275,7 +275,7 @@ export class GameCore {
               playerId: playerInfo.playerId,
               token: playerInfo.token,
               gameId: targetGameId,
-            })
+            }),
           );
 
           // Get all bot players (if any)
@@ -286,7 +286,7 @@ export class GameCore {
               token: botInfo.token,
               gameId: targetGameId,
               isBotAgent: true,
-            })
+            }),
           );
 
           const allPlayers = [...allHumanPlayers, ...allBotPlayers];
@@ -305,8 +305,8 @@ export class GameCore {
         null,
         errorResponse(
           RESPONSE_CODES.loginFailed,
-          error && error.message ? error.message : "Unknown error"
-        )
+          error && error.message ? error.message : "Unknown error",
+        ),
       );
     }
   }
@@ -326,8 +326,8 @@ export class GameCore {
           null,
           errorResponse(
             RESPONSE_CODES.failed,
-            "Bot count must be between 0 and 5"
-          )
+            "Bot count must be between 0 and 5",
+          ),
         );
         return;
       }
@@ -345,7 +345,7 @@ export class GameCore {
             botPlayers: [],
             gameStarted: false,
             playersNeeded: MAX_PLAYERS - 1, // Need 5 more humans (6 total - 1 creator)
-          })
+          }),
         );
         return;
       }
@@ -369,7 +369,7 @@ export class GameCore {
       } else {
         // For new games, use the players pool
         currentHumanPlayers = this.playersPool.filter(
-          (p) => p.gameId === gameId
+          (p) => p.gameId === gameId,
         );
         if (currentHumanPlayers.length === 0) {
           // Fall back to current players pool if no specific game ID match
@@ -394,15 +394,15 @@ export class GameCore {
           null,
           errorResponse(
             RESPONSE_CODES.failed,
-            `Cannot add ${botCount} bots. Maximum ${MAX_PLAYERS} players allowed. Current: ${currentHumanPlayers.length} humans + ${currentBotCount} bots`
-          )
+            `Cannot add ${botCount} bots. Maximum ${MAX_PLAYERS} players allowed. Current: ${currentHumanPlayers.length} humans + ${currentBotCount} bots`,
+          ),
         );
         return;
       }
 
       // Create bot players
       const botPlayers = this.addBotPlayers(
-        currentHumanPlayers.length + currentBotCount
+        currentHumanPlayers.length + currentBotCount,
       );
       const selectedBots = botPlayers.slice(0, botCount);
 
@@ -455,7 +455,7 @@ export class GameCore {
             message: `Game started with ${selectedBots.length} bot players`,
             botPlayers: selectedBots.map((bot) => bot.playerId),
             gameStarted: true,
-          })
+          }),
         );
       } else {
         // Just add bots and wait for human players
@@ -474,7 +474,7 @@ export class GameCore {
             botPlayers: selectedBots.map((bot) => bot.playerId),
             gameStarted: false,
             playersNeeded: MAX_PLAYERS - totalPlayersAfterBots,
-          })
+          }),
         );
       }
     } catch (error) {
@@ -483,8 +483,8 @@ export class GameCore {
         null,
         errorResponse(
           RESPONSE_CODES.failed,
-          error && error.message ? error.message : "Unknown error"
-        )
+          error && error.message ? error.message : "Unknown error",
+        ),
       );
     }
   }
@@ -516,7 +516,7 @@ export class GameCore {
     const botCount = bots.length;
 
     console.log(
-      `[TEAM ASSIGNMENT] Optimizing for ${humanCount} humans + ${botCount} bots`
+      `[TEAM ASSIGNMENT] Optimizing for ${humanCount} humans + ${botCount} bots`,
     );
 
     // Create result array with 6 positions
@@ -584,10 +584,10 @@ export class GameCore {
     }
 
     console.log(
-      `[TEAM ASSIGNMENT] Team A (0,2,4): ${result[0]?.playerId}, ${result[2]?.playerId}, ${result[4]?.playerId}`
+      `[TEAM ASSIGNMENT] Team A (0,2,4): ${result[0]?.playerId}, ${result[2]?.playerId}, ${result[4]?.playerId}`,
     );
     console.log(
-      `[TEAM ASSIGNMENT] Team B (1,3,5): ${result[1]?.playerId}, ${result[3]?.playerId}, ${result[5]?.playerId}`
+      `[TEAM ASSIGNMENT] Team B (1,3,5): ${result[1]?.playerId}, ${result[3]?.playerId}, ${result[5]?.playerId}`,
     );
 
     return result;
@@ -606,7 +606,7 @@ export class GameCore {
     playerId: string,
     cb: Function,
     token?: string,
-    gameId?: string
+    gameId?: string,
   ) {
     try {
       // Validate inputs
@@ -637,7 +637,7 @@ export class GameCore {
         // Note: This is a simplified search. In production, you'd want a more efficient way
         // to index games by player for faster lookup
         console.log(
-          "Searching for disconnected player $(playerId) across all games"
+          "Searching for disconnected player $(playerId) across all games",
         );
       }
 
@@ -647,7 +647,7 @@ export class GameCore {
 
       // Check if there are other active players who need to approve the reconnection
       const activePlayers = reconnectedGame.players.filter(
-        (p: IPlayer) => !p.isDisconnected && p.playerId != playerId
+        (p: IPlayer) => !p.isDisconnected && p.playerId != playerId,
       );
 
       if (activePlayers.length > 0) {
@@ -688,7 +688,7 @@ export class GameCore {
           successResponse(RESPONSE_CODES.reconnectPendingApproval, {
             message: "Reconnection request sent to other players for approval",
             gameld: gameId,
-          })
+          }),
         );
         return;
       }
@@ -704,7 +704,7 @@ export class GameCore {
 
       // Update the players array
       const playerIndex = reconnectedGame.players.findIndex(
-        (p: IPlayer) => (p.playerId = playerId)
+        (p: IPlayer) => (p.playerId = playerId),
       );
 
       if (playerIndex == -1) {
@@ -732,7 +732,7 @@ export class GameCore {
 
       // Check if game was paused and can be resumed
       const connectedPlayersCount = reconnectedGame.players.filter(
-        (p: IPlayer) => !p.isDisconnected
+        (p: IPlayer) => !p.isDisconnected,
       ).length;
 
       if (reconnectedGame.gamePaused && connectedPlayersCount === MAX_PLAYERS) {
@@ -742,21 +742,21 @@ export class GameCore {
 
         // Notify all players that game is resumed
         const resumePayload = Payloads.sendGameResumed(
-          `${playerId} reconnected. Game resumed!`
+          `${playerId} reconnected. Game resumed!`,
         );
         const resumeResponse = successResponse(
           RESPONSE_CODES.gameNotification,
-          resumePayload
+          resumePayload,
         );
         this.ioServer.to(gameId).emit("data", resumeResponse);
       } else {
         // Notify other players about reconnection
         const reconnectPayload = Payloads.sendPlayerReconnected(
-          `${playerId} has reconnected to the game.`
+          `${playerId} has reconnected to the game.`,
         );
         const reconnectResponse = successResponse(
           RESPONSE_CODES.gameNotification,
-          reconnectPayload
+          reconnectPayload,
         );
         this.ioServer.to(gameId).emit("data", reconnectResponse);
       }
@@ -764,7 +764,7 @@ export class GameCore {
       // Send current game state to reconnected player
       const gameStatePayload = this.buildGameStateForPlayer(
         reconnectedGame,
-        playerToReconnect
+        playerToReconnect,
       );
       cb(null, successResponse(RESPONSE_CODES.loginSuccess, gameStatePayload));
 
@@ -789,7 +789,7 @@ export class GameCore {
     gameId: string,
     playerId: string,
     approvingPlayerId: string,
-    cb: Function
+    cb: Function,
   ) {
     try {
       const game = this.inMemoryStore.fetchGame(gameId);
@@ -818,14 +818,14 @@ export class GameCore {
           null,
           successResponse(RESPONSE_CODES.reconnectApproved, {
             message: "Player reconnection approved and completed",
-          })
+          }),
         );
       } else {
         cb(
           null,
           successResponse(RESPONSE_CODES.success, {
             message: `Approval recorded.$(pendingRequest.approvals.length) / ${pendingRequest.requiredApprovals} approvals recieved`,
-          })
+          }),
         );
       }
     } catch (error) {
@@ -846,7 +846,7 @@ export class GameCore {
     gameId: string,
     playerId: string,
     denyingPlayerId: string,
-    cb: Function
+    cb: Function,
   ) {
     try {
       const game = this.inMemoryStore.fetchGame(gameId);
@@ -865,8 +865,8 @@ export class GameCore {
         "data",
         errorResponse(
           RESPONSE_CODES.reconnectDenied,
-          `Reconnection denied by ${denyingPlayerId}`
-        )
+          `Reconnection denied by ${denyingPlayerId}`,
+        ),
       );
 
       // Clean up the pending request
@@ -876,7 +876,7 @@ export class GameCore {
         null,
         successResponse(RESPONSE_CODES.success, {
           message: "Reconnection request denied",
-        })
+        }),
       );
     } catch (error) {
       cb(null, errorResponse(RESPONSE_CODES.error, (error as Error).message));
@@ -894,7 +894,7 @@ export class GameCore {
     gameId: string,
     game: GameModel,
     playerId: string,
-    pendingRequest: any
+    pendingRequest: any,
   ) {
     const { playerToReconnect, requestingSocket } = pendingRequest;
 
@@ -906,7 +906,7 @@ export class GameCore {
 
     // Update the players array
     const playerIndex = game.players.findIndex(
-      (p: IPlayer) => p.playerId === playerId
+      (p: IPlayer) => p.playerId === playerId,
     );
 
     if (playerIndex !== -1) {
@@ -940,12 +940,12 @@ export class GameCore {
 
     requestingSocket.emit(
       "data",
-      successResponse(RESPONSE_CODES.reconnectSuccess, gameState)
+      successResponse(RESPONSE_CODES.reconnectSuccess, gameState),
     );
 
     // Check if the game should be resumed
     const connectedPlayersCount = game.players.filter(
-      (p: IPlayer) => !p.isDisconnected
+      (p: IPlayer) => !p.isDisconnected,
     ).length;
 
     if (game.gamePaused && connectedPlayersCount >= MAX_PLAYERS) {
@@ -955,22 +955,22 @@ export class GameCore {
 
       // Notify all players that the game has resumed
       const resumePayload = Payloads.sendGameResumed(
-        `${playerId} has reconnected. Game resumed!`
+        `${playerId} has reconnected. Game resumed!`,
       );
       const resumeResponse = successResponse(
         RESPONSE_CODES.gameNotification,
-        resumePayload
+        resumePayload,
       );
       this.ioServer?.to(gameId).emit("data", resumeResponse);
     }
 
     // Notify all players that the player has reconnected
     const reconnectPayload = Payloads.sendPlayerReconnected(
-      `${playerId} has successfully reconnected to the game!`
+      `${playerId} has successfully reconnected to the game!`,
     );
     const reconnectResponse = successResponse(
       RESPONSE_CODES.gameNotification,
-      reconnectPayload
+      reconnectPayload,
     );
     this.ioServer.to(gameId).emit("data", reconnectResponse);
   }
@@ -985,7 +985,7 @@ export class GameCore {
 
     const gameObject = this.createGameObject(
       reorderedPlayers,
-      this.gameStartIndex
+      this.gameStartIndex,
     );
 
     // Mark game as started
@@ -1017,7 +1017,7 @@ export class GameCore {
 
     this.sendPlayersInfo(
       gameId,
-      reorderedPlayers.map((x) => x.playerId)
+      reorderedPlayers.map((x) => x.playerId),
     );
 
     const gameObj = this.inMemoryStore.fetchGame(gameId);
@@ -1034,7 +1034,7 @@ export class GameCore {
     };
     const biddingStartResponse = successResponse(
       RESPONSE_CODES.gameNotification,
-      biddingStartPayload
+      biddingStartPayload,
     );
     this.ioServer.to(gameId).emit("data", biddingStartResponse);
     // Notify all players about restart protection status from game start
@@ -1047,7 +1047,7 @@ export class GameCore {
     };
     const restartProtectionResponse = successResponse(
       RESPONSE_CODES.gameNotification,
-      restartProtectionPayload
+      restartProtectionPayload,
     );
     this.ioServer.to(gameId).emit("data", restartProtectionResponse);
 
@@ -1075,8 +1075,8 @@ export class GameCore {
         null,
         errorResponse(
           RESPONSE_CODES.failed,
-          "Restart is temporarily disabled. Please wait for the first round to be played."
-        )
+          "Restart is temporarily disabled. Please wait for the first round to be played.",
+        ),
       );
       return;
     }
@@ -1100,7 +1100,7 @@ export class GameCore {
     if (currentPlayers.length === 0) {
       cb(
         null,
-        errorResponse(RESPONSE_CODES.failed, "No players found in game")
+        errorResponse(RESPONSE_CODES.failed, "No players found in game"),
       );
       return;
     }
@@ -1111,10 +1111,10 @@ export class GameCore {
     this.gameStartIndex = newStarterIndex;
 
     console.log(
-      `[RESTART] Game ${gameId}: starter moving from index ${currentStarterIndex} to ${newStarterIndex}`
+      `[RESTART] Game ${gameId}: starter moving from index ${currentStarterIndex} to ${newStarterIndex}`,
     );
     console.log(
-      `[RESTART] New starter: ${currentPlayers[newStarterIndex]?.playerId}`
+      `[RESTART] New starter: ${currentPlayers[newStarterIndex]?.playerId}`,
     );
 
     // Preserve team score before restarting
@@ -1152,7 +1152,7 @@ export class GameCore {
     const teamAPayload: GameActionResponse = Payloads.sendTeamACards([]);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
-      teamAPayload
+      teamAPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
@@ -1163,7 +1163,7 @@ export class GameCore {
     const dropCardPayload: GameActionResponse = Payloads.sendDroppedCards([]);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      dropCardPayload
+      dropCardPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
@@ -1197,39 +1197,39 @@ export class GameCore {
       Payloads.sendGameComplete(gameCompleteResetData);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      gameCompleteResetPayload
+      gameCompleteResetPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
     // Send bet notification with current starter
     const incrementBetPayload: GameActionResponse = Payloads.sendBetByPlayer(
       "27",
-      gameObj.playerWithCurrentBet
+      gameObj.playerWithCurrentBet,
     );
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      incrementBetPayload
+      incrementBetPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
     // Reset trump suit selection notification
     const trumpSuitPayload: GameActionResponse = Payloads.sendTrumpSuitSelected(
       {},
-      undefined
+      undefined,
     );
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      trumpSuitPayload
+      trumpSuitPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
     // Send updated game score for slider compatibility
     const gameScorePayload: GameActionResponse = Payloads.sendUpdatedGameScore(
-      gameObj.gameScore
+      gameObj.gameScore,
     );
     const gameScoreResponse = successResponse(
       RESPONSE_CODES.gameNotification,
-      gameScorePayload
+      gameScorePayload,
     );
     this.ioServer.to(req.gameId).emit("data", gameScoreResponse);
 
@@ -1244,7 +1244,7 @@ export class GameCore {
     };
     const restartProtectionResponse = successResponse(
       RESPONSE_CODES.gameNotification,
-      restartProtectionPayload
+      restartProtectionPayload,
     );
     this.ioServer.to(req.gameId).emit("data", restartProtectionResponse);
 
@@ -1257,11 +1257,11 @@ export class GameCore {
         message: "Game restarted successfully",
         newStarter: currentPlayers[newStarterIndex]?.playerId,
         restartProtectionActive: true,
-      })
+      }),
     );
 
     console.log(
-      `[RESTART] Game ${gameId} restarted successfully. New starter: ${currentPlayers[newStarterIndex]?.playerId}`
+      `[RESTART] Game ${gameId} restarted successfully. New starter: ${currentPlayers[newStarterIndex]?.playerId}`,
     );
   }
 
@@ -1283,7 +1283,7 @@ export class GameCore {
     if (currentGameObj.isGameComplete) {
       cb(
         null,
-        errorResponse(RESPONSE_CODES.failed, "Cannot forfeit a completed game")
+        errorResponse(RESPONSE_CODES.failed, "Cannot forfeit a completed game"),
       );
       return;
     }
@@ -1340,7 +1340,7 @@ export class GameCore {
 
       const response = successResponse(
         RESPONSE_CODES.gameNotification,
-        forfeitRequestPayload
+        forfeitRequestPayload,
       );
 
       // Send to each OTHER team member individually (not to the requester)
@@ -1359,7 +1359,7 @@ export class GameCore {
         successResponse(RESPONSE_CODES.success, {
           message: "Forfeit request sent to team members",
           forfeitApprovals: currentGameObj.forfeitApprovals,
-        })
+        }),
       );
       return;
     }
@@ -1368,7 +1368,7 @@ export class GameCore {
     if (!currentGameObj.forfeitApprovals) {
       cb(
         null,
-        errorResponse(RESPONSE_CODES.failed, "No active forfeit request")
+        errorResponse(RESPONSE_CODES.failed, "No active forfeit request"),
       );
       return;
     }
@@ -1380,14 +1380,14 @@ export class GameCore {
 
     // Check if all team members have approved
     const allApproved = Object.values(currentGameObj.forfeitApprovals).every(
-      (approval) => approval === true
+      (approval) => approval === true,
     );
 
     if (allApproved) {
       // Execute forfeit - opposing team wins
       const forfeitTeam = currentGameObj.forfeitRequestedBy
         ? players.findIndex(
-            (p) => p.playerId === currentGameObj.forfeitRequestedBy
+            (p) => p.playerId === currentGameObj.forfeitRequestedBy,
           ) %
             2 ===
           0
@@ -1471,7 +1471,7 @@ export class GameCore {
 
       const forfeitResponse = successResponse(
         RESPONSE_CODES.gameNotification,
-        forfeitCompletePayload
+        forfeitCompletePayload,
       );
       this.ioServer.to(gameId).emit("data", forfeitResponse);
 
@@ -1506,7 +1506,7 @@ export class GameCore {
       const teamAPayload: GameActionResponse = Payloads.sendTeamACards([]);
       let response = successResponse(
         RESPONSE_CODES.gameNotification,
-        teamAPayload
+        teamAPayload,
       );
       this.ioServer.to(gameId).emit("data", response);
 
@@ -1517,7 +1517,7 @@ export class GameCore {
       const dropCardPayload: GameActionResponse = Payloads.sendDroppedCards([]);
       response = successResponse(
         RESPONSE_CODES.gameNotification,
-        dropCardPayload
+        dropCardPayload,
       );
       this.ioServer.to(gameId).emit("data", response);
 
@@ -1532,7 +1532,7 @@ export class GameCore {
       let verifyDeleted = this.inMemoryStore.fetchGame(gameId);
       console.log(
         `[FORFEIT] After delete, fetchGame returns:`,
-        verifyDeleted ? "FOUND (ERROR!)" : "undefined (correct)"
+        verifyDeleted ? "FOUND (ERROR!)" : "undefined (correct)",
       );
 
       // Start the game with updated starter index
@@ -1541,7 +1541,7 @@ export class GameCore {
       // Get the game that was just created by startGame
       let gameObj = this.inMemoryStore.fetchGame(gameId);
       console.log(
-        `[FORFEIT] After startGame, isBiddingPhase=${gameObj.isBiddingPhase}, currentBiddingPlayerId=${gameObj.currentBiddingPlayerId}`
+        `[FORFEIT] After startGame, isBiddingPhase=${gameObj.isBiddingPhase}, currentBiddingPlayerId=${gameObj.currentBiddingPlayerId}`,
       );
 
       // Update scores from the forfeited game
@@ -1566,7 +1566,7 @@ export class GameCore {
       gameObj.isGameCompleted = false;
 
       console.log(
-        `[FORFEIT] Before final save: isBiddingPhase=${gameObj.isBiddingPhase}, isGameComplete=${gameObj.isGameComplete}, currentBiddingPlayerId=${gameObj.currentBiddingPlayerId}`
+        `[FORFEIT] Before final save: isBiddingPhase=${gameObj.isBiddingPhase}, isGameComplete=${gameObj.isGameComplete}, currentBiddingPlayerId=${gameObj.currentBiddingPlayerId}`,
       );
 
       // Save with a fresh reference to avoid mutation issues
@@ -1584,14 +1584,14 @@ export class GameCore {
       // Verify the save worked by fetching fresh
       const verifyGameObj = this.inMemoryStore.fetchGame(gameId);
       console.log(
-        `[FORFEIT] After save verification: isBiddingPhase=${verifyGameObj.isBiddingPhase}, isGameComplete=${verifyGameObj.isGameComplete}, currentBiddingPlayerId=${verifyGameObj.currentBiddingPlayerId}`
+        `[FORFEIT] After save verification: isBiddingPhase=${verifyGameObj.isBiddingPhase}, isGameComplete=${verifyGameObj.isGameComplete}, currentBiddingPlayerId=${verifyGameObj.currentBiddingPlayerId}`,
       );
 
       cb(
         null,
         successResponse(RESPONSE_CODES.success, {
           message: "Game forfeited successfully",
-        })
+        }),
       );
     } else {
       // Update approvals and notify
@@ -1600,7 +1600,7 @@ export class GameCore {
         data: {
           approvals: currentGameObj.forfeitApprovals,
           approvedCount: Object.values(currentGameObj.forfeitApprovals).filter(
-            (v) => v === true
+            (v) => v === true,
           ).length,
           totalNeeded: Object.keys(currentGameObj.forfeitApprovals).length,
         },
@@ -1608,7 +1608,7 @@ export class GameCore {
 
       const updateResponse = successResponse(
         RESPONSE_CODES.gameNotification,
-        forfeitUpdatePayload
+        forfeitUpdatePayload,
       );
 
       // Send FORFEIT_REQUEST to teammates who haven't approved yet
@@ -1636,7 +1636,7 @@ export class GameCore {
             };
             const requestResponse = successResponse(
               RESPONSE_CODES.gameNotification,
-              forfeitRequestPayload
+              forfeitRequestPayload,
             );
             this.ioServer.to(teammate.socketId).emit("data", requestResponse);
           } else {
@@ -1661,7 +1661,7 @@ export class GameCore {
         successResponse(RESPONSE_CODES.success, {
           message: "Approval registered",
           approvals: currentGameObj.forfeitApprovals,
-        })
+        }),
       );
     }
 
@@ -1695,8 +1695,8 @@ export class GameCore {
         null,
         errorResponse(
           RESPONSE_CODES.failed,
-          "Bidding phase is still active. Complete bidding before playing cards."
-        )
+          "Bidding phase is still active. Complete bidding before playing cards.",
+        ),
       );
       return;
     }
@@ -1714,7 +1714,7 @@ export class GameCore {
       gameObject.restartProtectionActive = false;
       gameObject.recentlyRestarted = false;
       console.log(
-        `[RESTART] Protection disabled for game ${gameId} - first card played`
+        `[RESTART] Protection disabled for game ${gameId} - first card played`,
       );
 
       // Notify all players that restart protection is now disabled
@@ -1727,7 +1727,7 @@ export class GameCore {
       };
       const restartProtectionResponse = successResponse(
         RESPONSE_CODES.gameNotification,
-        restartProtectionPayload
+        restartProtectionPayload,
       );
       this.ioServer.to(gameId).emit("data", restartProtectionResponse);
     }
@@ -1743,7 +1743,7 @@ export class GameCore {
 
       // Determine which team the bidding player belongs to
       const playerIndex = gameObject.players.findIndex(
-        (p) => p.playerId === playerId
+        (p) => p.playerId === playerId,
       );
       gameObject.biddingTeam = playerIndex % 2 === 0 ? "A" : "B";
 
@@ -1762,22 +1762,22 @@ export class GameCore {
       const trumpSuitPayload: GameActionResponse =
         Payloads.sendTrumpSuitSelected(
           gameObject.playerTrumpSuit,
-          gameObject.trumpSuit
+          gameObject.trumpSuit,
         );
       const trumpResponse = successResponse(
         RESPONSE_CODES.gameNotification,
-        trumpSuitPayload
+        trumpSuitPayload,
       );
       this.ioServer.to(req.gameId).emit("data", trumpResponse);
 
       // Notify all players about the default bet selection
       const bidPayload = Payloads.sendBetByPlayer(
         gameObject.currentBet,
-        playerId
+        playerId,
       );
       const bidResponse = successResponse(
         RESPONSE_CODES.gameNotification,
-        bidPayload
+        bidPayload,
       );
       this.ioServer.to(req.gameId).emit("data", bidResponse);
     }
@@ -1802,8 +1802,8 @@ export class GameCore {
         null,
         errorResponse(
           RESPONSE_CODES.failed,
-          "You have the same suit card. Please play one of them!!"
-        )
+          "You have the same suit card. Please play one of them!!",
+        ),
       );
       return;
     }
@@ -1820,8 +1820,8 @@ export class GameCore {
         null,
         errorResponse(
           RESPONSE_CODES.failed,
-          "Round completed. Please wait for the round result."
-        )
+          "Round completed. Please wait for the round result.",
+        ),
       );
       return;
     }
@@ -1833,7 +1833,7 @@ export class GameCore {
       Payloads.sendDropCardByPlayer(this.dropCardPlayer);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
-      DropCardByPlayerPayload
+      DropCardByPlayerPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
     gameObj.dropCardPlayer.push(dropCardPlayer);
@@ -1847,7 +1847,7 @@ export class GameCore {
    */
   public onIncrementBetByPlayer(
     req: IncrementBetByPlayerRequestPayload,
-    cb: Function
+    cb: Function,
   ) {
     const { gameId, token } = req;
     const currentGameIns = new Game(this.inMemoryStore, gameId, "", token);
@@ -1859,14 +1859,14 @@ export class GameCore {
         null,
         errorResponse(
           RESPONSE_CODES.failed,
-          "Use biddingAction during bidding phase"
-        )
+          "Use biddingAction during bidding phase",
+        ),
       );
       return;
     }
 
     const player = currentGameIns.gameObj.players.find(
-      (element) => element.token === currentGameIns.currentPlayerToken
+      (element) => element.token === currentGameIns.currentPlayerToken,
     );
     gameObj.currentBet = req.playerBet;
     gameObj.playerWithCurrentBet = player.playerId;
@@ -1878,7 +1878,7 @@ export class GameCore {
 
       // Determine which team the bidding player belongs to
       const playerIndex = gameObj.players.findIndex(
-        (p) => p.playerId === player.playerId
+        (p) => p.playerId === player.playerId,
       );
       gameObj.biddingTeam = playerIndex % 2 === 0 ? "A" : "B";
     }
@@ -1887,14 +1887,14 @@ export class GameCore {
       Payloads.sendBetByPlayer(req.playerBet, player.playerId);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
-      IncrementBetByPlayerPayload
+      IncrementBetByPlayerPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
     this.inMemoryStore.saveGame(req.gameId, gameObj);
     const dropCardPayload: GameActionResponse = Payloads.sendDroppedCards([]);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      dropCardPayload
+      dropCardPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
     this.inMemoryStore.saveGame(req.gameId, gameObj);
@@ -1919,7 +1919,7 @@ export class GameCore {
       Payloads.sendUpdatedGameScore(req.gameScore);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
-      UpdateGameScorePayload
+      UpdateGameScorePayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
@@ -1941,7 +1941,7 @@ export class GameCore {
       Payloads.sendGameComplete(gameCompleteResetData);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      gameCompleteResetPayload
+      gameCompleteResetPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
@@ -1969,18 +1969,18 @@ export class GameCore {
     // Use all dropped cards from this round (dropDetails is cleared each round)
     const remainingDropCards = dropCards;
     const updatedTeamACards = remainingDropCards.concat(
-      gameObj.teamACards || []
+      gameObj.teamACards || [],
     );
     const teamAPayload: GameActionResponse =
       Payloads.sendTeamACards(updatedTeamACards);
     gameObj.teamACards = updatedTeamACards;
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
-      teamAPayload
+      teamAPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
     const teamBPayload: GameActionResponse = Payloads.sendTeamBCards(
-      gameObj.teamBCards || []
+      gameObj.teamBCards || [],
     );
 
     response = successResponse(RESPONSE_CODES.gameNotification, teamBPayload);
@@ -1990,7 +1990,7 @@ export class GameCore {
     const dropCardPayload: GameActionResponse = Payloads.sendDroppedCards([]);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      dropCardPayload
+      dropCardPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
@@ -2033,19 +2033,19 @@ export class GameCore {
     // Use all dropped cards from this round (dropDetails is cleared each round)
     const remainingDropCards = dropCards;
     const updatedTeamBCards = remainingDropCards.concat(
-      gameObj.teamBCards || []
+      gameObj.teamBCards || [],
     );
     const teamBPayload: GameActionResponse =
       Payloads.sendTeamBCards(updatedTeamBCards);
     gameObj.teamBCards = updatedTeamBCards;
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
-      teamBPayload
+      teamBPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
     const teamAPayload: GameActionResponse = Payloads.sendTeamACards(
-      gameObj.teamACards || []
+      gameObj.teamACards || [],
     );
 
     response = successResponse(RESPONSE_CODES.gameNotification, teamAPayload);
@@ -2055,7 +2055,7 @@ export class GameCore {
     const dropCardPayload: GameActionResponse = Payloads.sendDroppedCards([]);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      dropCardPayload
+      dropCardPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
 
@@ -2094,13 +2094,13 @@ export class GameCore {
     if (!gameObj || !gameObj.players || gameObj.players.length < 1) {
       cb(
         null,
-        errorResponse(RESPONSE_CODES.failed, "Game not found or no players")
+        errorResponse(RESPONSE_CODES.failed, "Game not found or no players"),
       );
       return;
     }
 
     const playerToPlay = gameObj.players.find(
-      (player) => player && player.playerId === currentPlayerId
+      (player) => player && player.playerId === currentPlayerId,
     );
 
     if (!playerToPlay) {
@@ -2109,7 +2109,7 @@ export class GameCore {
     }
 
     const playerIndex = gameObj.players.findIndex(
-      (player) => player && player.playerId === currentPlayerId
+      (player) => player && player.playerId === currentPlayerId,
     );
 
     if (playerIndex === -1) {
@@ -2119,12 +2119,12 @@ export class GameCore {
 
     const selectedPlayerObj = gameObj.players.slice(
       playerIndex,
-      playerIndex + 1
+      playerIndex + 1,
     );
 
     const arrayAfterSelectedPlayer = gameObj.players.slice(
       playerIndex + 1,
-      gameObj.players.length
+      gameObj.players.length,
     );
 
     const arrayBeforeSelectedPlayer = gameObj.players.slice(0, playerIndex);
@@ -2137,7 +2137,7 @@ export class GameCore {
     this.inMemoryStore.saveGame(gameId, gameObj);
 
     const payload: GameActionResponse = Payloads.sendNotifyTurn(
-      playerToPlay.playerId
+      playerToPlay.playerId,
     );
 
     const response = successResponse(RESPONSE_CODES.gameNotification, payload);
@@ -2172,7 +2172,7 @@ export class GameCore {
 
     this.sendDroppedCardsInfo(
       currentGameIns.gameId,
-      currentGameIns.droppedCards
+      currentGameIns.droppedCards,
     );
 
     // console.log(
@@ -2245,7 +2245,7 @@ export class GameCore {
     }
 
     const payload: GameActionResponse = Payloads.sendGameAborted(
-      "The game has been aborted. Please sign in again to play."
+      "The game has been aborted. Please sign in again to play.",
     );
 
     const response = successResponse(RESPONSE_CODES.gameNotification, payload);
@@ -2325,7 +2325,7 @@ export class GameCore {
         // Only considering trump cards for winning
         if (card.length > 1 && card[1] === trumpSuit) {
           const playerIndex = gameObj.players.findIndex(
-            (p: IPlayer) => p && p.playerId === playerId
+            (p: IPlayer) => p && p.playerId === playerId,
           );
 
           if (playerIndex === -1) continue;
@@ -2348,7 +2348,7 @@ export class GameCore {
         if (!card || !playerId) continue;
 
         const playerIndex = gameObj.players.findIndex(
-          (p: IPlayer) => p && p.playerId === playerId
+          (p: IPlayer) => p && p.playerId === playerId,
         );
 
         if (playerIndex === -1) continue;
@@ -2531,7 +2531,7 @@ export class GameCore {
       Payloads.sendGameComplete(gameCompleteData);
     const gameCompletionResponse = successResponse(
       RESPONSE_CODES.gameNotification,
-      gameCompletePayload
+      gameCompletePayload,
     );
 
     this.ioServer.to(gameId).emit("data", gameCompletionResponse);
@@ -2548,7 +2548,7 @@ export class GameCore {
     this.ioServer.to(gameId).emit("data", response);
     response = successResponse(
       RESPONSE_CODES.gameNotification,
-      Payloads.sendTableCards(cards)
+      Payloads.sendTableCards(cards),
     );
     this.ioServer.to(gameId).emit("data", response);
   }
@@ -2562,7 +2562,7 @@ export class GameCore {
     const payload = Payloads.sendPlayersInfo(players);
     const recievePlayersInfo = successResponse(
       RESPONSE_CODES.gameNotification,
-      payload
+      payload,
     );
     this.ioServer.to(gameId).emit("data", recievePlayersInfo);
   }
@@ -2581,7 +2581,7 @@ export class GameCore {
     const payload = Payloads.sendCards(cards);
     const recieveCards = successResponse(
       RESPONSE_CODES.gameNotification,
-      payload
+      payload,
     );
 
     // Check if socket exists before emitting
@@ -2590,7 +2590,7 @@ export class GameCore {
       socket.emit("data", recieveCards);
     } else {
       console.warn(
-        `Socket ${socketId} not found. Player might be disconnected.`
+        `Socket ${socketId} not found. Player might be disconnected.`,
       );
     }
   }
@@ -2603,7 +2603,7 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(gameId);
     const playerToPlay = gameObj.players[gameObj.currentTurn];
     const payload: GameActionResponse = Payloads.sendNotifyTurn(
-      playerToPlay.playerId
+      playerToPlay.playerId,
     );
 
     const response = successResponse(RESPONSE_CODES.gameNotification, payload);
@@ -2626,7 +2626,7 @@ export class GameCore {
     // playerId: string,
     // token,
     players: IPlayer[],
-    starterIndex: number = 0
+    starterIndex: number = 0,
   ): GameModel {
     const game = {};
     game["players"] = [];
@@ -2664,7 +2664,7 @@ export class GameCore {
 
     const cards: string[][] = this.deck.getCardsForGame();
     const sortedCards = cards.map((handCards) =>
-      this.deck.sortCards(handCards)
+      this.deck.sortCards(handCards),
     );
 
     for (let idx in players) {
@@ -2707,7 +2707,7 @@ export class GameCore {
 
     const payload: GameActionResponse = Payloads.sendTrumpSuitSelected(
       gameObj.playerTrumpSuit,
-      gameObj.trumpSuit
+      gameObj.trumpSuit,
     );
 
     const response = successResponse(RESPONSE_CODES.gameNotification, payload);
@@ -2731,18 +2731,18 @@ export class GameCore {
     }
 
     const index = this.playersPool.filter(
-      (o) => o.playerId === playerId || o.socketId === socketId
+      (o) => o.playerId === playerId || o.socketId === socketId,
     ).length;
 
     if (index > 0) {
       throw new Error(
-        "Please choose a different name. This name is already taken."
+        "Please choose a different name. This name is already taken.",
       );
     }
 
     if (playerId.length > 10) {
       throw new Error(
-        "Please chooose an user id with length lessthan or equal to 10 characters."
+        "Please chooose an user id with length lessthan or equal to 10 characters.",
       );
     }
 
@@ -2805,7 +2805,7 @@ export class GameCore {
     if (!game) return;
 
     const connectedPlayers = game.players.filter(
-      (p: IPlayer) => !p.isDisconnected
+      (p: IPlayer) => !p.isDisconnected,
     );
 
     connectedPlayers.forEach((player: IPlayer) => {
@@ -2815,12 +2815,12 @@ export class GameCore {
         const gameStatePayload = this.buildGameStateForPlayer(game, player);
         const response = successResponse(
           RESPONSE_CODES.gameRefresh,
-          gameStatePayload
+          gameStatePayload,
         );
         this.ioServer.to(player.socketId).emit("data", response);
       } else {
         console.warn(
-          `Socket ${player.socketId} not found for ${player.playerId}. Skipping state refresh`
+          `Socket ${player.socketId} not found for ${player.playerId}. Skipping state refresh`,
         );
       }
     });
@@ -2835,7 +2835,7 @@ export class GameCore {
   public handlePlayerDisconnection(
     gameId: string,
     playerId: string,
-    socketId: string
+    socketId: string,
   ): void {
     const game = this.inMemoryStore.fetchGame(gameId);
     if (!game) {
@@ -2847,7 +2847,7 @@ export class GameCore {
     if (game.players && game.players.length > 0) {
       // Game has started - handle normal disconnection logic
       const playerIndex = game.players.findIndex(
-        (p: IPlayer) => p.playerId === playerId && p.socketId === socketId
+        (p: IPlayer) => p.playerId === playerId && p.socketId === socketId,
       );
 
       if (playerIndex === -1) {
@@ -2869,7 +2869,7 @@ export class GameCore {
 
       // Check if game should be paused
       const connectedPlayersCount = game.players.filter(
-        (p: IPlayer) => !p.isDisconnected
+        (p: IPlayer) => !p.isDisconnected,
       ).length;
 
       if (connectedPlayersCount < MAX_PLAYERS) {
@@ -2878,23 +2878,23 @@ export class GameCore {
 
         // First notify about the specific player disconnection
         const disconnectedPayload = Payloads.sendPlayerDisconnected(
-          `${playerId} has disconnected from the game`
+          `${playerId} has disconnected from the game`,
         );
 
         const disconnectResponse = successResponse(
           RESPONSE_CODES.gameNotification,
-          disconnectedPayload
+          disconnectedPayload,
         );
         this.ioServer.to(gameId).emit("data", disconnectResponse);
 
         // then notify about the pause
         const pausePayload = Payloads.sendGamePaused(
-          `${playerId} disconnected. Game paused. Waiting for reconnection...`
+          `${playerId} disconnected. Game paused. Waiting for reconnection...`,
         );
 
         const pauseResponse = successResponse(
           RESPONSE_CODES.gameNotification,
-          pausePayload
+          pausePayload,
         );
         this.ioServer.to(gameId).emit("data", pauseResponse);
       }
@@ -2904,18 +2904,18 @@ export class GameCore {
     } else {
       // Game is still in lobby phase - just remove the player from gamePlayersInfo
       console.log(
-        `Player ${playerId} disconnected from lobby in game ${gameId}`
+        `Player ${playerId} disconnected from lobby in game ${gameId}`,
       );
 
       if (game.gamePlayersInfo) {
         const playerIndex = game.gamePlayersInfo.findIndex(
-          (p: any) => p.playerId === playerId && p.socketId === socketId
+          (p: any) => p.playerId === playerId && p.socketId === socketId,
         );
 
         if (playerIndex !== -1) {
           game.gamePlayersInfo.splice(playerIndex, 1);
           console.log(
-            `Removed player ${playerId} from lobby. Players remaining: ${game.gamePlayersInfo.length}`
+            `Removed player ${playerId} from lobby. Players remaining: ${game.gamePlayersInfo.length}`,
           );
         }
       }
@@ -2950,7 +2950,7 @@ export class GameCore {
     console.log(
       `Disconnect timeout set for ${playerId} in game ${gameId} (${
         this.DISCONNECT_TIMEOUT_MS / 1000
-      }s)`
+      }s)`,
     );
   }
 
@@ -2981,10 +2981,10 @@ export class GameCore {
 
     // Check if game should be aborted
     const totalConnectedPlayers = game.players.filter(
-      (p: IPlayer) => p.isDisconnected
+      (p: IPlayer) => p.isDisconnected,
     ).length;
     const totalDisconnectedPlayers = Object.keys(
-      game.disconnectedPlayers || {}
+      game.disconnectedPlayers || {},
     ).length;
 
     if (totalConnectedPlayers + totalDisconnectedPlayers < 3) {
@@ -2994,12 +2994,12 @@ export class GameCore {
     } else {
       //Notify remaining players
       const removalPayload = Payloads.sendGameAborted(
-        `${playerId} has been removed due to prolonged disconnection.`
+        `${playerId} has been removed due to prolonged disconnection.`,
       );
 
       const removalResponse = successResponse(
         RESPONSE_CODES.gameNotification,
-        removalPayload
+        removalPayload,
       );
       this.ioServer.to(gameId).emit("data", removalResponse);
 
@@ -3037,7 +3037,7 @@ export class GameCore {
    */
   public async playBotAgentTurn(
     gameId: string,
-    botPlayerId: string
+    botPlayerId: string,
   ): Promise<void> {
     try {
       const game = this.inMemoryStore.fetchGame(gameId);
@@ -3090,7 +3090,7 @@ export class GameCore {
   private handleBotCardPlay(
     gameId: string,
     botPlayerId: string,
-    card: string
+    card: string,
   ): void {
     const game = this.inMemoryStore.fetchGame(gameId);
     if (!game) {
@@ -3099,7 +3099,7 @@ export class GameCore {
     }
 
     const botPlayer = game.players.find(
-      (p) => p.playerId === botPlayerId && p.isBotAgent
+      (p) => p.playerId === botPlayerId && p.isBotAgent,
     );
     if (!botPlayer) {
       console.error(`[BOT AGENT] Bot player ${botPlayerId} not found`);
@@ -3126,7 +3126,7 @@ export class GameCore {
       if (error) {
         console.error(
           `[BOT AGENT] Error playing card for ${botPlayerId}:`,
-          error
+          error,
         );
       } else {
         // console.log(
@@ -3154,7 +3154,16 @@ export class GameCore {
    * @param cb The callback function
    */
   public onBiddingAction(req: any, cb: Function) {
-    const { gameId, token, action, bidValue, suit } = req;
+    const {
+      gameId,
+      token,
+      action,
+      bidValue,
+      suit,
+      bidSelectionType,
+      bidModifier,
+      clickOrder,
+    } = req;
     const gameObj = this.inMemoryStore.fetchGame(gameId);
 
     if (!gameObj) {
@@ -3177,7 +3186,7 @@ export class GameCore {
           isBiddingPhase: gameObj.isBiddingPhase,
           isGameComplete: gameObj.isGameComplete,
           currentBiddingPlayerId: gameObj.currentBiddingPlayerId,
-        }
+        },
       );
       cb(null, errorResponse(RESPONSE_CODES.failed, "Not in bidding phase"));
       return;
@@ -3209,6 +3218,9 @@ export class GameCore {
           action: "bid",
           bidValue: finalBidValue,
           suit: finalSuit,
+          bidSelectionType: bidSelectionType || null,
+          bidModifier: bidModifier || 0,
+          clickOrder: clickOrder || null,
         });
 
         gameObj.currentBet = finalBidValue.toString();
@@ -3243,13 +3255,16 @@ export class GameCore {
             action: "bid",
             bidValue: 28,
             suit: "N",
+            bidSelectionType: "direct",
+            bidModifier: 0,
+            clickOrder: null,
           });
           gameObj.currentBet = "28";
           gameObj.trumpSuit = "N";
           gameObj.bidPassCount = 0;
           gameObj.lastBiddingTeam = this.getPlayerTeam(
             gameObj,
-            player.playerId
+            player.playerId,
           );
         }
 
@@ -3265,8 +3280,8 @@ export class GameCore {
             null,
             errorResponse(
               RESPONSE_CODES.failed,
-              "Only opposing team can double"
-            )
+              "Only opposing team can double",
+            ),
           );
           return;
         }
@@ -3288,8 +3303,8 @@ export class GameCore {
             null,
             errorResponse(
               RESPONSE_CODES.failed,
-              "Cannot re-double without double"
-            )
+              "Cannot re-double without double",
+            ),
           );
           return;
         }
@@ -3300,8 +3315,8 @@ export class GameCore {
             null,
             errorResponse(
               RESPONSE_CODES.failed,
-              "Only bidding team can re-double"
-            )
+              "Only bidding team can re-double",
+            ),
           );
           return;
         }
@@ -3331,7 +3346,7 @@ export class GameCore {
               bidDouble: gameObj.bidDouble,
               bidReDouble: gameObj.bidReDouble,
             },
-          })
+          }),
         );
 
         this.inMemoryStore.saveGame(gameId, gameObj);
@@ -3370,7 +3385,7 @@ export class GameCore {
 
     const response = successResponse(
       RESPONSE_CODES.gameNotification,
-      biddingPayload
+      biddingPayload,
     );
     this.ioServer.to(gameId).emit("data", response);
 
@@ -3388,7 +3403,7 @@ export class GameCore {
    */
   private getPlayerTeam(gameObj: GameModel, playerId: string): string {
     const playerIndex = gameObj.players.findIndex(
-      (p: IPlayer) => p.playerId === playerId
+      (p: IPlayer) => p.playerId === playerId,
     );
     // Team A: players at indices 0, 2, 4
     // Team B: players at indices 1, 3, 5
@@ -3402,7 +3417,7 @@ export class GameCore {
    */
   private getNextBiddingPlayer(gameObj: GameModel): string {
     const currentPlayerIndex = gameObj.players.findIndex(
-      (p: IPlayer) => p.playerId === gameObj.currentBiddingPlayerId
+      (p: IPlayer) => p.playerId === gameObj.currentBiddingPlayerId,
     );
 
     const nextIndex = (currentPlayerIndex + 1) % gameObj.players.length;
@@ -3484,7 +3499,7 @@ export class GameCore {
         gameObj.biddingPlayer = lastBidEntry.playerId;
         gameObj.biddingTeam = this.getPlayerTeam(
           gameObj,
-          lastBidEntry.playerId
+          lastBidEntry.playerId,
         );
       }
     }
@@ -3506,7 +3521,7 @@ export class GameCore {
 
     const response = successResponse(
       RESPONSE_CODES.gameNotification,
-      endBiddingPayload
+      endBiddingPayload,
     );
     this.ioServer.to(gameId).emit("data", response);
 
@@ -3523,7 +3538,7 @@ export class GameCore {
     if (!game || !game.isBiddingPhase) return;
 
     const currentBiddingPlayer = game.players.find(
-      (p: IPlayer) => p.playerId === game.currentBiddingPlayerId
+      (p: IPlayer) => p.playerId === game.currentBiddingPlayerId,
     );
 
     if (currentBiddingPlayer && currentBiddingPlayer.isBotAgent) {
@@ -3532,7 +3547,7 @@ export class GameCore {
         // Find the socket for the bot player
         const botPlayer = game.players.find(
           (p: IPlayer) =>
-            p.isBotAgent && p.playerId === game.currentBiddingPlayerId
+            p.isBotAgent && p.playerId === game.currentBiddingPlayerId,
         );
         if (botPlayer) {
           // Simulate a bot passing
@@ -3544,7 +3559,7 @@ export class GameCore {
             },
             (err: any, result: any) => {
               // Bot action processed
-            }
+            },
           );
         }
       }, 1000); // Small delay to simulate thinking time for bots

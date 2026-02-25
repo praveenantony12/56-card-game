@@ -251,6 +251,9 @@ class GameService {
    * @param token The user token
    * @param bidValue The bid value (if action is "bid")
    * @param suit The suit (if action is "bid")
+   * @param bidSelectionType How the bid was selected (direct vs modifier)
+   * @param bidModifier The modifier used for the bid if any
+   * @param clickOrder Which was selected first (bid vs suit)
    */
   public biddingAction(
     action: "bid" | "pass" | "double" | "re-double",
@@ -258,6 +261,9 @@ class GameService {
     token: string,
     bidValue?: number,
     suit?: string,
+    bidSelectionType?: "direct" | "modifier" | null,
+    bidModifier?: number,
+    clickOrder?: "bidFirst" | "suitFirst" | null,
   ): Promise<any> {
     return this.sendRequest({
       operation: MESSAGES.biddingAction,
@@ -267,6 +273,9 @@ class GameService {
         action,
         bidValue,
         suit,
+        bidSelectionType,
+        bidModifier,
+        clickOrder,
       },
     });
   }

@@ -798,17 +798,28 @@ class GameGrid extends React.Component<IProps, IState> {
       currentBet && parseInt(currentBet) >= 28 && currentBetPlayerId;
     const hasFinalBid = !hasCurrentBid && finalBid && finalBid >= 28;
 
-    // Try to get player name from various sources
+    // Try to get player name and last bid metadata from various sources
     let playerName = "";
+    let lastBidSelectionType: "direct" | "modifier" | null = null;
+    let lastBidModifier = 0;
+    let lastBidSuit = trumpSuit || "N";
+    let lastBidClickOrder: "bidFirst" | "suitFirst" | null = null;
+
     if (hasCurrentBid) {
       playerName = currentBetPlayerId;
     } else if (hasFinalBid) {
       // Look for the last player who made a bid in bidHistory
       if (bidHistory && bidHistory.length > 0) {
         for (let i = bidHistory.length - 1; i >= 0; i--) {
-          const entry = bidHistory[i];
-          if (entry.action === "bid" && entry.playerId) {
-            playerName = entry.playerId;
+          const entry = bidHistory[i] as any;
+          if (entry.action === "bid") {
+            if (entry.playerId) {
+              playerName = entry.playerId;
+            }
+            lastBidSelectionType = entry.bidSelectionType || null;
+            lastBidModifier = entry.bidModifier || 0;
+            lastBidSuit = entry.suit || lastBidSuit;
+            lastBidClickOrder = entry.clickOrder || null;
             break;
           }
         }
@@ -832,9 +843,8 @@ class GameGrid extends React.Component<IProps, IState> {
       : hasFinalBid
         ? finalBid.toString()
         : "?";
-    const suitInfo = suits.find((s) => s.name === (trumpSuit || "N"));
+    const suitInfo = suits.find((s) => s.name === (lastBidSuit || "N"));
 
-    // Handle suit display - for Noes, just show "Noes", for others show "label symbol"
     let suitDisplay = "";
     if (suitInfo) {
       if (suitInfo.name === "N") {
@@ -843,9 +853,6 @@ class GameGrid extends React.Component<IProps, IState> {
         suitDisplay = `${suitInfo.label} ${suitInfo.symbol}`;
       }
     }
-
-    // Determine bid style (direct bid or modifier bid)
-    // Note: Not currently used in label, but kept for potential future use
 
     const label =
       (hasCurrentBid || hasFinalBid) && playerName
@@ -1058,6 +1065,7 @@ class GameGrid extends React.Component<IProps, IState> {
       currentBiddingsuit,
       bidSelectionType,
       bidModifier,
+      clickOrder,
     } = this.state;
     // Default to Noes if no suit selected
     const suit = currentBiddingsuit || "N";
@@ -1068,6 +1076,7 @@ class GameGrid extends React.Component<IProps, IState> {
       suit,
       bidSelectionType,
       bidModifier,
+      clickOrder,
     );
     // Reset local bidding state
     this.setState({

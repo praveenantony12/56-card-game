@@ -497,6 +497,9 @@ class Store implements IStore {
     action: "bid" | "pass" | "double" | "re-double",
     bidValue?: number,
     suit?: string,
+    bidSelectionType?: "direct" | "modifier" | null,
+    bidModifier?: number,
+    clickOrder?: "bidFirst" | "suitFirst" | null,
   ) {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
@@ -508,6 +511,9 @@ class Store implements IStore {
         token as string,
         bidValue,
         suit,
+        bidSelectionType,
+        bidModifier,
+        clickOrder,
       );
 
       if (ack.code === common.RESPONSE_CODES.success) {
