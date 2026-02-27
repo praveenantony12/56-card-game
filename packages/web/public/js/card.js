@@ -1,12 +1,3 @@
-/* eslint-disable */
-
-//*****************************************************************************
-// Do not remove this notice.
-//
-// Copyright 2001 by Mike Hall.
-// See http://www.brainjar.com for terms of use.                                                                        *
-//*****************************************************************************
-
 var minSize = 8;
 
 function resizeCards(d) {

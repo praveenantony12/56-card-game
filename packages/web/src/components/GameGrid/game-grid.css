@@ -240,7 +240,7 @@
 
   /* Mobile only (0 to 480px) */
   @media screen and (max-width: 480px) { 
-    background-size: 32rem;
+    background-size: 30rem;
     height: 15rem;
   }
 }
@@ -324,6 +324,10 @@
 
 .handleBiddingPass {
   padding-top: 2.5rem;
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) { 
+    padding-top: 1.5rem;
+  }
 }
 
 .showCursor {
