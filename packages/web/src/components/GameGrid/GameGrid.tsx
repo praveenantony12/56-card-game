@@ -486,6 +486,7 @@ class GameGrid extends React.Component<IProps, IState> {
     let lastBiddingPlayer = "";
     let lastBidSelectionType: "direct" | "modifier" | null = null;
     let lastBidModifier = 0;
+    let lastBidClickOrder: "bidFirst" | "suitFirst" | null = null;
     let hasActualBid = false;
 
     if (bidHistory && bidHistory.length > 0) {
@@ -497,6 +498,7 @@ class GameGrid extends React.Component<IProps, IState> {
           lastBiddingPlayer = entry.playerId || "";
           lastBidSelectionType = entry.bidSelectionType || null;
           lastBidModifier = entry.bidModifier || 0;
+          lastBidClickOrder = entry.clickOrder || null;
           hasActualBid = true;
           break;
         }
@@ -538,7 +540,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   lastSuitInfo,
                   lastBidSelectionType,
                   lastBidModifier,
-                  null,
+                  lastBidClickOrder,
                 )}`
               : "No Bids Yet"}
             {bidDouble && " (Double)"}
