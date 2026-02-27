@@ -9,7 +9,7 @@
   "scripts": {
     "run:client": "cd ./packages/web && npm start",
     "run:server": "cd ./packages/game-server && npm start",
-    "build:web": "cd ./packages/web && npm run build && cp -R ./packages/web/build/* ./packages/game-server/client/",
+    "build:web": "cd ./packages/web && npm run build && cp -R build/* ../game-server/client/",
     "build:client": "npm run build:web",
     "build:common": "cd ./packages/common && npm run build",
     "build:server": "cd ./packages/game-server && npm run build",
