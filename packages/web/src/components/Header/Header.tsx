@@ -37,7 +37,7 @@ class Header extends React.Component<IProps, {}> {
 
     return (
       <Menu
-        color="orange"
+        color="black"
         inverted
         attached={true}
         size="small"
@@ -62,11 +62,11 @@ class Header extends React.Component<IProps, {}> {
 
   private onCreateGame = () => {
     this.store.setGameModeCreate();
-  }
+  };
 
   private onJoinGame = (gameId: string) => {
     this.store.setGameModeJoin(gameId);
-  }
+  };
 
   private onLeaveGame = () => {
     this.store.leaveGame();
@@ -94,15 +94,15 @@ class Header extends React.Component<IProps, {}> {
         <Icon name="circle notched" loading={true} />
         Reconnecting to the game...
       </Message>
-    </Menu.Item>
-  }
+    </Menu.Item>;
+  };
 
   private signInButton = () => (
     <Menu.Item>
       <Form className="signin-form">
         <Input action={true} placeholder="Player name">
           <input type="text" ref={this.onTextRef} />
-          <Button type="submit" color="black" onClick={this.onSignIn}>
+          <Button type="submit" color="green" onClick={this.onSignIn}>
             Sign In
           </Button>
         </Input>

@@ -216,22 +216,66 @@
 }
 
 .cardTable {
-  background: url("./cardTable4.png") no-repeat;
-  height: 27rem;
+  background: url("./cardTable8.png") no-repeat;
+  height: 25rem;
   background-position: center;
-  background-size: 52rem;
+  background-size: 60rem;
+
+  /* Laptops/Small Desktops (769px to 1024px) */
+  @media screen and (max-width: 1024px) {
+    background-size: 56rem;
+  }
+  
+  /* Standard Tablets (Portrait, 600px to 768px) */
+  @media screen and (max-width: 768px) {
+    background-size: 42rem;
+    height: 20rem;
+  }
+
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen and (max-width: 599px) {
+    background-size: 36rem;
+    height: 16rem;
+  }
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) { 
+    background-size: 32rem;
+    height: 15rem;
+  }
 }
 
 .cardOnTable {
   display: flex;
   justify-content: center;
-  padding-top: 9.5rem;
+  padding-top: 8rem;
+
+  /* Laptops/Small Desktops (769px to 1024px) */
+  @media screen and (max-width: 1024px) {
+    padding-top: 8rem;
+  }
+
+  /* Standard Tablets (Portrait, 600px to 768px) */
+  @media screen and (max-width: 768px) {
+    padding-top: 6.5rem;
+  }
+
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen  and (max-width: 599px) {
+    padding-top: 4.5rem;
+  }
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) { 
+    padding-top: 4.75rem;
+  }
 }
 
 .myCards {
   display: flex;
   justify-content: center;
   margin: -2.5rem 0 3rem;
+  flex-wrap: wrap;
 }
 
 .biddingGrid {
@@ -260,10 +304,22 @@
 
 .teamAButtonGroup {
   padding-left: 1rem !important;
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) { 
+    display: inline-block !important;
+    padding-left: .25rem !important;
+    font-size: 0.75rem !important;
+  }
 }
 
 .teamBButtonGroup {
   padding-right: 1rem !important;
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) { 
+    display: inline-block !important;
+    padding-right: .25rem !important;
+    font-size: 0.75rem !important;
+  }
 }
 
 .handleBiddingPass {
@@ -276,7 +332,7 @@
 
 .round-timer {
   position: absolute;
-  top: 25%;
+  top: 20%;
   transform: translate(-50%, -50%);
   color: #fff;
   font-size: 1.75rem;
@@ -288,6 +344,32 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   animation: pulse 1s infinite;
   background: #db2728;
+
+  /* Standard Tablets (Portrait, 600px to 768px) */
+  @media screen and (max-width: 768px) {
+    top: 23%;
+    margin-top: 0;
+    font-size: 1.5rem;
+    padding: .5rem;
+    border-radius: 5px;
+  }
+
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen and (max-width: 599px) {
+    top: 17%;
+    margin-top: 0;
+    font-size: 1rem;
+    padding: 0.35rem;
+    border-radius: 6px;
+  }
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) { 
+    top: 20%;
+    font-size: 1.25rem;
+    padding: 0.35rem;
+    border-radius: 5px;
+  }
 }
 
 @keyframes pulse {
@@ -332,4 +414,13 @@
 .pass-button.disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.game-winner-message {
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen and (max-width: 599px) {
+    top: 10%;
+    font-size: 15px;
+    max-width: 800px;
+  }
 }

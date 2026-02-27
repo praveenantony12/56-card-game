@@ -15,6 +15,14 @@
   justify-content: center;
 }
 
+.playerName {
+  font-size: 1rem;
+  @media screen and (max-width: 480px) { 
+    font-size: .75rem;
+    margin: -.5rem;
+  }
+}
+
 .startLabel {
   font-weight: bold !important;
   font-size: 0.75rem !important;
@@ -25,4 +33,14 @@
   background-color: #2185d0 !important;
   color: white !important;
   border-radius: 4px !important;
+  @media screen and (max-width: 480px) { 
+    font-size: .5rem !important;
+    margin-left: 1rem !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .hiddenOnMobile {
+    display: none !important;
+  }
 }

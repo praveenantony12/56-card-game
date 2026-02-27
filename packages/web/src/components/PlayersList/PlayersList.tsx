@@ -96,8 +96,7 @@ class PlayersList extends React.Component<IProps, {}> {
                     : "white"
               }
             >
-              <Icon name={player.startsWith("Bot_") ? "user secret" : "user"} />
-              {player}
+              <span className="playerName">{player}</span>
             </Button>
             <Label
               as="a"
@@ -111,6 +110,7 @@ class PlayersList extends React.Component<IProps, {}> {
                     : "black"
               }
               pointing="left"
+              className="hiddenOnMobile"
             >
               {status}
             </Label>

@@ -159,7 +159,7 @@ class BotSelection extends React.Component<IProps, IState> {
               ))}
             </div>
 
-            <div style={{ margin: "20px 0" }}>
+            <div style={{ margin: "20px 0", display: "flex" }}>
               <Button
                 color="green"
                 size="large"
@@ -175,6 +175,7 @@ class BotSelection extends React.Component<IProps, IState> {
 
               <Button
                 basic
+                color="blue"
                 size="large"
                 onClick={this.onWaitForPlayers}
                 disabled={this.state.isStartingGame}

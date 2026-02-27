@@ -217,6 +217,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   style={{
                     position: "absolute",
                     left: "50%",
+                    top: "12rem",
                     transform: "translate(-50%, -50%)",
                     backgroundColor: "rgb(0,0,0,0.8)",
                     color: "white",
@@ -361,7 +362,7 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button.Group className="teamAButtonGroup">
                 <Button as="div" labelPosition="left">
                   <Label as="a" basic={true} color="black" pointing="right">
-                    Team - A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
+                    Team [{firstPlayer} {thirdPlayer} {fifthPlayer}]
                   </Label>
                   <Button
                     color={
@@ -385,7 +386,7 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button.Group className="teamBButtonGroup">
                 <Button as="div" labelPosition="left">
                   <Label as="a" basic={true} color="black" pointing="right">
-                    Team - B [{secondPlayer} {fourthPlayer} {lastPlayer}]
+                    Team [{secondPlayer} {fourthPlayer} {lastPlayer}]
                   </Label>
                   <Button
                     color={
@@ -524,7 +525,6 @@ class GameGrid extends React.Component<IProps, IState> {
           <Button
             color="black"
             style={{
-              width: "25%",
               justifyContent: "center",
               color: "orange",
               border: "1px solid orange",
@@ -702,7 +702,7 @@ class GameGrid extends React.Component<IProps, IState> {
                 marginBottom: "10px",
               }}
             >
-              <Button disabled color="orange">
+              <Button disabled color="blue">
                 Your Bid:{" "}
                 {hasPlayerMadeSelections
                   ? this.formatBidDisplay(
@@ -869,7 +869,6 @@ class GameGrid extends React.Component<IProps, IState> {
         <Button
           color="black"
           style={{
-            width: "25%",
             justifyContent: "center",
             color: "white",
             border: "1px solid red",
@@ -1182,7 +1181,6 @@ class GameGrid extends React.Component<IProps, IState> {
         playerName={
           dropCardPlayer ? this.addNameToCardOnTable(card, dropCardPlayer) : ""
         }
-        style={{ fontSize: "17pt" }}
         disabled={!isClickable || disableAllCards}
         onCardClick={this.handleCardClick}
         flipOver={flipOver}

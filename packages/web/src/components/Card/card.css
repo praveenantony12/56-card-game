@@ -15,10 +15,29 @@
   z-index: 1;
 }
 .playerLabel {
-  margin-top: 8.5rem;
+  margin-top: 10rem;
   text-align: center;
   font-size: x-large;
   font-family: monospace;
   font-variant-caps: all-petite-caps;
   color: black;
+
+  /* Standard Tablets (Portrait, 600px to 768px) */
+  @media screen and (max-width: 768px) {
+    margin-top: 6.5rem;
+  }
+
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen and (max-width: 599px) {
+    margin-top: 6rem;
+    color: whitesmoke;
+    font-size: large;
+  }
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) { 
+    margin-top: 5rem;
+    color: whitesmoke;
+    font-size: large;
+  }
 }

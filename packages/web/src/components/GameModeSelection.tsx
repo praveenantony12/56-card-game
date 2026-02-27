@@ -60,8 +60,8 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
   return (
     <Container style={{ marginTop: "50px", maxwidth: "500px" }}>
       <Segment raised padded>
-        <Header as="h2" textAlign="center" color="blue">
-          Welcome to Card Game
+        <Header as="h1" textAlign="center" color="blue">
+          56 Card Game
         </Header>
 
         {!selectedMode ? (
