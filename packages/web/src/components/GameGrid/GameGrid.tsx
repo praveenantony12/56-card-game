@@ -362,7 +362,7 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button.Group className="teamAButtonGroup">
                 <Button as="div" labelPosition="left">
                   <Label as="a" basic={true} color="black" pointing="right">
-                    Team [{firstPlayer} {thirdPlayer} {fifthPlayer}]
+                    Team A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
                   </Label>
                   <Button
                     color={
@@ -386,7 +386,7 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button.Group className="teamBButtonGroup">
                 <Button as="div" labelPosition="left">
                   <Label as="a" basic={true} color="black" pointing="right">
-                    Team [{secondPlayer} {fourthPlayer} {lastPlayer}]
+                    Team B [{secondPlayer} {fourthPlayer} {lastPlayer}]
                   </Label>
                   <Button
                     color={
