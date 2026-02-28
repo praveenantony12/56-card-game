@@ -906,6 +906,7 @@ class GameGrid extends React.Component<IProps, IState> {
   private handleModifierClick = (modifier: number) => {
     // modifier values: 0 for +, 1 for +1, 2 for +2, etc.
     // Always calculate from the last bid value, not from current selection
+    const effectiveModifier = modifier === 0 ? 1 : modifier;
     let lastBidValue = 28;
     const { bidHistory } = this.store.game;
     let hasActualBid = false;
@@ -924,11 +925,11 @@ class GameGrid extends React.Component<IProps, IState> {
     let newValue: number;
     if (hasActualBid) {
       // Subsequent players: actualBid = lastBidValue + numJacks
-      newValue = Math.min(lastBidValue + modifier, 56);
+      newValue = Math.min(lastBidValue + effectiveModifier, 56);
     } else {
       // First player: actualBid = 28 + max(0, numJacks - 1)
       // So + and +1 both give 28, +2 gives 29, +3 gives 30, etc.
-      newValue = Math.min(28 + Math.max(0, modifier - 1), 56);
+      newValue = Math.min(28 + Math.max(0, effectiveModifier - 1), 56);
     }
 
     // Track if this is the first click
