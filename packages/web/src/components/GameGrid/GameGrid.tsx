@@ -14,6 +14,8 @@ interface IProps {
 interface IState {
   timerRemaining: number;
   isRoundReveal: boolean;
+  isRestarting: boolean;
+  restartLockedUntilFirstCard: boolean;
   currentBiddingValue: number;
   currentBiddingsuit: string;
   biddingHistory: Array<{ suit: string; value: number }>;
@@ -39,6 +41,8 @@ class GameGrid extends React.Component<IProps, IState> {
     this.state = {
       timerRemaining: 0,
       isRoundReveal: false,
+      isRestarting: false,
+      restartLockedUntilFirstCard: true,
       currentBiddingValue: 0,
       currentBiddingsuit: "",
       biddingHistory: [],
@@ -60,6 +64,7 @@ class GameGrid extends React.Component<IProps, IState> {
     const currentDropCount = dropCardPlayer ? dropCardPlayer.length : 0;
     const playersCount = players ? players.length : 0;
     const currentBidHistoryLength = bidHistory ? bidHistory.length : 0;
+    const firstCardPlayed = currentDropCount > 0;
 
     // Debug
     // console.debug(`[GameGrid] dropCounts: last=${this.lastDropCount}, current=${currentDropCount}, players=${playersCount}, revealBlocked=${this.revealBlocked}, roundRevealStarted=${this.roundRevealStarted}, timer=${this.state.timerRemaining}`);
@@ -82,6 +87,14 @@ class GameGrid extends React.Component<IProps, IState> {
         bidModifier: 0,
         clickOrder: null,
       } as any);
+    }
+
+    if (
+      this.lastBidHistoryLength > 0 &&
+      currentBidHistoryLength === 0 &&
+      !this.state.restartLockedUntilFirstCard
+    ) {
+      this.setState({ restartLockedUntilFirstCard: true });
     }
 
     // Detect start of a new round (drop count went from >0 to 0)
@@ -122,6 +135,14 @@ class GameGrid extends React.Component<IProps, IState> {
           });
         }, 1000);
       });
+    }
+
+    if (
+      this.state.restartLockedUntilFirstCard &&
+      !isBiddingPhase &&
+      firstCardPlayed
+    ) {
+      this.setState({ restartLockedUntilFirstCard: false });
     }
 
     this.lastDropCount = currentDropCount;
@@ -416,6 +437,8 @@ class GameGrid extends React.Component<IProps, IState> {
                 color="red"
                 onClick={this.handleRestartGameClick.bind(this, gameId)}
                 disabled={
+                  this.state.isRestarting ||
+                  this.state.restartLockedUntilFirstCard ||
                   !(
                     typeof cards === "undefined" ||
                     cards.length === 0 ||
@@ -423,7 +446,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   )
                 }
               >
-                Restart Game
+                {this.state.isRestarting ? "Restarting..." : "Restart Game"}
               </Button>
               <Button.Or />
               {/* <Button
@@ -450,6 +473,19 @@ class GameGrid extends React.Component<IProps, IState> {
 
   private updateScore = (event: any) => {
     this.store.updateGameScore(event.target.value);
+  };
+
+  private hasSuitInHand = (suit: string): boolean => {
+    if (suit === "N") {
+      return true; // "No Trump" is always a valid suit to choose
+    }
+
+    const { cards } = this.store.game;
+    if (!cards || cards.length === 0) {
+      return false;
+    }
+
+    return cards.some((card) => card && card.length > 1 && card[1] === suit);
   };
 
   private handleCardClick = (card: string) => {
@@ -675,23 +711,38 @@ class GameGrid extends React.Component<IProps, IState> {
               fluid={true}
               style={{ width: "100%", display: "block", marginBottom: "10px" }}
             >
-              {suits.map((suit) => (
-                <Label
-                  as="a"
-                  basic={currentBiddingsuit === suit.name ? false : true}
-                  key={suit.name}
-                  color={currentBiddingsuit === suit.name ? "green" : "red"}
-                  onClick={() => this.handleBiddingSuitClick(suit.name)}
-                  title={suit.label}
-                  style={{
-                    cursor: "pointer",
-                    padding: "8px 12px",
-                    margin: "2px",
-                  }}
-                >
-                  {suit.label} {suit.symbol}
-                </Label>
-              ))}
+              {suits.map((suit) =>
+                (() => {
+                  const isSuitAvailable = this.hasSuitInHand(suit.name);
+                  return (
+                    <Label
+                      as="a"
+                      basic={currentBiddingsuit === suit.name ? false : true}
+                      key={suit.name}
+                      color={
+                        currentBiddingsuit === suit.name
+                          ? "green"
+                          : isSuitAvailable
+                            ? "red"
+                            : "grey"
+                      }
+                      onClick={() =>
+                        isSuitAvailable &&
+                        this.handleBiddingSuitClick(suit.name)
+                      }
+                      title={suit.label}
+                      style={{
+                        cursor: isSuitAvailable ? "pointer" : "not-allowed",
+                        padding: "8px 12px",
+                        margin: "2px",
+                        opacity: isSuitAvailable ? 1 : 0.5,
+                      }}
+                    >
+                      {suit.label} {suit.symbol}
+                    </Label>
+                  );
+                })(),
+              )}
             </Button.Group>
 
             {/* Bid Value Display */}
@@ -702,6 +753,7 @@ class GameGrid extends React.Component<IProps, IState> {
                 display: "flex",
                 justifyContent: "center",
                 marginBottom: "10px",
+                minWidth: "300px",
               }}
             >
               <Button disabled color="blue">
@@ -723,20 +775,12 @@ class GameGrid extends React.Component<IProps, IState> {
               style={{ width: "100%", display: "block", marginBottom: "10px" }}
             >
               <Button
-                color="yellow"
-                onClick={this.handleBiddingUndo.bind(
-                  this,
-                  lastBidValue,
-                  lastBidsuit,
-                )}
-                disabled={this.state.biddingHistory.length === 0}
-              >
-                <Icon name="undo" /> Undo
-              </Button>
-              <Button
                 color="green"
                 onClick={this.handleBiddingDone.bind(this)}
                 disabled={!hasPlayerMadeSelections}
+                style={{
+                  minWidth: "190px",
+                }}
               >
                 <Icon name="arrow circle right" /> &nbsp; Bid
               </Button>
@@ -1029,38 +1073,6 @@ class GameGrid extends React.Component<IProps, IState> {
     }
   };
 
-  private handleBiddingUndo = (lastBidValue: number, lastBidsuit: string) => {
-    if (this.state.biddingHistory.length === 0) {
-      return;
-    }
-
-    const newHistory = [...this.state.biddingHistory];
-    newHistory.pop();
-
-    // Restore to previous state
-    if (newHistory.length > 0) {
-      const lastEntry = newHistory[newHistory.length - 1];
-      this.setState({
-        biddingHistory: newHistory,
-        currentBiddingValue: lastEntry.value,
-        currentBiddingsuit: lastEntry.suit,
-        bidSelectionType: null,
-        bidModifier: 0,
-        clickOrder: null,
-      } as any);
-    } else {
-      // Reset to no selection
-      this.setState({
-        biddingHistory: newHistory,
-        currentBiddingValue: 0,
-        currentBiddingsuit: "", // No suit selected
-        bidSelectionType: null,
-        bidModifier: 0,
-        clickOrder: null,
-      } as any);
-    }
-  };
-
   private handleBiddingDone = () => {
     const {
       currentBiddingValue,
@@ -1191,8 +1203,18 @@ class GameGrid extends React.Component<IProps, IState> {
     ));
   }
 
-  private handleRestartGameClick = (gameId: string) => {
-    this.store.restartGame(gameId);
+  private handleRestartGameClick = async (gameId: string) => {
+    if (this.state.isRestarting) {
+      return; // Prevent multiple clicks
+    }
+
+    this.setState({ isRestarting: true });
+    try {
+      await this.store.restartGame(gameId);
+      this.setState({ restartLockedUntilFirstCard: true });
+    } finally {
+      this.setState({ isRestarting: false });
+    }
   };
 
   private viewAllCards = () => {

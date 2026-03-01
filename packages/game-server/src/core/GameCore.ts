@@ -992,10 +992,6 @@ export class GameCore {
     gameObject.isGameStarted = true;
     gameObject.gameStartTime = new Date();
 
-    // Add restart protection from the very beginning
-    gameObject.restartProtectionActive = true;
-    gameObject.recentlyRestarted = false; // Not a restart, but initial start
-
     // Initialize bidding phase with the same starting player as the round
     gameObject.isBiddingPhase = true;
     gameObject.currentBiddingPlayerId =
@@ -1037,19 +1033,6 @@ export class GameCore {
       biddingStartPayload,
     );
     this.ioServer.to(gameId).emit("data", biddingStartResponse);
-    // Notify all players about restart protection status from game start
-    const restartProtectionPayload = {
-      action: "RESTART_PROTECTION",
-      data: {
-        restartProtectionActive: true,
-        message: "Restart is disabled until the first card is played",
-      },
-    };
-    const restartProtectionResponse = successResponse(
-      RESPONSE_CODES.gameNotification,
-      restartProtectionPayload,
-    );
-    this.ioServer.to(gameId).emit("data", restartProtectionResponse);
 
     // Check if first player is a bot and auto-start bidding
     this.checkAndPlayBotBiddingTurn(gameId);
@@ -1066,18 +1049,6 @@ export class GameCore {
     const currentGameObj = this.inMemoryStore.fetchGame(gameId);
     if (!currentGameObj) {
       cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found"));
-      return;
-    }
-
-    // Check if restart is currently protected (just after a recent restart)
-    if (currentGameObj.restartProtectionActive) {
-      cb(
-        null,
-        errorResponse(
-          RESPONSE_CODES.failed,
-          "Restart is temporarily disabled. Please wait for the first round to be played.",
-        ),
-      );
       return;
     }
 
@@ -1136,10 +1107,6 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(gameId);
     gameObj.teamAScore = preserveTeamAScore;
     gameObj.teamBScore = preserveTeamBScore;
-
-    // Mark game as recently restarted to prevent immediate restart until first round
-    gameObj.recentlyRestarted = true;
-    gameObj.restartProtectionActive = true;
 
     // Calculate gameScore for slider compatibility (difference from 10-10 baseline)
     // gameScore represents shifts: positive means Team B is leading, negative means Team A is leading
@@ -1233,21 +1200,6 @@ export class GameCore {
     );
     this.ioServer.to(req.gameId).emit("data", gameScoreResponse);
 
-    // Notify all players about restart protection status
-    const restartProtectionPayload = {
-      action: "RESTART_PROTECTION",
-      data: {
-        restartProtectionActive: gameObj.restartProtectionActive,
-        message:
-          "Restart is temporarily disabled until the first card is played",
-      },
-    };
-    const restartProtectionResponse = successResponse(
-      RESPONSE_CODES.gameNotification,
-      restartProtectionPayload,
-    );
-    this.ioServer.to(req.gameId).emit("data", restartProtectionResponse);
-
     this.dropCardPlayer = [];
 
     // Send success response to the requesting player
@@ -1256,7 +1208,6 @@ export class GameCore {
       successResponse(RESPONSE_CODES.gameNotification, {
         message: "Game restarted successfully",
         newStarter: currentPlayers[newStarterIndex]?.playerId,
-        restartProtectionActive: true,
       }),
     );
 
@@ -1451,8 +1402,6 @@ export class GameCore {
       // Mark game as complete
       currentGameObj.isGameComplete = true;
       currentGameObj.forfeitInProgress = false;
-      currentGameObj.recentlyRestarted = true;
-      currentGameObj.restartProtectionActive = true;
 
       // Save game state
       this.inMemoryStore.saveGame(gameId, currentGameObj);
@@ -1575,8 +1524,6 @@ export class GameCore {
         isBiddingPhase: true,
         isGameComplete: false,
         isGameCompleted: false,
-        // Disable restart protection for forfeited games - allow immediate restart after first card
-        restartProtectionActive: false,
       };
 
       this.inMemoryStore.saveGame(gameId, gameObjToSave);
@@ -1708,29 +1655,6 @@ export class GameCore {
       (!gameObject.teamACards || gameObject.teamACards.length === 0) &&
       (!gameObject.teamBCards || gameObject.teamBCards.length === 0) &&
       (!gameObject.droppedCards || gameObject.droppedCards.length === 0);
-
-    // Disable restart protection as soon as the first card is played
-    if (isFirstCardOfGame && gameObject.restartProtectionActive) {
-      gameObject.restartProtectionActive = false;
-      gameObject.recentlyRestarted = false;
-      console.log(
-        `[RESTART] Protection disabled for game ${gameId} - first card played`,
-      );
-
-      // Notify all players that restart protection is now disabled
-      const restartProtectionPayload = {
-        action: "RESTART_PROTECTION",
-        data: {
-          restartProtectionActive: false,
-          message: "Restart is now available again",
-        },
-      };
-      const restartProtectionResponse = successResponse(
-        RESPONSE_CODES.gameNotification,
-        restartProtectionPayload,
-      );
-      this.ioServer.to(gameId).emit("data", restartProtectionResponse);
-    }
 
     if (isFirstCardOfGame && !gameObject.finalBid) {
       // Sets default to 28
@@ -2504,10 +2428,6 @@ export class GameCore {
         winnerMessage = `${biddingPlayerName}'s team loses! They failed to achieve their bid of ${finalBid} points with only ${biddingTeamPoints} points.`;
       }
     }
-
-    // Disable restart protection now the the game is complete
-    gameObj.restartProtectionActive = false;
-    gameObj.recentlyRestarted = false;
 
     // Prepare game completion data
     const gameCompleteData = {
