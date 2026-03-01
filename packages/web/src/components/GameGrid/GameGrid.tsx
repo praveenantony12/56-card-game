@@ -54,14 +54,14 @@ class GameGrid extends React.Component<IProps, IState> {
 
   componentDidUpdate(prevProps: IProps, prevState: IState) {
     const {
-      dropCardPlayer,
+      droppedCards,
       players,
       bidHistory,
       isBiddingPhase,
       currentBiddingPlayerId,
     } = this.store.game;
     const { playerId } = this.store.user;
-    const currentDropCount = dropCardPlayer ? dropCardPlayer.length : 0;
+    const currentDropCount = droppedCards ? droppedCards.length : 0;
     const playersCount = players ? players.length : 0;
     const currentBidHistoryLength = bidHistory ? bidHistory.length : 0;
     const firstCardPlayed = currentDropCount > 0;
@@ -1166,14 +1166,21 @@ class GameGrid extends React.Component<IProps, IState> {
   };
 
   private addNameToCardOnTable = (card: string, dropCardPlayer: string[]) => {
+    const cardPrefix = `${card}-`;
+
+    // Find the element in dropCardPlayer that starts with the card prefix
     const playerCardCombo = dropCardPlayer.find(
-      (element) => element.indexOf(card) > -1,
+      (element) =>
+        typeof element === "string" && element.startsWith(cardPrefix),
     );
-    if (playerCardCombo && playerCardCombo.split("-").length > 1) {
-      return playerCardCombo.split("-")[1];
-    } else {
+
+    // If no matching combo is found, return an empty string to avoid errors
+    if (!playerCardCombo) {
       return "";
     }
+
+    // Extract and return the player name from the combo string
+    return playerCardCombo.slice(cardPrefix.length);
   };
 
   private renderCards(

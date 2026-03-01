@@ -33,7 +33,6 @@ import { TeamBotAgent } from "../agents/TeamBotAgent";
  */
 export class GameCore {
   playersPool: IPlayer[] = [];
-  dropCardPlayer: string[] = [];
   playersPoolForReGame: IPlayer[] = [];
   currentGameId = getUniqueId();
   deck: Deck;
@@ -1200,8 +1199,6 @@ export class GameCore {
     );
     this.ioServer.to(req.gameId).emit("data", gameScoreResponse);
 
-    this.dropCardPlayer = [];
-
     // Send success response to the requesting player
     cb(
       null,
@@ -1502,7 +1499,6 @@ export class GameCore {
       gameObj.tableCards = [];
       gameObj.dropDetails = [];
       gameObj.dropCardPlayer = [];
-      this.dropCardPlayer = [];
 
       // Clear forfeit-related state
       gameObj.forfeitRequestedBy = undefined;
@@ -1752,15 +1748,18 @@ export class GameCore {
 
     const gameObj = currentGameObj;
     const dropCardPlayer = `${card}-${playerId}`;
-    this.dropCardPlayer.push(dropCardPlayer);
+    const updateDropCardPlayers = [
+      ...(gameObj.dropCardPlayer || []),
+      dropCardPlayer,
+    ];
+    gameObj.dropCardPlayer = updateDropCardPlayers;
     const DropCardByPlayerPayload: GameActionResponse =
-      Payloads.sendDropCardByPlayer(this.dropCardPlayer);
+      Payloads.sendDropCardByPlayer(updateDropCardPlayers);
     let response = successResponse(
       RESPONSE_CODES.gameNotification,
       DropCardByPlayerPayload,
     );
     this.ioServer.to(req.gameId).emit("data", response);
-    gameObj.dropCardPlayer.push(dropCardPlayer);
     this.inMemoryStore.saveGame(req.gameId, gameObj);
     this.rotateStrike(currentGameIns, cb);
   }
@@ -1922,7 +1921,6 @@ export class GameCore {
     if (gameObj) {
       gameObj.dropDetails = [];
       gameObj.dropCardPlayer = [];
-      this.dropCardPlayer = [];
       this.inMemoryStore.saveGame(req.gameId, gameObj);
     }
 
@@ -1987,7 +1985,6 @@ export class GameCore {
     if (gameObj) {
       gameObj.dropDetails = [];
       gameObj.dropCardPlayer = [];
-      this.dropCardPlayer = [];
       this.inMemoryStore.saveGame(req.gameId, gameObj);
     }
 
