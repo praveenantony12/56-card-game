@@ -509,7 +509,6 @@ class GameGrid extends React.Component<IProps, IState> {
 
   private renderBiddingUI(isYourBiddingTurn: boolean) {
     const suits = [
-      { symbol: "Noes", name: "N", label: "" },
       { symbol: "♥", name: "H", label: "Hearts" },
       { symbol: "♠", name: "E", label: "Spade" },
       { symbol: "♦", name: "D", label: "Diamond" },
@@ -517,9 +516,9 @@ class GameGrid extends React.Component<IProps, IState> {
     ];
 
     const noTrumpTypes = [
-      { label: "Noes", value: "Noes" },
-      { label: "Pass", value: "Pass" },
-      { label: "No-Trump", value: "No-Trump" },
+      { name: "Noes", label: "Noes" },
+      { name: "Pass", label: "Pass" },
+      { name: "No-Trump", label: "No-Trump" },
     ];
 
     const { bidHistory, bidDouble, bidReDouble } = this.store.game;
@@ -1117,9 +1116,9 @@ class GameGrid extends React.Component<IProps, IState> {
         : this.state.clickOrder;
 
     // Special case: Auto-generated first player pass (mandatory minimum bid)
-    // Show as "Pass (28) instead of 28 Pass (28)"
+    // Shows as "Pass (28)" instead of "28 Pass [28]"
     if (finalNoTrumpType === "Pass" && clickOrder === null && bidValue === 28) {
-      return `${suitDisplay} [${bidValue}]`;
+      return `${suitDisplay} (${bidValue})`;
     }
 
     let bidStyle: string;
@@ -1163,7 +1162,7 @@ class GameGrid extends React.Component<IProps, IState> {
     } = this.state;
     // Default to Noes if no suit selected
     const suit = currentBiddingsuit || "N";
-    // If suit is "N" and noTrumpType is set, default to "Noes"
+    // If suit is "N" and no noTrumpType is set, default to "Noes"
     const finalNoTrumpType =
       suit === "N" && !noTrumpType ? "Noes" : noTrumpType;
     // Include bid selection type and modifier in the action so history can track it
@@ -1190,10 +1189,8 @@ class GameGrid extends React.Component<IProps, IState> {
 
   private handleBiddingPass = () => {
     // "Not Bidding" button always sends a regular pass action
-    // Player must intentionally select bid value + "Pass" no-trump type to bid "28 Pass"
-
+    // Players must intentionally select bid value + "Pass" no-trump type to bid "28 Pass"
     this.store.biddingAction("pass");
-
     // Reset local bidding state
     this.setState({
       currentBiddingValue: 0,
