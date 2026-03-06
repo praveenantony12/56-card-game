@@ -3476,54 +3476,54 @@ export class GameCore {
         currentBiddingPlayer.token,
         currentBiddingPlayer.playerId,
       );
-    }
 
-    // Dynamic timing: 2 seconds for bid action, 1 second for pass
-    const delay = decision.action === "pass" ? 1000 : 2000;
+      // Dynamic timing: 2 seconds for bid action, 1 second for pass
+      const delay = decision.action === "pass" ? 1000 : 2000;
 
-    setTimeout(() => {
-      // Double-check bot is still the current bidder (game state might have changed)
-      const freshGame = this.inMemoryStore.fetchGame(gameId);
-      if (
-        !freshGame ||
-        !freshGame.isBiddingPhase ||
-        freshGame.currentBiddingPlayerId !== currentBiddingPlayer.playerId
-      ) {
-        return;
-      }
-
-      // Construct bidding payload
-      const payload: any = {
-        gameId,
-        token: currentBiddingPlayer.token,
-        action: decision.action,
-      };
-
-      // Add bid-specific fields for "bid" action
-      if (decision.action === "bid") {
-        payload.bidValue = decision.bidValue;
-        payload.suit = decision.suit;
-        payload.bidSelectionType = decision.bidSelectionType;
-        payload.clickOrder = decision.clickOrder;
-        payload.noTrumpType = decision.noTrumpType;
-      }
-
-      // Add modifier fields for double/re-double
-      if (decision.action === "double" || decision.action === "re-double") {
-        payload.bidSelectionType = decision.bidSelectionType;
-        payload.bitModifier = decision.bidModifier;
-      }
-
-      // Execute bidding action
-      this.onBiddingAction(payload, (err: any, result: any) => {
-        if (err) {
-          console.error(
-            `[BOT BIDDING] Error for ${currentBiddingPlayer.playerId}:`,
-            err,
-          );
+      setTimeout(() => {
+        // Double-check bot is still the current bidder (game state might have changed)
+        const freshGame = this.inMemoryStore.fetchGame(gameId);
+        if (
+          !freshGame ||
+          !freshGame.isBiddingPhase ||
+          freshGame.currentBiddingPlayerId !== currentBiddingPlayer.playerId
+        ) {
+          return;
         }
-      });
-    }, delay);
+
+        // Construct bidding payload
+        const payload: any = {
+          gameId,
+          token: currentBiddingPlayer.token,
+          action: decision.action,
+        };
+
+        // Add bid-specific fields for "bid" action
+        if (decision.action === "bid") {
+          payload.bidValue = decision.bidValue;
+          payload.suit = decision.suit;
+          payload.bidSelectionType = decision.bidSelectionType;
+          payload.clickOrder = decision.clickOrder;
+          payload.noTrumpType = decision.noTrumpType;
+        }
+
+        // Add modifier fields for double/re-double
+        if (decision.action === "double" || decision.action === "re-double") {
+          payload.bidSelectionType = decision.bidSelectionType;
+          payload.bitModifier = decision.bidModifier;
+        }
+
+        // Execute bidding action
+        this.onBiddingAction(payload, (err: any, result: any) => {
+          if (err) {
+            console.error(
+              `[BOT BIDDING] Error for ${currentBiddingPlayer.playerId}:`,
+              err,
+            );
+          }
+        });
+      }, delay);
+    }
   }
 
   /**
