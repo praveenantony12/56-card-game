@@ -22,6 +22,7 @@ interface IState {
   bidSelectionType: "direct" | "modifier" | null;
   bidModifier: number;
   clickOrder: "bidFirst" | "suitFirst" | null; // Track which was clicked first
+  noTrumpType: "Noes" | "Pass" | "No-Trump" | null;
 }
 
 @inject("store")
@@ -49,6 +50,7 @@ class GameGrid extends React.Component<IProps, IState> {
       bidSelectionType: null,
       bidModifier: 0,
       clickOrder: null,
+      noTrumpType: null,
     };
   }
 
@@ -86,6 +88,7 @@ class GameGrid extends React.Component<IProps, IState> {
         bidSelectionType: null,
         bidModifier: 0,
         clickOrder: null,
+        noTrumpType: null,
       } as any);
     }
 
@@ -513,8 +516,14 @@ class GameGrid extends React.Component<IProps, IState> {
       { symbol: "♣", name: "C", label: "Clubs" },
     ];
 
+    const noTrumpTypes = [
+      { label: "Noes", value: "Noes" },
+      { label: "Pass", value: "Pass" },
+      { label: "No-Trump", value: "No-Trump" },
+    ];
+
     const { bidHistory, bidDouble, bidReDouble } = this.store.game;
-    const { currentBiddingValue, currentBiddingsuit } = this.state;
+    const { currentBiddingValue, currentBiddingsuit, noTrumpType } = this.state;
 
     // Determine current bid from history
     let lastBidValue = 28;
@@ -523,6 +532,7 @@ class GameGrid extends React.Component<IProps, IState> {
     let lastBidSelectionType: "direct" | "modifier" | null = null;
     let lastBidModifier = 0;
     let lastBidClickOrder: "bidFirst" | "suitFirst" | null = null;
+    let lastNoTrumpType: string | null = null;
     let hasActualBid = false;
 
     if (bidHistory && bidHistory.length > 0) {
@@ -535,6 +545,7 @@ class GameGrid extends React.Component<IProps, IState> {
           lastBidSelectionType = entry.bidSelectionType || null;
           lastBidModifier = entry.bidModifier || 0;
           lastBidClickOrder = entry.clickOrder || null;
+          lastNoTrumpType = entry.noTrumpType || null;
           hasActualBid = true;
           break;
         }
@@ -577,6 +588,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   lastBidSelectionType,
                   lastBidModifier,
                   lastBidClickOrder,
+                  lastNoTrumpType,
                 )}`
               : "No Bids Yet"}
             {bidDouble && " (Double)"}
@@ -707,6 +719,39 @@ class GameGrid extends React.Component<IProps, IState> {
             </div>
 
             {/* Suit Selection */}
+            {/* No-Trump Type Selection */}
+            <Button.Group
+              fluid={true}
+              style={{ width: "100%", display: "block" }}
+            >
+              {noTrumpTypes.map((type) => {
+                const isSelected =
+                  currentBiddingsuit === "N" && noTrumpType === type.name;
+                return (
+                  <Label
+                    as="a"
+                    basic={!isSelected}
+                    key={type.name}
+                    color={isSelected ? "green" : "purple"}
+                    onClick={() =>
+                      this.handleNoTrumpTypeClick(
+                        type.name as "Noes" | "Pass" | "No-Trump",
+                      )
+                    }
+                    title={type.label}
+                    style={{
+                      cursor: "pointer",
+                      padding: "8px 12px",
+                      margin: "2px",
+                    }}
+                  >
+                    {type.label}
+                  </Label>
+                );
+              })}
+            </Button.Group>
+
+            {/* Regular Suit Selection */}
             <Button.Group
               fluid={true}
               style={{ width: "100%", display: "block", marginBottom: "10px" }}
@@ -714,17 +759,14 @@ class GameGrid extends React.Component<IProps, IState> {
               {suits.map((suit) =>
                 (() => {
                   const isSuitAvailable = this.hasSuitInHand(suit.name);
+                  const isSelected = currentBiddingsuit === suit.name;
                   return (
                     <Label
                       as="a"
-                      basic={currentBiddingsuit === suit.name ? false : true}
+                      basic={!isSelected}
                       key={suit.name}
                       color={
-                        currentBiddingsuit === suit.name
-                          ? "green"
-                          : isSuitAvailable
-                            ? "red"
-                            : "grey"
+                        isSelected ? "green" : isSuitAvailable ? "red" : "grey"
                       }
                       onClick={() =>
                         isSuitAvailable &&
@@ -764,6 +806,10 @@ class GameGrid extends React.Component<IProps, IState> {
                       currentBiddingsuit,
                       lastBidValue,
                       displayedSuitInfo,
+                      undefined,
+                      undefined,
+                      undefined,
+                      noTrumpType,
                     )
                   : "Not selected"}
               </Button>
@@ -850,6 +896,7 @@ class GameGrid extends React.Component<IProps, IState> {
     let lastBidModifier = 0;
     let lastBidSuit = trumpSuit || "N";
     let lastBidClickOrder: "bidFirst" | "suitFirst" | null = null;
+    let lastNoTrumpType: string | null = null;
 
     if (hasCurrentBid) {
       playerName = currentBetPlayerId;
@@ -866,6 +913,7 @@ class GameGrid extends React.Component<IProps, IState> {
             lastBidModifier = entry.bidModifier || 0;
             lastBidSuit = entry.suit || lastBidSuit;
             lastBidClickOrder = entry.clickOrder || null;
+            lastNoTrumpType = entry.noTrumpType || null;
             break;
           }
         }
@@ -891,14 +939,11 @@ class GameGrid extends React.Component<IProps, IState> {
         : "?";
     const suitInfo = suits.find((s) => s.name === (lastBidSuit || "N"));
 
-    let suitDisplay = "";
-    if (suitInfo) {
-      if (suitInfo.name === "N") {
-        suitDisplay = "Noes";
-      } else {
-        suitDisplay = `${suitInfo.label} ${suitInfo.symbol}`;
-      }
-    }
+    const suitDisplay = this.formatSuitDisplay(
+      lastBidSuit,
+      suitInfo,
+      lastNoTrumpType,
+    );
 
     const label =
       (hasCurrentBid || hasFinalBid) && playerName
@@ -1002,6 +1047,21 @@ class GameGrid extends React.Component<IProps, IState> {
     this.setState({
       currentBiddingsuit: suit,
       clickOrder,
+      noTrumpType: null, // Clear no-trump type when selecting a regular suit
+    } as any);
+  };
+
+  private handleNoTrumpTypeClick = (type: "Noes" | "Pass" | "No-Trump") => {
+    // Set suit to "N" and track the no-trump type
+    const clickOrder =
+      this.state.clickOrder === null && this.state.currentBiddingValue === 0
+        ? "suitFirst"
+        : this.state.clickOrder;
+
+    this.setState({
+      currentBiddingsuit: "N",
+      noTrumpType: type,
+      clickOrder,
     } as any);
   };
 
@@ -1013,15 +1073,20 @@ class GameGrid extends React.Component<IProps, IState> {
       bidSelectionType: null,
       bidModifier: 0,
       clickOrder: null,
+      noTrumpType: null,
     } as any);
   };
 
-  private formatSuitDisplay = (suit: string, suitInfo: any): string => {
+  private formatSuitDisplay = (
+    suit: string,
+    suitInfo: any,
+    noTrumpType?: string | null,
+  ): string => {
     if (suit === "" || !suitInfo) {
-      return "Noes";
+      return noTrumpType || "Noes";
     }
     if (suitInfo?.name === "N") {
-      return "Noes";
+      return noTrumpType || "Noes";
     }
     return `${suitInfo?.label} ${suitInfo?.symbol}`;
   };
@@ -1034,7 +1099,29 @@ class GameGrid extends React.Component<IProps, IState> {
     bidSelectionType?: "direct" | "modifier" | null,
     bidModifier?: number,
     overrideClickOrder?: "bidFirst" | "suitFirst" | null,
+    noTrumpType?: string | null,
   ): string => {
+    // Use provided noTrumpType if given, otherwise use component state
+    const finalNoTrumpType =
+      noTrumpType !== undefined ? noTrumpType : this.state.noTrumpType;
+    const suitDisplay = this.formatSuitDisplay(
+      suit,
+      suitInfo,
+      finalNoTrumpType,
+    );
+
+    // Use override if provided, otherwise use component state
+    const clickOrder =
+      overrideClickOrder !== undefined
+        ? overrideClickOrder
+        : this.state.clickOrder;
+
+    // Special case: Auto-generated first player pass (mandatory minimum bid)
+    // Show as "Pass (28) instead of 28 Pass (28)"
+    if (finalNoTrumpType === "Pass" && clickOrder === null && bidValue === 28) {
+      return `${suitDisplay} [${bidValue}]`;
+    }
+
     let bidStyle: string;
 
     // Use provided bidSelectionType/bidModifier if given, otherwise use component state
@@ -1055,14 +1142,6 @@ class GameGrid extends React.Component<IProps, IState> {
       bidStyle = bidValue.toString();
     }
 
-    const suitDisplay = this.formatSuitDisplay(suit, suitInfo);
-
-    // Use override if provided, otherwise use component state
-    const clickOrder =
-      overrideClickOrder !== undefined
-        ? overrideClickOrder
-        : this.state.clickOrder;
-
     // If suit was clicked first, show: suit bidStyle [value]
     // If bid was clicked first, show: bidStyle suit [value]
     if (clickOrder === "suitFirst") {
@@ -1080,9 +1159,13 @@ class GameGrid extends React.Component<IProps, IState> {
       bidSelectionType,
       bidModifier,
       clickOrder,
+      noTrumpType,
     } = this.state;
     // Default to Noes if no suit selected
     const suit = currentBiddingsuit || "N";
+    // If suit is "N" and noTrumpType is set, default to "Noes"
+    const finalNoTrumpType =
+      suit === "N" && !noTrumpType ? "Noes" : noTrumpType;
     // Include bid selection type and modifier in the action so history can track it
     (this.store.biddingAction as any)(
       "bid",
@@ -1091,6 +1174,7 @@ class GameGrid extends React.Component<IProps, IState> {
       bidSelectionType,
       bidModifier,
       clickOrder,
+      finalNoTrumpType,
     );
     // Reset local bidding state
     this.setState({
@@ -1100,34 +1184,16 @@ class GameGrid extends React.Component<IProps, IState> {
       bidSelectionType: null,
       bidModifier: 0,
       clickOrder: null,
+      noTrumpType: null,
     } as any);
   };
 
   private handleBiddingPass = () => {
-    // Check if there's any bid in the global bidding history
-    const { bidHistory } = this.store.game;
-    let hasAnyBid = false;
+    // "Not Bidding" button always sends a regular pass action
+    // Player must intentionally select bid value + "Pass" no-trump type to bid "28 Pass"
 
-    if (bidHistory && bidHistory.length > 0) {
-      for (let i = bidHistory.length - 1; i >= 0; i--) {
-        const entry = bidHistory[i];
-        if (entry.action === "bid") {
-          hasAnyBid = true;
-          break;
-        }
-      }
-    }
+    this.store.biddingAction("pass");
 
-    // Only default to 28 Noes if NO ONE has bid yet (very first player of the game)
-    if (
-      !hasAnyBid &&
-      this.state.currentBiddingsuit === "" &&
-      this.state.biddingHistory.length === 0
-    ) {
-      this.store.biddingAction("bid", 28, "N");
-    } else {
-      this.store.biddingAction("pass");
-    }
     // Reset local bidding state
     this.setState({
       currentBiddingValue: 0,
@@ -1136,6 +1202,7 @@ class GameGrid extends React.Component<IProps, IState> {
       bidSelectionType: null,
       bidModifier: 0,
       clickOrder: null,
+      noTrumpType: null,
     } as any);
   };
 
@@ -1149,6 +1216,7 @@ class GameGrid extends React.Component<IProps, IState> {
       bidSelectionType: null,
       bidModifier: 0,
       clickOrder: null,
+      noTrumpType: null,
     } as any);
   };
 
@@ -1162,6 +1230,7 @@ class GameGrid extends React.Component<IProps, IState> {
       bidSelectionType: null,
       bidModifier: 0,
       clickOrder: null,
+      noTrumpType: null,
     } as any);
   };
 

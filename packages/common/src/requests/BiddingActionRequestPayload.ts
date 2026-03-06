@@ -7,4 +7,5 @@ export interface BiddingActionRequestPayload extends BasePayload {
   bidSelectionType?: "direct" | "modifier" | null;
   bidModifier?: number;
   clickOrder?: "bidFirst" | "suitFirst" | null;
+  noTrumpType?: "Noes" | "Pass" | "No-Trump" | null;
 }

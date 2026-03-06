@@ -500,6 +500,7 @@ class Store implements IStore {
     bidSelectionType?: "direct" | "modifier" | null,
     bidModifier?: number,
     clickOrder?: "bidFirst" | "suitFirst" | null,
+    noTrumpType?: "Noes" | "Pass" | "No-Trump" | null,
   ) {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
@@ -514,6 +515,7 @@ class Store implements IStore {
         bidSelectionType,
         bidModifier,
         clickOrder,
+        noTrumpType,
       );
 
       if (ack.code === common.RESPONSE_CODES.success) {

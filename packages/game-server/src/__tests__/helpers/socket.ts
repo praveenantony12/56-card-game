@@ -11,7 +11,7 @@ export class Socket {
     data: any,
   ): Promise<any> {
     return new Promise((resolve, reject) => {
-      ioClient.emit("data", data, (err, result) => {
+      ioClient.emit("data", data, (err: any, result: any) => {
         if (err) {
           return reject(err);
         }

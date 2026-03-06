@@ -37,6 +37,7 @@ export interface IStore {
     bidSelectionType?: "direct" | "modifier" | null,
     bidModifier?: number,
     clickOrder?: "bidFirst" | "suitFirst" | null,
+    noTrumpType?: "Noes" | "Pass" | "No-Trump" | null,
   ): Promise<any>;
 
   restartGame(gameId: string): Promise<any>;

@@ -44,6 +44,7 @@ export interface ICardGame {
     bidSelectionType?: "direct" | "modifier" | null;
     bidModifier?: number;
     clickOrder?: "bidFirst" | "suitFirst" | null;
+    noTrumpType?: "Noes" | "Pass" | "No-Trump" | null;
   }>;
   bidPassCount?: number;
   lastBiddingTeam?: string;

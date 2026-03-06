@@ -254,6 +254,7 @@ class GameService {
    * @param bidSelectionType How the bid was selected (direct vs modifier)
    * @param bidModifier The modifier used for the bid if any
    * @param clickOrder Which was selected first (bid vs suit)
+   * @param noTrumpType The no-trump type (Noes, Pass, or No-Trump)
    */
   public biddingAction(
     action: "bid" | "pass" | "double" | "re-double",
@@ -264,6 +265,7 @@ class GameService {
     bidSelectionType?: "direct" | "modifier" | null,
     bidModifier?: number,
     clickOrder?: "bidFirst" | "suitFirst" | null,
+    noTrumpType?: "Noes" | "Pass" | "No-Trump" | null,
   ): Promise<any> {
     return this.sendRequest({
       operation: MESSAGES.biddingAction,
@@ -276,6 +278,7 @@ class GameService {
         bidSelectionType,
         bidModifier,
         clickOrder,
+        noTrumpType,
       },
     });
   }

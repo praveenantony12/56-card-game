@@ -2975,6 +2975,14 @@ export class GameCore {
       const agent = new TeamBotAgent();
       const card = agent.decide(game, botPlayer.token, botPlayerId);
 
+      // If no card returned (bot has no legal moves), skip this tur
+      if (!card || card === "") {
+        console.log(
+          `[BOT AGENT] Bot ${botPlayerId} has no cards to play. Skipping turn.`,
+        );
+        return;
+      }
+
       // console.log("[BOT AGENT]", {
       //   botAgentId: botPlayerId,
       //   botToken: botPlayer.token,
@@ -3080,6 +3088,7 @@ export class GameCore {
       bidSelectionType,
       bidModifier,
       clickOrder,
+      noTrumpType,
     } = req;
     const gameObj = this.inMemoryStore.fetchGame(gameId);
 
@@ -3138,6 +3147,7 @@ export class GameCore {
           bidSelectionType: bidSelectionType || null,
           bidModifier: bidModifier || 0,
           clickOrder: clickOrder || null,
+          noTrumpType: noTrumpType || null,
         });
 
         gameObj.currentBet = finalBidValue.toString();
@@ -3150,23 +3160,14 @@ export class GameCore {
         break;
 
       case "pass":
-        gameObj.bidHistory.push({
-          playerId: player.playerId,
-          action: "pass",
-        });
-
-        gameObj.bidPassCount = (gameObj.bidPassCount || 0) + 1;
-
-        // Special case: if first player passes without any bid yet, set default bid to 28 Noes
-        const hasNoPreviousBidsForPass =
+        // Check if this is the very first action (no bids yet)
+        const hasNoPreviousBids =
           !gameObj.bidHistory ||
-          gameObj.bidHistory.every((entry) => entry.action !== "bid");
-        if (
-          hasNoPreviousBidsForPass &&
-          gameObj.bidHistory.filter((entry) => entry.action === "pass")
-            .length === 1
-        ) {
-          // This is the first pass with no bids, add default bid
+          gameObj.bidHistory.length === 0 ||
+          !gameObj.bidHistory.every((entry) => entry.action === "bid");
+
+        if (hasNoPreviousBids) {
+          // First player must make mandatory bid - default to "Pass (28) - minimal bid"
           gameObj.bidHistory.push({
             playerId: player.playerId,
             action: "bid",
@@ -3175,14 +3176,23 @@ export class GameCore {
             bidSelectionType: "direct",
             bidModifier: 0,
             clickOrder: null,
+            noTrumpType: "Pass",
           });
           gameObj.currentBet = "28";
           gameObj.trumpSuit = "N";
+          ``;
           gameObj.bidPassCount = 0;
           gameObj.lastBiddingTeam = this.getPlayerTeam(
             gameObj,
             player.playerId,
           );
+        } else {
+          // Subsequent players: regular pass (no bid created)
+          gameObj.bidHistory.push({
+            playerId: player.playerId,
+            action: "pass",
+          });
+          gameObj.bidPassCount = (gameObj.bidPassCount || 0) + 1;
         }
 
         break;
@@ -3459,28 +3469,61 @@ export class GameCore {
     );
 
     if (currentBiddingPlayer && currentBiddingPlayer.isBotAgent) {
-      // Bots just pass for now
-      setTimeout(() => {
-        // Find the socket for the bot player
-        const botPlayer = game.players.find(
-          (p: IPlayer) =>
-            p.isBotAgent && p.playerId === game.currentBiddingPlayerId,
-        );
-        if (botPlayer) {
-          // Simulate a bot passing
-          this.onBiddingAction(
-            {
-              gameId,
-              token: botPlayer.token,
-              action: "pass",
-            },
-            (err: any, result: any) => {
-              // Bot action processed
-            },
+      // Bot agent - use Intelligent bidding decision
+      const botAgent = new TeamBotAgent();
+      const decision = botAgent.decideBid(
+        game,
+        currentBiddingPlayer.token,
+        currentBiddingPlayer.playerId,
+      );
+    }
+
+    // Dynamic timing: 2 seconds for bid action, 1 second for pass
+    const delay = decision.action === "pass" ? 1000 : 2000;
+
+    setTimeout(() => {
+      // Double-check bot is still the current bidder (game state might have changed)
+      const freshGame = this.inMemoryStore.fetchGame(gameId);
+      if (
+        !freshGame ||
+        !freshGame.isBiddingPhase ||
+        freshGame.currentBiddingPlayerId !== currentBiddingPlayer.playerId
+      ) {
+        return;
+      }
+
+      // Construct bidding payload
+      const payload: any = {
+        gameId,
+        token: currentBiddingPlayer.token,
+        action: decision.action,
+      };
+
+      // Add bid-specific fields for "bid" action
+      if (decision.action === "bid") {
+        payload.bidValue = decision.bidValue;
+        payload.suit = decision.suit;
+        payload.bidSelectionType = decision.bidSelectionType;
+        payload.clickOrder = decision.clickOrder;
+        payload.noTrumpType = decision.noTrumpType;
+      }
+
+      // Add modifier fields for double/re-double
+      if (decision.action === "double" || decision.action === "re-double") {
+        payload.bidSelectionType = decision.bidSelectionType;
+        payload.bitModifier = decision.bidModifier;
+      }
+
+      // Execute bidding action
+      this.onBiddingAction(payload, (err: any, result: any) => {
+        if (err) {
+          console.error(
+            `[BOT BIDDING] Error for ${currentBiddingPlayer.playerId}:`,
+            err,
           );
         }
-      }, 1000); // Small delay to simulate thinking time for bots
-    }
+      });
+    }, delay);
   }
 
   /**
