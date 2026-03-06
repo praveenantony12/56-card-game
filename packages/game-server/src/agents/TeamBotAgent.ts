@@ -173,10 +173,10 @@ export class TeamBotAgent {
       "│ BIDDING INTELLIGENCE:                                                │",
     );
     console.log(
-      `│ Teammate Jacks: ${(reasoning as any).biddingIntel.teammate.Jacks.padEnd(52)} │`,
+      `│ Teammate Jacks: ${(reasoning as any).biddingIntel.teammateJacks.padEnd(52)} │`,
     );
     console.log(
-      `│ Opponent Jacks: ${(reasoning as any).biddingIntel.opponent.Jacks.padEnd(52)} │`,
+      `│ Opponent Jacks: ${(reasoning as any).biddingIntel.opponentJacks.padEnd(52)} │`,
     );
     console.log(
       `│ Safe Suits: ${(reasoning as any).biddingIntel.safeSuits.padEnd(56)} │`,
@@ -1661,14 +1661,13 @@ export class TeamBotAgent {
       "├──────────────────────────────────────────────────────────────────────┤",
     );
     console.log(
-      `│ Suit Breakdown:                                                        │`,
+      `│ Suit Breakdown:                                                      │`,
     );
     console.log(`│ ${reasoning.suitBreakdown[0].padEnd(68)} │`);
     console.log(`│ ${reasoning.suitBreakdown[1].padEnd(68)} │`);
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );
-
     console.log(`│ Current High Bid: ${reasoning.currentHighBid.padEnd(51)} │`);
     console.log(
       `│ Partner Bids: ${reasoning.partnerBids.toString().padEnd(55)} │`,
@@ -1745,7 +1744,7 @@ export class TeamBotAgent {
     console.log(
       "\n┌──────────────────────────────────────────────────────────────────────┐",
     );
-    console.log(` BOT HAND - Player: ${botPlayerId.padEnd(49)} │`);
+    console.log(`│ BOT HAND - Player: ${botPlayerId.padEnd(49)} │`);
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );
@@ -2900,7 +2899,7 @@ export class TeamBotAgent {
     // If team starts and we have 3+ with J, always bid (never let it pass to 28 Noes)
     if (teamStarted && !hasOpeningHand) {
       reasoning.strategy = "INSUFFICIENT_STRENGTH";
-      reasoning.reasoning = `Team starts but no opening hand (need 3+ cards with J). Best suit ${handProfile.bestSuit}: ${handProfile.suitProfile.suitProfiles[handProfile.bestSuit]?.length || 0} cards, ${handProfile.suitProfiles[handProfile.bestSuit]?.jacks || 0} J. Passing - will default to 28 Noes.`;
+      reasoning.reasoning = `Team starts but no opening hand (need 3+ cards with J). Best suit ${handProfile.bestSuit}: ${handProfile.suitProfile[handProfile.bestSuit]?.length || 0} cards, ${handProfile.suitProfiles[handProfile.bestSuit]?.jacks || 0} J. Passing - will default to 28 Noes.`;
       reasoning.decision = "PASS";
       return { action: "pass" };
     }

@@ -1191,6 +1191,7 @@ class GameGrid extends React.Component<IProps, IState> {
     // "Not Bidding" button always sends a regular pass action
     // Players must intentionally select bid value + "Pass" no-trump type to bid "28 Pass"
     this.store.biddingAction("pass");
+
     // Reset local bidding state
     this.setState({
       currentBiddingValue: 0,
