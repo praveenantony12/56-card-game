@@ -2899,7 +2899,7 @@ export class TeamBotAgent {
     // If team starts and we have 3+ with J, always bid (never let it pass to 28 Noes)
     if (teamStarted && !hasOpeningHand) {
       reasoning.strategy = "INSUFFICIENT_STRENGTH";
-      reasoning.reasoning = `Team starts but no opening hand (need 3+ cards with J). Best suit ${handProfile.bestSuit}: ${handProfile.suitProfile[handProfile.bestSuit]?.length || 0} cards, ${handProfile.suitProfiles[handProfile.bestSuit]?.jacks || 0} J. Passing - will default to 28 Noes.`;
+      reasoning.reasoning = `Team starts but no opening hand (need 3+ cards with J). Best suit ${handProfile.bestSuit}: ${handProfile.suitProfiles[handProfile.bestSuit]?.length || 0} cards, ${handProfile.suitProfiles[handProfile.bestSuit]?.jacks || 0} J. Passing - will default to 28 Noes.`;
       reasoning.decision = "PASS";
       return { action: "pass" };
     }

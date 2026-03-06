@@ -3164,7 +3164,7 @@ export class GameCore {
         const hasNoPreviousBids =
           !gameObj.bidHistory ||
           gameObj.bidHistory.length === 0 ||
-          !gameObj.bidHistory.every((entry) => entry.action === "bid");
+          !gameObj.bidHistory.some((entry) => entry.action === "bid");
 
         if (hasNoPreviousBids) {
           // First player must make mandatory bid - default to "Pass (28) - minimal bid"
