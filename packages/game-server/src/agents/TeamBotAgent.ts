@@ -170,16 +170,16 @@ export class TeamBotAgent {
       "├──────────────────────────────────────────────────────────────────────┤",
     );
     console.log(
-      "│ BIDDING INTELLIGENCE:                                               ",
+      "│ BIDDING INTELLIGENCE:                                                │",
     );
     console.log(
-      `│ Teammate Jacks: ${(reasoning as any).biddingIntel.teammate.Jacks.padEnd(52)} |`,
+      `│ Teammate Jacks: ${(reasoning as any).biddingIntel.teammate.Jacks.padEnd(52)} │`,
     );
     console.log(
-      `│ Opponent Jacks: ${(reasoning as any).biddingIntel.opponent.Jacks.padEnd(52)} |`,
+      `│ Opponent Jacks: ${(reasoning as any).biddingIntel.opponent.Jacks.padEnd(52)} │`,
     );
     console.log(
-      `│ Safe Suits: ${(reasoning as any).biddingIntel.safeSuits.padEnd(56)} |`,
+      `│ Safe Suits: ${(reasoning as any).biddingIntel.safeSuits.padEnd(56)} │`,
     );
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
@@ -188,10 +188,10 @@ export class TeamBotAgent {
       "│ NOES INTELLIGENCE (Missing Suits):                                   │",
     );
     console.log(
-      `│ Teammates: ${(reasoning as any).biddingIntel.teammateMissingSuits.substring(0, 57).padEnd(57)} |`,
+      `│ Teammates: ${(reasoning as any).biddingIntel.teammateMissingSuits.substring(0, 57).padEnd(57)} │`,
     );
     console.log(
-      `│ Opponents: ${(reasoning as any).biddingIntel.opponentMissingSuits.substring(0, 57).padEnd(57)} |`,
+      `│ Opponents: ${(reasoning as any).biddingIntel.opponentMissingSuits.substring(0, 57).padEnd(57)} │`,
     );
 
     // CARD COUNTING: Analyze remaining cards per suit
@@ -1637,7 +1637,7 @@ export class TeamBotAgent {
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );
-    console.log(`| Bot ID: ${reasoning.botId.padEnd(61)} |`);
+    console.log(`│ Bot ID: ${reasoning.botId.padEnd(61)} │`);
     console.log(
       `│ Team: ${(reasoning.teamId === 0 ? "Team A" : "Team B").padEnd(63)} │`,
     );
@@ -1647,7 +1647,7 @@ export class TeamBotAgent {
     console.log(
       `│ Hand Points: ${reasoning.handPoints.toString().padEnd(56)} │`,
     );
-    console.log(`| Best Suit: ${reasoning.bestSuit.padEnd(58)} │`);
+    console.log(`│ Best Suit: ${reasoning.bestSuit.padEnd(58)} │`);
     console.log(
       `│ Best Suit Trick: ${reasoning.bestSuitTricks.toFixed(1).padEnd(51)} │`,
     );
@@ -1663,13 +1663,13 @@ export class TeamBotAgent {
     console.log(
       `│ Suit Breakdown:                                                        │`,
     );
-    console.log(`| ${reasoning.suitBreakdown[0].padEnd(68)} │`);
-    console.log(`| ${reasoning.suitBreakdown[1].padEnd(68)} │`);
+    console.log(`│ ${reasoning.suitBreakdown[0].padEnd(68)} │`);
+    console.log(`│ ${reasoning.suitBreakdown[1].padEnd(68)} │`);
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );
 
-    console.log(`| Current High Bid: ${reasoning.currentHighBid.padEnd(51)} │`);
+    console.log(`│ Current High Bid: ${reasoning.currentHighBid.padEnd(51)} │`);
     console.log(
       `│ Partner Bids: ${reasoning.partnerBids.toString().padEnd(55)} │`,
     );
@@ -1679,12 +1679,12 @@ export class TeamBotAgent {
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );
-    console.log(`| STRATEGY: ${reasoning.strategy.padEnd(59)} │`);
+    console.log(`│ STRATEGY: ${reasoning.strategy.padEnd(59)} │`);
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );
     console.log(
-      `│ REASONING:                                                           │`,
+      "│ REASONING:                                                           │",
     );
 
     // Wrap reasoning text to fit in box
@@ -1708,7 +1708,7 @@ export class TeamBotAgent {
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );
-    console.log(`│ DECISION: ${reasoning.strategy.padEnd(59)} │`);
+    console.log(`│ DECISION: ${reasoning.decision.padEnd(59)} │`);
     console.log(
       "└──────────────────────────────────────────────────────────────────────┘\n",
     );
@@ -1745,11 +1745,10 @@ export class TeamBotAgent {
     console.log(
       "\n┌──────────────────────────────────────────────────────────────────────┐",
     );
-    console.log(` BOT HAND - Player: ${botPlayerId.padEnd(49)} |`);
+    console.log(` BOT HAND - Player: ${botPlayerId.padEnd(49)} │`);
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );
-
     console.log(`│ Cards: ${myCards.join(", ").padEnd(61)} │`);
     console.log(
       "└──────────────────────────────────────────────────────────────────────┘",
@@ -1796,7 +1795,6 @@ export class TeamBotAgent {
     );
 
     // PROGRESSIVE REVELATION: Check if we should reveal additional cards (5-6 card hands)
-
     const revealAdditional = this.shouldRevealAdditionalCards(
       botPlayerId,
       gameState,
@@ -1971,7 +1969,7 @@ export class TeamBotAgent {
       // Treat this like partner didn't bid - evaluate as opening bid instead
       const is28Noes =
         partnerLatestBid.action === "bid" &&
-        partnerLatestBid.bidValue &&
+        partnerLatestBid.bidValue === 28 &&
         partnerLatestBid.suit === "N";
 
       if (is28Noes) {
@@ -2537,7 +2535,7 @@ export class TeamBotAgent {
     const teammateOpened = this.didTeammateStartAuction(botPlayerId, gameState);
 
     // SPECIAL CASE: Teammate opened the auction
-    // Standard practice: reveal hand if 3+ cards of same suit with at least one Jack (standard convention)
+    // Standard practice: reveal hand if 3+ cards of same suit with at least one Jack (support convention)
     if (teammateOpened) {
       const supportHand = this.hasGoodSupportHand(
         handProfile.suitProfiles,
@@ -2924,7 +2922,7 @@ export class TeamBotAgent {
     if (currentHighBid && bidValue <= currentHighBid.bidValue) {
       // Can't beat current bid - pass
       reasoning.strategy = "CANNOT_COMPETE";
-      reasoning.reasoning = `Best suit ${handProfile.bestSuit} worth ${bidValue} points. Current high bid is ${currentHighBid.bidValue}. Cannot beat current bid safely. Passing`;
+      reasoning.reasoning = `Best suit ${handProfile.bestSuit} worth ${bidValue} points. Current high bid is ${currentHighBid.bidValue}. Cannot beat current bid safely. Passing.`;
       reasoning.decision = "PASS";
       return { action: "pass" };
     }
@@ -2942,7 +2940,7 @@ export class TeamBotAgent {
       return { action: "pass" };
     }
 
-    // Make the opening bid (never bid Noes as opening only actual suits)
+    // Make the opening bid (never bid Noes as opening - only actual suits)
     // 28 Noes = Pass (no good hand), so bestSuit should be H/E/D/C
     if (handProfile.bestSuit === "N") {
       reasoning.strategy = "NO_SUIT_OPENING";
@@ -2960,7 +2958,7 @@ export class TeamBotAgent {
     );
 
     reasoning.strategy = currentHighBid ? "COMPETITIVE_BID" : "OPENING_BID";
-    reasoning.reasoning = `${handProfile.bestSuit} is strongest suit: ${bestSuitProfile.length} cards, ${bestSuitProfile.jacks} J, ${bestSuitProfile.nines} 9, ${bestSuitProfile.points} pts. ${signal.signalType}. Using convention ${signal.clickOrder} to signal hand. ${handProfile.hasJackPair ? "Have jack pair for combination potential." : ""}Bidding ${handProfile.bestSuit} ${bidValue}.`;
+    reasoning.reasoning = `${handProfile.bestSuit} is strongest suit: ${bestSuitProfile.length} cards, ${bestSuitProfile.jacks} J, ${bestSuitProfile.nines} 9, ${bestSuitProfile.points} pts. ${signal.signalType}. Using convention ${signal.clickOrder} to signal hand. ${handProfile.hasJackPair ? "Have jack pair for combination potential. " : ""}Bidding ${handProfile.bestSuit} ${bidValue}.`;
     const bidDisplay =
       signal.clickOrder === "bidFirst"
         ? `BID ${bidValue} ${handProfile.bestSuit}`
