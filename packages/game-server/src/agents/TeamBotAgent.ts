@@ -1801,22 +1801,34 @@ export class TeamBotAgent {
       "╚══════════════════════════════════════════════════════════════════════╝",
     );
 
-    // PROGRESSIVE REVELATION: Check if we should reveal additional cards (5-6 card hands)
+    // First, evaluate if we have a strong suit to reveal
+    const hasNewStrongSuit = this.hasUnrevealedStrongSuit(
+      botPlayerId,
+      gameState,
+      handProfile,
+    );
+
+    // PROGRESSIVE REVELATION: Only reveal additional cards in same suit if:
+    // 1. No new strong suit to reveal, AND
+    // 2. We have 5-6 cards in the previously bid suit (indicating a strong hand)
     const revealAdditional = this.shouldRevealAdditionalCards(
       botPlayerId,
       gameState,
       handProfile,
     );
 
-    if (revealAdditional.shouldReveal && currentHighBid) {
-      // Calculate new bid value (slightly higher than current)
+    if (
+      !hasNewStrongSuit.hasStrong &&
+      revealAdditional.shouldReveal &&
+      currentHighBid
+    ) {
+      // Calculate new bid value with correct increment (+! for each additional card)
       const suitProfile = handProfile.suitProfiles[revealAdditional.suit!];
-      const tricks = this.estimateTricksForSuit(suitProfile);
-      let bidValue = currentHighBid.bidValue + 2;
+      let bidValue = currentHighBid.bidValue + revealAdditional.bidModifier;
       bidValue = Math.min(56, bidValue);
 
       reasoning.strategy = "PROGRESSIVE_REVELATION";
-      reasoning.reasoning = `Previously bid ${revealAdditional.suit}. Have ${suitProfile.length} cards total in this suit. Using progressive revelation to show ${revealAdditional.additionalCards} additional card(s) with +${revealAdditional.bidModifier} modifier. Bidding ${bidValue} ${revealAdditional.suit}.`;
+      reasoning.reasoning = `Previously bid ${revealAdditional.suit}. Have ${suitProfile.length} cards total in this suit. No new strong suit to reveal. Using progressive revelation to show ${revealAdditional.additionalCards} additional card(s) with +${revealAdditional.bidModifier} modifier. Bidding ${bidValue} ${revealAdditional.suit}.`;
       reasoning.decision = `BID ${bidValue} ${revealAdditional.suit} (+${revealAdditional.bidModifier})`;
       this.logBiddingReasoning(reasoning);
       return {
@@ -1824,7 +1836,7 @@ export class TeamBotAgent {
         bidValue: bidValue,
         suit: revealAdditional.suit!,
         bidSelectionType: "modifier",
-        clickOrder: "bidFirst",
+        clickOrder: "suitFirst",
         bidModifier: revealAdditional.bidModifier,
         noTrumpType: null,
       };
@@ -2407,6 +2419,53 @@ export class TeamBotAgent {
   }
 
   /**
+   * Check if bot has an unrevealed strong suit (4+ cards that haven't been bid yet)
+   * Returns true if bot has a new suit worth revealing instead of rebidding same suit
+   */
+  private hasUnrevealedStrongSuit(
+    botPlayerId: string,
+    gameState: ICardGame,
+    handProfile: any,
+  ): {
+    hasStrong: boolean;
+    suit: string | null;
+  } {
+    const botPreviousBids = this.getBotPreviousBids(botPlayerId, gameState);
+    const previouslyBidSuits = new Set(
+      botPreviousBids.map((bid) => bid.suit).filter((s) => s),
+    );
+
+    // Check each suit for unrevealed strength
+    const suits = ["H", "E", "D", "C"];
+    for (const suit of suits) {
+      // Skip suits we've already bid (already revealed information about)
+      if (previouslyBidSuits.has(suit)) continue;
+
+      const suitProfile = handProfile.suitProfiles[suit];
+      if (!suitProfile) continue;
+
+      // Consider it strong if:
+      // - 4+ cards with at least 1 Jack, OR
+      // - 5+ cards even without Jack (long suit potential)
+      const isStrong =
+        (suitProfile.length >= 4 && suitProfile.jacks >= 1) ||
+        suitProfile.length >= 5;
+
+      if (isStrong) {
+        return {
+          hasStrong: true,
+          suit: suit,
+        };
+      }
+    }
+
+    return {
+      hasStrong: false,
+      suit: null,
+    };
+  }
+
+  /**
    * Check if bot should reveal additional cards (5+ card progressive revelation)
    * When you have 5-6 cards:
    * - First round: bid normally (shows 4 cards)
@@ -2682,6 +2741,134 @@ export class TeamBotAgent {
     // SPECIAL CASE: Teammate opened the auction
     // Standard practice: reveal hand if 3+ cards of same suit with at least one Jack (support convention)
     if (teammateOpened) {
+      // IMPORTANT: Check partner's bid signal before supporting
+      // 1. If partner bid with "+" (modifier, bidFirst) = weak hand with only J + 1-2 cards
+      //   - Only support if we have the second J to make it visible, otherwise skip to find better options
+      // 2. If partner bid suitFirst (no modifier) = weak hand with no J
+      //   - Only support if we have at least one J to provide some control, otherwise skip to find better options
+
+      const partnerBidModifier = partnerBid.bidSelectionType == "modifier";
+      const partnerHasJack = partnerBid.clickOrder === "bidFirst";
+      const partnerSuit = partnerBid.suit;
+
+      // If partner used modifier (+ bid), apply special logic
+      if (partnerBidModifier && partnerSuit && partnerSuit !== "N") {
+        const ourSuitProfile = handProfile.suitProfiles[partnerSuit];
+
+        if (partnerHasJack) {
+          // Partner bid "+ <symbol>" = has J, weak hand (2-3 cards)
+          // Only support if we have the second J
+          if (!ourSuitProfile || ourSuitProfile.jacks < 1) {
+            reasoning.strategy = "SKIP_WEAK_PARTNER_BID";
+            reasoning.reasoning = `Partner bid modifier + ${partnerSuit} (weak hand, has J, 2-3 cards). We don't have second J in ${partnerSuit} (our J: ${ourSuitProfile ? ourSuitProfile.jacks : 0}). Not supporting to avoid increasing bid. Partner doesn't have a strong alternate suits or they would have bit them first. Looking for better options.`;
+            reasoning.decision = "EVALUATE_OTHER_OPTIONS";
+            // Don't support - fall through to check other options
+          } else {
+            // We have J too! Safe to support
+            const supportHand = this.hasGoodSupportHand(
+              handProfile.suitProfiles,
+              true,
+            );
+
+            if (
+              supportHand.hasGoodSupport &&
+              supportHand.suit === partnerSuit
+            ) {
+              const supportSuitProfile =
+                handProfile.suitProfiles[supportHand.suit!];
+              const supportTricks =
+                this.estimateTricksForSuit(supportSuitProfile);
+              let bidValue = 28 + Math.floor((supportTricks - 3) * 2);
+              bidValue = Math.max(28, Math.min(56, bidValue));
+
+              if (!currentHighBid || bidValue > currentHighBid.bidValue) {
+                const signal = this.determineBiddingSignal(
+                  supportHand.cardCount,
+                  supportHand.hasJack,
+                  true,
+                );
+
+                reasoning.strategy = "SUPPORT_WEAK_PARTNER_WITH_SECOND_J";
+                reasoning.reasoning = `Partner bid modifier + ${partnerSuit} (weak, has J). We have the second J! Combined J strength makes this visible. Have ${supportHand.cardCount} cards with support. Supporting with +${supportHand.cardCount} cards in ${supportHand.suit}. Bidding ${supportHand.suit} ${bidValue}.`;
+                const bidDisplay =
+                  signal.clickOrder === "bidFirst"
+                    ? `BID ${bidValue} ${supportHand.suit}`
+                    : `BID ${supportHand.suit} ${bidValue}`;
+                reasoning.decision = `${bidDisplay} (${signal.clickOrder})`;
+                return {
+                  action: "bid",
+                  bidValue: bidValue,
+                  suit: supportHand.suit!,
+                  bidSelectionType: signal.bidSelectionType,
+                  clickOrder: signal.clickOrder,
+                  bidModifier: signal.bidModifier,
+                  noTrumpType:
+                    supportHand.suit === "N"
+                      ? this.determineNoTrumpType(myCards)
+                      : null,
+                };
+              }
+            }
+          }
+        } else {
+          // Partner bid "<symbol> + " or "<symbol> number" (suitFirst) = NO J, weak hand
+          // Only support if we have at least one J to provide some control
+          if (!ourSuitProfile || ourSuitProfile.jacks < 1) {
+            reasoning.strategy = "SKIP_NO_JACK_PARTNER_BID";
+            reasoning.reasoning = `Partner bid modifier ${partnerSuit} (weak hand, no J). We don't have any J in ${partnerSuit} to provide control. Not supporting to avoid increasing bid. Partner doesn't have a strong alternate suits or they would have bit them first. Looking for better options.`;
+            reasoning.decision = "EVALUATE_OTHER_OPTIONS";
+            // Don't support - fall through to check other options
+          } else {
+            // We have J! Can rescue the suit
+            const supportHand = this.hasGoodSupportHand(
+              handProfile.suitProfiles,
+              true,
+            );
+
+            if (
+              supportHand.hasGoodSupport &&
+              supportHand.suit === partnerSuit
+            ) {
+              const supportSuitProfile =
+                handProfile.suitProfiles[supportHand.suit!];
+              const supportTricks =
+                this.estimateTricksForSuit(supportSuitProfile);
+              let bidValue = 28 + Math.floor((supportTricks - 3) * 2);
+              bidValue = Math.max(28, Math.min(56, bidValue));
+
+              if (!currentHighBid || bidValue > currentHighBid.bidValue) {
+                const signal = this.determineBiddingSignal(
+                  supportHand.cardCount,
+                  supportHand.hasJack,
+                  true,
+                );
+
+                reasoning.strategy = "RESCUE_NO_JACK_PARTNER_WITH_J";
+                reasoning.reasoning = `Partner bid modifier ${partnerSuit} (weak hand, no J). We have a J in ${partnerSuit} to provide some control. Have ${supportHand.cardCount} cards with support. Supporting with +${supportHand.cardCount} cards in ${supportHand.suit}. Bidding ${supportHand.suit} ${bidValue}.`;
+                const bidDisplay =
+                  signal.clickOrder === "bidFirst"
+                    ? `BID ${bidValue} ${supportHand.suit}`
+                    : `BID ${supportHand.suit} ${bidValue}`;
+                reasoning.decision = `${bidDisplay} (${signal.clickOrder})`;
+                return {
+                  action: "bid",
+                  bidValue: bidValue,
+                  suit: supportHand.suit!,
+                  bidSelectionType: signal.bidSelectionType,
+                  clickOrder: signal.clickOrder,
+                  bidModifier: signal.bidModifier,
+                  noTrumpType:
+                    supportHand.suit === "N"
+                      ? this.determineNoTrumpType(myCards)
+                      : null,
+                };
+              }
+            }
+          }
+        }
+      }
+
+      // Original logic for non-modifier bids (regular strong bids)
       const supportHand = this.hasGoodSupportHand(
         handProfile.suitProfiles,
         true,
@@ -2772,63 +2959,146 @@ export class TeamBotAgent {
     if (partnerSuit && partnerSuit !== "N" && !alreadyBidPartnerSuit) {
       const partnerSuitProfile = handProfile.suitProfiles[partnerSuit];
       if (partnerSuitProfile && partnerSuitProfile.length >= 2) {
-        // Calculate bid increment based on number of high cards (rounds we can win)
-        // Each high card (J or 9) represents 1 additional round we can help win
-        const highCardCount =
-          partnerSuitProfile.jacks + partnerSuitProfile.nines;
+        // IMPORTANT: Check partner's bid signal before supporting
+        const partnerBidModifier = partnerBid.bidSelectionType == "modifier";
+        const partnerHasJack = partnerBid.clickOrder === "bidFirst";
 
-        if (highCardCount > 0) {
-          // Have high cards - increment by number of high cards
-          const bidValue = partnerBidValue + highCardCount;
-          const signal = this.determineBiddingSignal(
-            partnerSuitProfile.length,
-            partnerSuitProfile.jacks >= 1,
-            true, // isSupporting
-          );
+        // If partner used modifier (+ bid), apply special logic
+        if (partnerBidModifier) {
+          if (partnerHasJack) {
+            // Partner bid "+ <symbol>" weak hand with only J 1-2 cards
+            // Only support if we have the second J
 
-          reasoning.strategy = "SUPPORT_PARTNER_SUIT";
-          reasoning.reasoning = `Partner bid ${partnerSuit} at ${partnerBidValue}. Have ${partnerSuitProfile.length} cards in ${partnerSuit} with ${highCardCount} high card(s) (J:${partnerSuitProfile.jacks}, 9:${partnerSuitProfile.nines}). Each high card = 1 additional round win. Bidding ${partnerSuit} ${bidValue} (+${highCardCount} for ${highCardCount} high card(s). This confirms combined team strength.`;
-          const bidDisplay4 =
-            signal.clickOrder === "bidFirst"
-              ? `BID ${bidValue} ${partnerSuit}`
-              : `BID ${partnerSuit} ${bidValue}`;
-          reasoning.decision = `${bidDisplay4} (support)`;
-          return {
-            action: "bid",
-            bidValue: bidValue,
-            suit: partnerSuit,
-            bidSelectionType: signal.bidSelectionType,
-            clickOrder: signal.clickOrder,
-            bidModifier: signal.bidModifier,
-            noTrumpType:
-              partnerSuit === "N" ? this.determineNoTrumpType(myCards) : null,
-          };
+            if (partnerSuitProfile.jacks < 1) {
+              reasoning.strategy = "SKIP_SUPPORTING_WEAK_PARTNER";
+              reasoning.reasoning = `Partner bid modifier + ${partnerSuit} (weak hand, has J, 2-3 cards). We don't have second J in ${partnerSuit} (our J: ${partnerSuitProfile.jacks}). Not supporting to avoid increasing bid. Partner doesn't have a strong alternate suits or they would have bit them first. Looking for better options.`;
+              reasoning.decision = "PASS or find alternative";
+              // Skip supporting this suit fall through to check alternatives
+            } else {
+              // We have J! Can support
+              const highCardCount =
+                partnerSuitProfile.jacks + partnerSuitProfile.nines;
+              const bidValue = partnerBidValue + highCardCount;
+              const signal = this.determineBiddingSignal(
+                partnerSuitProfile.length,
+                partnerSuitProfile.jacks >= 1,
+                true,
+              );
+
+              reasoning.strategy = "SUPPORT_WEAK_PARTNER_WITH_SECOND_J";
+              reasoning.reasoning = `Partner bid modifier ${partnerSuit} (weak, has J). We have the second J! Combined J strength makes this visible. Have ${partnerSuitProfile.length} cards with ${highCardCount} high card(s). Supporting with +${highCardCount}.`;
+              const bidDisplay =
+                signal.clickOrder === "bidFirst"
+                  ? `BID ${bidValue} ${partnerSuit}`
+                  : `BID ${partnerSuit} ${bidValue}`;
+              reasoning.decision = `${bidDisplay} (support)`;
+              return {
+                action: "bid",
+                bidValue: bidValue,
+                suit: partnerSuit,
+                bidSelectionType: signal.bidSelectionType,
+                clickOrder: signal.clickOrder,
+                bidModifier: signal.bidModifier,
+                noTrumpType: null,
+              };
+            }
+          } else {
+            // Partner bid "<symbol>" or "<symbol number" (suitFirst) = NO J, weak hand
+            // Only support if we have at least ONE J
+            if (partnerSuitProfile.jacks < 1) {
+              reasoning.strategy = "SKIP_NO_JACK_PARTNER_SUPPORT";
+              reasoning.reasoning = `Partner bid suitFirst ${partnerSuit} (no J - weak hand). We don't have any J in ${partnerSuit} (our J: ${partnerSuitProfile.jacks}). Without J, this suit is vulnerable to opponent control. Not supporting - opponents with J could double and dominate. Looking for alternative options.`;
+              reasoning.decision = "PASS or find alternative";
+              // Skip supporting this suit fall through to check alternatives
+            } else {
+              // We have J! Can support
+              const highCardCount =
+                partnerSuitProfile.jacks + partnerSuitProfile.nines;
+              const bidValue = partnerBidValue + highCardCount;
+              const signal = this.determineBiddingSignal(
+                partnerSuitProfile.length,
+                partnerSuitProfile.jacks >= 1,
+                true,
+              );
+
+              reasoning.strategy = "RESCUE_NO_JACK_PARTNER";
+              reasoning.reasoning = `Partner bid suitFirst ${partnerSuit} (no J - weak hand). We have a J in ${partnerSuit}! This gives us some control and makes supporting viable. Have ${partnerSuitProfile.length} cards with ${highCardCount} high card(s). Supporting with +${highCardCount} to strengthen partner's weak suit.`;
+              const bidDisplay2 =
+                signal.clickOrder === "bidFirst"
+                  ? `BID ${bidValue} ${partnerSuit}`
+                  : `BID ${partnerSuit} ${bidValue}`;
+              reasoning.decision = `${bidDisplay2} (rescue)`;
+              return {
+                action: "bid",
+                bidValue: bidValue,
+                suit: partnerSuit,
+                bidSelectionType: signal.bidSelectionType,
+                clickOrder: signal.clickOrder,
+                bidModifier: signal.bidModifier,
+                noTrumpType: null,
+              };
+            }
+          }
         } else {
-          // Have cards but no high cards - just increment by 1 to signal presence
-          const bidValue = partnerBidValue + 1;
-          const signal = this.determineBiddingSignal(
-            partnerSuitProfile.length,
-            false, // no Jack
-            true, // isSupporting
-          );
+          // Partner used direct bid (not modifier) - regular strong bid
+          // Calculate bid increment based on number of high cards (rounds we can win)
+          // Each high card (J or 9) represents 1 additional round we can help win
+          const highCardCount =
+            partnerSuitProfile.jacks + partnerSuitProfile.nines;
 
-          reasoning.strategy = "SUPPORT_PARTNER_SUIT";
-          reasoning.reasoning = `Partner bid ${partnerSuit} at ${partnerBidValue}. Have ${partnerSuitProfile.length} cards in ${partnerSuit} but no high cards (J:0, 9:0). Increment by +1 to signal presence in this suit. Bidding ${partnerSuit} ${bidValue}.`;
-          const bidDisplay5 =
-            signal.clickOrder === "bidFirst"
-              ? `BID ${bidValue} ${partnerSuit}`
-              : `BID ${partnerSuit} ${bidValue}`;
-          reasoning.decision = `${bidDisplay5} (support)`;
-          return {
-            action: "bid",
-            bidValue: bidValue,
-            suit: partnerSuit,
-            bidSelectionType: signal.bidSelectionType,
-            clickOrder: signal.clickOrder,
-            bidModifier: signal.bidModifier,
-            noTrumpType:
-              partnerSuit === "N" ? this.determineNoTrumpType(myCards) : null,
-          };
+          if (highCardCount > 0) {
+            // Have high cards - increment by number of high cards
+            const bidValue = partnerBidValue + highCardCount;
+            const signal = this.determineBiddingSignal(
+              partnerSuitProfile.length,
+              partnerSuitProfile.jacks >= 1,
+              true, // isSupporting
+            );
+
+            reasoning.strategy = "SUPPORT_PARTNER_SUIT";
+            reasoning.reasoning = `Partner bid ${partnerSuit} at ${partnerBidValue}. Have ${partnerSuitProfile.length} cards in ${partnerSuit} with ${highCardCount} high card(s) (J:${partnerSuitProfile.jacks}, 9:${partnerSuitProfile.nines}). Each high card = 1 additional round win. Bidding ${partnerSuit} ${bidValue} (+${highCardCount} for ${highCardCount} high card(s). This confirms combined team strength.`;
+            const bidDisplay4 =
+              signal.clickOrder === "bidFirst"
+                ? `BID ${bidValue} ${partnerSuit}`
+                : `BID ${partnerSuit} ${bidValue}`;
+            reasoning.decision = `${bidDisplay4} (support)`;
+            return {
+              action: "bid",
+              bidValue: bidValue,
+              suit: partnerSuit,
+              bidSelectionType: signal.bidSelectionType,
+              clickOrder: signal.clickOrder,
+              bidModifier: signal.bidModifier,
+              noTrumpType:
+                partnerSuit === "N" ? this.determineNoTrumpType(myCards) : null,
+            };
+          } else {
+            // Have cards but no high cards - just increment by 1 to signal presence
+            const bidValue = partnerBidValue + 1;
+            const signal = this.determineBiddingSignal(
+              partnerSuitProfile.length,
+              false, // no Jack
+              true, // isSupporting
+            );
+
+            reasoning.strategy = "SUPPORT_PARTNER_SUIT";
+            reasoning.reasoning = `Partner bid ${partnerSuit} at ${partnerBidValue}. Have ${partnerSuitProfile.length} cards in ${partnerSuit} but no high cards (J:0, 9:0). Increment by +1 to signal presence in this suit. Bidding ${partnerSuit} ${bidValue}.`;
+            const bidDisplay5 =
+              signal.clickOrder === "bidFirst"
+                ? `BID ${bidValue} ${partnerSuit}`
+                : `BID ${partnerSuit} ${bidValue}`;
+            reasoning.decision = `${bidDisplay5} (support)`;
+            return {
+              action: "bid",
+              bidValue: bidValue,
+              suit: partnerSuit,
+              bidSelectionType: signal.bidSelectionType,
+              clickOrder: signal.clickOrder,
+              bidModifier: signal.bidModifier,
+              noTrumpType:
+                partnerSuit === "N" ? this.determineNoTrumpType(myCards) : null,
+            };
+          }
         }
       }
     }

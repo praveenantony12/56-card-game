@@ -377,13 +377,13 @@ class GameGrid extends React.Component<IProps, IState> {
                 step="1"
                 value={gameScore}
                 className={
-                  gameStarted || !isLastPlayer
+                  gameStarted || !isFirstPlayer
                     ? "scoreSlider hideSlider"
                     : "scoreSlider showSlider"
                 }
                 id="gameScoreSlider"
                 data-show-value="true"
-                onChange={this.updateScore.bind(event)}
+                onChange={this.updateScore.bind(this)}
               />
             </Grid.Column>
           </Grid.Row>
@@ -692,7 +692,7 @@ class GameGrid extends React.Component<IProps, IState> {
             style={{
               justifyContent: "center",
               color: "yellow",
-              border: "1px solid yellow",
+              border: "1px solid orange",
             }}
           >
             Your Bid:{" "}
@@ -723,35 +723,39 @@ class GameGrid extends React.Component<IProps, IState> {
                 }}
               >
                 {Array.from({ length: 29 }, (_, i) => 28 + i).map(
-                  (bidValue) => (
-                    <Button
-                      key={bidValue}
-                      color={
-                        currentBiddingValue === bidValue ? "green" : "grey"
-                      }
-                      disabled={hasActualBid && bidValue <= lastBidValue}
-                      onClick={() =>
-                        this.handleBidNumberClick(
-                          bidValue,
-                          lastBidValue,
-                          lastBidsuit,
-                        )
-                      }
-                      style={{
-                        padding: "8px 4px",
-                        fontSize: "12px",
-                        opacity: bidValue <= lastBidValue ? 0.5 : 1,
-                      }}
-                    >
-                      {bidValue}
-                    </Button>
-                  ),
+                  (bidValue) => {
+                    const isDisabled = hasActualBid && bidValue <= lastBidValue;
+                    const bidMaxedOut = lastBidValue >= 56;
+                    return (
+                      <Button
+                        key={bidValue}
+                        color={
+                          currentBiddingValue === bidValue ? "green" : "grey"
+                        }
+                        disabled={isDisabled || bidMaxedOut}
+                        onClick={() =>
+                          this.handleBidNumberClick(
+                            bidValue,
+                            lastBidValue,
+                            lastBidsuit,
+                          )
+                        }
+                        style={{
+                          padding: "8px 4px",
+                          fontSize: "12px",
+                          opacity: isDisabled && hasActualBid ? 0.5 : 1,
+                        }}
+                      >
+                        {bidValue}
+                      </Button>
+                    );
+                  },
                 )}
                 <Button
                   key="+"
                   color={"blue"}
                   onClick={() => this.handleModifierClick(0)}
-                  disabled={currentBiddingValue > 55}
+                  disabled={currentBiddingValue > 55 || lastBidValue >= 56}
                   style={{
                     padding: "8px 4px",
                     fontSize: "12px",
@@ -763,7 +767,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   key="+1"
                   color={"blue"}
                   onClick={() => this.handleModifierClick(1)}
-                  disabled={currentBiddingValue > 55}
+                  disabled={currentBiddingValue > 55 || lastBidValue >= 56}
                   style={{
                     padding: "8px 4px",
                     fontSize: "12px",
@@ -775,7 +779,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   key="+2"
                   color={"blue"}
                   onClick={() => this.handleModifierClick(2)}
-                  disabled={currentBiddingValue > 54}
+                  disabled={currentBiddingValue > 54 || lastBidValue >= 56}
                   style={{
                     padding: "8px 4px",
                     fontSize: "12px",
@@ -787,7 +791,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   key="+3"
                   color={"blue"}
                   onClick={() => this.handleModifierClick(3)}
-                  disabled={currentBiddingValue > 53}
+                  disabled={currentBiddingValue > 53 || lastBidValue >= 56}
                   style={{
                     padding: "8px 4px",
                     fontSize: "12px",
@@ -799,7 +803,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   key="+4"
                   color={"blue"}
                   onClick={() => this.handleModifierClick(4)}
-                  disabled={currentBiddingValue > 52}
+                  disabled={currentBiddingValue > 52 || lastBidValue >= 56}
                   style={{
                     padding: "8px 4px",
                     fontSize: "12px",
@@ -811,7 +815,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   key="+5"
                   color={"blue"}
                   onClick={() => this.handleModifierClick(5)}
-                  disabled={currentBiddingValue > 51}
+                  disabled={currentBiddingValue > 51 || lastBidValue >= 56}
                   style={{
                     padding: "8px 4px",
                     fontSize: "12px",
@@ -843,6 +847,7 @@ class GameGrid extends React.Component<IProps, IState> {
                 (() => {
                   const isSuitAvailable = this.hasSuitInHand(suit.name);
                   const isSelected = currentBiddingsuit === suit.name;
+                  const bidMaxedOut = lastBidValue >= 56;
                   return (
                     <Label
                       as="a"
@@ -853,14 +858,18 @@ class GameGrid extends React.Component<IProps, IState> {
                       }
                       onClick={() =>
                         isSuitAvailable &&
+                        !bidMaxedOut &&
                         this.handleBiddingSuitClick(suit.name)
                       }
                       title={suit.label}
                       style={{
-                        cursor: isSuitAvailable ? "pointer" : "not-allowed",
+                        cursor:
+                          isSuitAvailable && !bidMaxedOut
+                            ? "pointer"
+                            : "not-allowed",
                         padding: "8px 12px",
                         margin: "2px",
-                        opacity: isSuitAvailable ? 1 : 0.5,
+                        opacity: isSuitAvailable && !bidMaxedOut ? 1 : 0.5,
                       }}
                     >
                       {suit.label} {suit.symbol}
@@ -872,6 +881,7 @@ class GameGrid extends React.Component<IProps, IState> {
               {noTrumpTypes.map((type) => {
                 const isSelected =
                   currentBiddingsuit === "N" && noTrumpType === type.name;
+                const bidMaxedOut = lastBidValue >= 56;
                 return (
                   <Label
                     as="a"
@@ -879,15 +889,17 @@ class GameGrid extends React.Component<IProps, IState> {
                     key={type.name}
                     color={isSelected ? "green" : "purple"}
                     onClick={() =>
+                      !bidMaxedOut &&
                       this.handleNoTrumpTypeClick(
                         type.name as "Noes" | "Pass" | "No-Trump",
                       )
                     }
                     title={type.label}
                     style={{
-                      cursor: "pointer",
+                      cursor: bidMaxedOut ? "not-allowed" : "pointer",
                       padding: "8px 12px",
                       margin: "2px",
+                      opacity: bidMaxedOut ? 0.5 : 1,
                     }}
                   >
                     {type.label}
@@ -904,7 +916,7 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button
                 color="green"
                 onClick={this.handleBiddingDone.bind(this)}
-                disabled={!hasPlayerMadeSelections}
+                disabled={!hasPlayerMadeSelections || lastBidValue >= 56}
                 style={{
                   minWidth: "190px",
                 }}
