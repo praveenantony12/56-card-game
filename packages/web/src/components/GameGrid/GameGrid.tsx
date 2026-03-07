@@ -544,8 +544,8 @@ class GameGrid extends React.Component<IProps, IState> {
           <div
             style={{
               position: "absolute",
-              top: "50%",
               left: "50%",
+              top: "50%",
               transform: "translate(-50%, -50%)",
               backgroundColor: "rgba(0, 0, 0, 0.85)",
               color: "white",
@@ -553,7 +553,7 @@ class GameGrid extends React.Component<IProps, IState> {
               borderRadius: "15px",
               textAlign: "center",
               zIndex: 1000,
-              width: "400px",
+              minWidth: "400px",
             }}
           >
             <h2 style={{ marginBottom: "20px" }}>Raise your Bid?</h2>
@@ -584,7 +584,7 @@ class GameGrid extends React.Component<IProps, IState> {
             <Button
               color="red"
               size="large"
-              onClick={() => this.handleSkipRaise.bind(this)}
+              onClick={this.handleSkipRaise.bind(this)}
             >
               Skip - Start Game
             </Button>
@@ -1310,16 +1310,16 @@ class GameGrid extends React.Component<IProps, IState> {
 
   /**
    * Get the team of a player based on their index in the players array
-   * Team A: players at index 0, 2, 4
-   * Team B: players at index 1, 3, 5
+   * Team A: positions 0, 2, 4
+   * Team B: positions 1, 3, 5
    */
   private getPlayerTeam(playerId: string): "A" | "B" | null {
     const { players } = this.store.game;
     if (!players) return null;
 
-    const playerIndex = players
-      ? players.findIndex((p: any) => p === playerId || p.playerId === playerId)
-      : -1;
+    const playerIndex = players.findIndex(
+      (p: any) => p === playerId || p.playerId === playerId,
+    );
     if (playerIndex === -1) return null;
 
     // Team A: even positions (0, 2, 4), Team B: odd positions (1, 3, 5)
@@ -1578,13 +1578,13 @@ class GameGrid extends React.Component<IProps, IState> {
           )}
 
           {/* Re-Double button - only for opponents if already doubled */}
-          {isOpponentTeam && bidDouble && !bidReDouble && (
+          {isBiddingTeam && bidDouble && !bidReDouble && (
             <Button
               color="violet"
-              onClick={this.handleBiddingReDouble.bind(this)}
               size="large"
+              onClick={this.handleBiddingReDouble.bind(this)}
             >
-              <Icon name="bolt" />
+              <Icon name="chess king" />
               Re-Double
             </Button>
           )}
