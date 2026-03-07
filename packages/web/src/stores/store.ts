@@ -527,6 +527,48 @@ class Store implements IStore {
     }
   }
 
+  public async raiseBid(newBidValue: number) {
+    const { gameId, token } = this.userInfo;
+    this.clearNotifications();
+
+    try {
+      const ack: common.SuccessResponse = await this.gameService.biddingAction(
+        "raise-bid" as any,
+        gameId as string,
+        token as string,
+        newBidValue,
+        undefined, // suit is kept the same
+      );
+
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log(`Bid raised to: ${newBidValue}`);
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
+  public async skipRaise() {
+    const { gameId, token } = this.userInfo;
+    this.clearNotifications();
+
+    try {
+      const ack: common.SuccessResponse = await this.gameService.biddingAction(
+        "skip-raise" as any,
+        gameId as string,
+        token as string,
+      );
+
+      if (ack.code === common.RESPONSE_CODES.success) {
+        console.log(`Bid raise skipped`);
+      }
+    } catch (error) {
+      console.log("error ===> " + error);
+      this.game.error = JSON.stringify(error);
+    }
+  }
+
   public async updateGameScore(gameScore: string) {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
@@ -849,6 +891,11 @@ class Store implements IStore {
         // Update the team scores
         this.gameInfo.teamAScore = gameCompleteData.teamAScore;
         this.gameInfo.teamBScore = gameCompleteData.teamBScore;
+        // Clear bid raise phase state
+        this.gameInfo.bidRaisePhase = false;
+        this.gameInfo.bidRaiseOfferedTo = undefined;
+        this.gameInfo.postRaiseDoubleRound = false;
+        this.gameInfo.postRaiseDoubleCount = 0;
         break;
 
       case common.MESSAGES.teamScores:
@@ -866,6 +913,11 @@ class Store implements IStore {
         this.gameInfo.startingPlayerId = biddingStartData.startingPlayerId;
         this.gameInfo.bidHistory = [];
         this.gameInfo.bidPassCount = 0;
+        // Clear bid raise phase state
+        this.gameInfo.bidRaisePhase = false;
+        this.gameInfo.bidRaiseOfferedTo = undefined;
+        this.gameInfo.postRaiseDoubleRound = false;
+        this.gameInfo.postRaiseDoubleCount = 0;
         break;
 
       case "biddingAction":
@@ -880,6 +932,29 @@ class Store implements IStore {
         this.gameInfo.lastBiddingTeam = biddingActionData.lastBiddingTeam;
         this.gameInfo.bidDouble = biddingActionData.bidDouble || false;
         this.gameInfo.bidReDouble = biddingActionData.bidReDouble || false;
+        this.gameInfo.postRaiseDoubleRound =
+          biddingActionData.postRaiseDoubleRound || false;
+        this.gameInfo.postRaiseDoubleCount =
+          biddingActionData.postRaiseDoubleCount || 0;
+        break;
+
+      case "bidRaisePhase":
+        // Bid raise phase started - player can chose to raise or skip
+        const bidRaiseData = data as any;
+        this.gameInfo.bidRaisePhase = true;
+        this.gameInfo.bidRaiseOfferedTo = bidRaiseData.bidRaiseOfferedTo;
+        this.gameInfo.currentBiddingPlayerId = bidRaiseData.bidRaiseOfferedTo;
+        break;
+
+      case "bidRaised":
+        // Bid was raised - enter post-raise double round
+        const raisedData = data as any;
+        this.gameInfo.bidRaisePhase = false;
+        this.gameInfo.bidRaiseOfferedTo = undefined;
+        this.gameInfo.currentBet = raisedData.newBidValue?.toString();
+        this.gameInfo.postRaiseDoubleRound = true;
+        this.gameInfo.currentBiddingPlayerId =
+          raisedData.currentBiddingPlayerId;
         break;
 
       case "biddingPhaseEnd":
@@ -894,6 +969,11 @@ class Store implements IStore {
         this.gameInfo.biddingPlayer = biddingEndData.biddingPlayer;
         this.gameInfo.bidDouble = biddingEndData.bidDouble || false;
         this.gameInfo.bidReDouble = biddingEndData.bidReDouble || false;
+        // Clear bid raise phase state
+        this.gameInfo.bidRaisePhase = false;
+        this.gameInfo.bidRaiseOfferedTo = undefined;
+        this.gameInfo.postRaiseDoubleRound = false;
+        this.gameInfo.postRaiseDoubleCount = 0;
         break;
 
       case "FORFEIT_REQUEST":
@@ -931,6 +1011,11 @@ class Store implements IStore {
         this.gameInfo.teamACards = [];
         this.gameInfo.teamBCards = [];
         this.gameInfo.cards = [];
+        // Clear bid raise phase state
+        this.gameInfo.bidRaisePhase = false;
+        this.gameInfo.bidRaiseOfferedTo = undefined;
+        this.gameInfo.postRaiseDoubleRound = false;
+        this.gameInfo.postRaiseDoubleCount = 0;
         this.gameInfo.notification = {
           action: "GAME_FORFEITED",
           data: data,

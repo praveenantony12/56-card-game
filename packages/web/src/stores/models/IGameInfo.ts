@@ -38,7 +38,13 @@ export interface IGame {
   startingPlayerId?: string;
   bidHistory?: Array<{
     playerId: string;
-    action: "bid" | "pass" | "double" | "re-double";
+    action:
+      | "bid"
+      | "pass"
+      | "double"
+      | "re-double"
+      | "raise-bid"
+      | "skip-raise";
     bidValue?: number;
     suit?: string;
     bidSelectionType?: "direct" | "modifier" | null;
@@ -50,6 +56,12 @@ export interface IGame {
   lastBiddingTeam?: string;
   bidDouble?: boolean;
   bidReDouble?: boolean;
+  // Bid raise phase (after normal bidding ends, before game starts)
+  bidRaisePhase?: boolean;
+  bidRaiseOfferedTo?: string;
+  // Post-raise double/re-double round (after bid is raised)
+  postRaiseDoubleRound?: boolean;
+  postRaiseDoubleCount?: number;
   gameCompleteData?: {
     biddingTeamAchievedBid: boolean;
     teamAPoints: number;

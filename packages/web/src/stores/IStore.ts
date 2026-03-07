@@ -31,7 +31,13 @@ export interface IStore {
   selectTrumpSuit(trumpSuit: string): Promise<any>;
 
   biddingAction(
-    action: "bid" | "pass" | "double" | "re-double",
+    action:
+      | "bid"
+      | "pass"
+      | "double"
+      | "re-double"
+      | "raise-bid"
+      | "skip-raise",
     bidValue?: number,
     suit?: string,
     bidSelectionType?: "direct" | "modifier" | null,
@@ -39,6 +45,10 @@ export interface IStore {
     clickOrder?: "bidFirst" | "suitFirst" | null,
     noTrumpType?: "Noes" | "Pass" | "No-Trump" | null,
   ): Promise<any>;
+
+  raiseBid(newBidValue: number): Promise<any>;
+
+  skipRaise(): Promise<any>;
 
   restartGame(gameId: string): Promise<any>;
 

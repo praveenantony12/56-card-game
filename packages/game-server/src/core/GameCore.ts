@@ -999,6 +999,10 @@ export class GameCore {
     gameObject.bidPassCount = 0;
     gameObject.bidDouble = false;
     gameObject.bidReDouble = false;
+    gameObject.bidRaisePhase = false;
+    gameObject.bidRaiseOfferedTo = undefined;
+    gameObject.postRaisedDoubleRound = false;
+    gameObject.postRaisedDoubleCount = 0;
 
     // Ensure game is NOT marked as complete
     gameObject.isGameComplete = false;
@@ -1144,6 +1148,10 @@ export class GameCore {
     gameObj.bidHistory = [];
     gameObj.bidPassCount = 0;
     gameObj.currentBet = "27";
+    gameObj.bidRaisePhase = false;
+    gameObj.bidRaiseOfferedTo = undefined;
+    gameObj.postRaisedDoubleRound = false;
+    gameObj.postRaisedDoubleCount = 0;
     this.inMemoryStore.saveGame(req.gameId, gameObj);
 
     // Send game completion reset notification to all players
@@ -2578,6 +2586,10 @@ export class GameCore {
     game["finalBid"] = undefined;
     game["biddingPlayer"] = undefined;
     game["biddingTeam"] = undefined;
+    game["bidRaisePhase"] = false;
+    game["bidRaiseOfferedTo"] = undefined;
+    game["postRaisedDoubleRound"] = false;
+    game["postRaisedDoubleCount"] = 0;
 
     const cards: string[][] = this.deck.getCardsForGame();
     const sortedCards = cards.map((handCards) =>
@@ -3160,11 +3172,12 @@ export class GameCore {
         break;
 
       case "pass":
-        // Check if this is the very first action (no bids yet)
+        // Check if this is the very first action (no bids yet) - only applies to normal bidding
         const hasNoPreviousBids =
-          !gameObj.bidHistory ||
-          gameObj.bidHistory.length === 0 ||
-          !gameObj.bidHistory.some((entry) => entry.action === "bid");
+          !gameObj.postRaisedDoubleRound &&
+          (!gameObj.bidHistory ||
+            gameObj.bidHistory.length === 0 ||
+            !gameObj.bidHistory.some((entry) => entry.action === "bid"));
 
         if (hasNoPreviousBids) {
           // First player must make mandatory bid - default to "Pass (28) - minimal bid"
@@ -3187,7 +3200,7 @@ export class GameCore {
             player.playerId,
           );
         } else {
-          // Subsequent players: regular pass (no bid created)
+          // Regular pass (including post-raise round)
           gameObj.bidHistory.push({
             playerId: player.playerId,
             action: "pass",
@@ -3198,6 +3211,21 @@ export class GameCore {
         break;
 
       case "double":
+        // Check if we're in post-raise double round
+        if (gameObj.postRaisedDoubleRound) {
+          // In post-raise round, only allow one double
+          if (gameObj.bidDouble) {
+            cb(
+              null,
+              errorResponse(
+                RESPONSE_CODES.failed,
+                "Already doubled in post-raised round",
+              ),
+            );
+            return;
+          }
+        }
+
         // Only opponent team can double
         const currentBiddingTeam = gameObj.lastBiddingTeam;
         const playerTeam = this.getPlayerTeam(gameObj, player.playerId);
@@ -3220,6 +3248,12 @@ export class GameCore {
 
         gameObj.bidDouble = true;
         gameObj.bidPassCount = 0; // Reset pass count
+
+        // In post-raise round, increment counter
+        if (gameObj.postRaisedDoubleRound) {
+          gameObj.postRaisedDoubleCount =
+            (gameObj.postRaisedDoubleCount || 0) + 1;
+        }
 
         break;
 
@@ -3256,6 +3290,13 @@ export class GameCore {
         gameObj.bidReDouble = true;
         gameObj.bidDouble = false; // Re-double overwrites double
 
+        // In post-raise round, increment counter and end bidding immediately
+        if (gameObj.postRaisedDoubleRound) {
+          gameObj.postRaisedDoubleCount =
+            (gameObj.postRaisedDoubleCount || 0) + 1;
+          gameObj.postRaisedDoubleRound = false; // End post-raise round after re-double
+        }
+
         // Re-double ends bidding immediately
         this.endBiddingPhase(gameId);
 
@@ -3279,17 +3320,209 @@ export class GameCore {
         this.inMemoryStore.saveGame(gameId, gameObj);
         return;
 
+      case "raise-bid":
+        // Only allowed during bid raise phase
+        if (!gameObj.bidRaisePhase) {
+          cb(
+            null,
+            errorResponse(RESPONSE_CODES.failed, "Not in bid raise phase"),
+          );
+          return;
+        }
+
+        // Only the bidRaiseOfferedTo player can raise
+        if (gameObj.bidRaiseOfferedTo !== player.playerId) {
+          cb(
+            null,
+            errorResponse(
+              RESPONSE_CODES.failed,
+              "Only the bid winner can raise the bid",
+            ),
+          );
+          return;
+        }
+
+        // Validate new bid value
+        const currentBidValue = parseInt(gameObj.currentBet || "28");
+        const newBidValue = bidValue;
+        const validLevels = this.getNextBidLevels(currentBidValue);
+
+        if (!newBidValue || !validLevels.includes(newBidValue)) {
+          cb(
+            null,
+            errorResponse(
+              RESPONSE_CODES.failed,
+              `Invalid bid raise. Valid levels: ${validLevels.join(", ")}`,
+            ),
+          );
+          return;
+        }
+
+        // Must keep the same suit as original bid
+        const currentSuit = gameObj.trumpSuit;
+        if (suit && suit !== currentSuit) {
+          cb(
+            null,
+            errorResponse(
+              RESPONSE_CODES.failed,
+              "Cannot change suit when raising bid",
+            ),
+          );
+          return;
+        }
+
+        // Record the bid raise
+        gameObj.bidHistory.push({
+          playerId: player.playerId,
+          action: "raise-bid",
+          bidValue: newBidValue,
+          suit: currentSuit,
+        });
+
+        gameObj.currentBet = newBidValue.toString();
+        gameObj.bidPassPhase = false;
+        gameObj.bidRaiseOfferedTo = undefined;
+
+        // Enter post-raise double/re-double round
+        gameObj.postRaisedDoubleRound = true;
+        gameObj.postRaisedDoubleCount = 0;
+        gameObj.bidDouble = false;
+        gameObj.bidReDouble = false;
+
+        // Move to next opponent player in seating order to potential double
+        const raisingTeam = gameObj.lastBiddingTeam;
+        const currentPlayerIndex = gameObj.players.findIndex(
+          (p: IPlayer) => p.playerId === player.playerId,
+        );
+
+        // Find next opponent in seating order
+        for (let offset = 1; offset < gameObj.players.length; offset++) {
+          const nextIndex =
+            (currentPlayerIndex + offset) % gameObj.players.length;
+          const nextPlayerId = gameObj.players[nextIndex].playerId;
+          const nextPlayerTeam = this.getPlayerTeam(gameObj, nextPlayerId);
+
+          if (nextPlayerTeam !== raisingTeam) {
+            gameObj.currentBiddingPlayerId = nextPlayerId;
+            break;
+          }
+        }
+
+        this.inMemoryStore.saveGame(gameId, gameObj);
+
+        // Notify all players about the bid raise
+        const raisePayload: GameActionResponse = {
+          action: "bidRaised",
+          data: {
+            raisedBy: player.playerId,
+            newBidValue: newBidValue,
+            trumpSuit: currentSuit,
+            postRaisedDoubleRound: true,
+            currentBiddingPlayerId: gameObj.currentBiddingPlayerId,
+          },
+        };
+
+        this.ioServer
+          .to(gameId)
+          .emit(
+            "data",
+            successResponse(RESPONSE_CODES.gameNotification, raisePayload),
+          );
+        cb(null, successResponse(RESPONSE_CODES.success, raisePayload));
+
+        // Check if next player is bot
+        this.checkAndPlayBotBiddingTurn(gameId);
+        return;
+
+      case "skip-raise":
+        // Only allowed during bid raise phase
+        if (!gameObj.bidRaisePhase) {
+          cb(
+            null,
+            errorResponse(RESPONSE_CODES.failed, "Not in bid raise phase"),
+          );
+          return;
+        }
+
+        // Only the bidRaiseOfferedTo player can skip
+        if (gameObj.bidRaiseOfferedTo !== player.playerId) {
+          cb(
+            null,
+            errorResponse(
+              RESPONSE_CODES.failed,
+              "Only the bid winner can skip the raise",
+            ),
+          );
+          return;
+        }
+
+        // Record the skip
+        gameObj.bidHistory.push({
+          playerId: player.playerId,
+          action: "skip-raise",
+        });
+
+        gameObj.bidRaisePhase = false;
+        gameObj.bidRaiseOfferedTo = undefined;
+
+        this.inMemoryStore.saveGame(gameId, gameObj);
+
+        // End bidding phase and start the game
+        this.endBiddingPhase(gameId);
+
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.success, {
+            action: "skippedRaise",
+          }),
+        );
+        return;
+
       default:
         cb(null, errorResponse(RESPONSE_CODES.failed, "Invalid action"));
         return;
     }
 
-    // Move to next player for bidding
-    gameObj.currentBiddingPlayerId = this.getNextBiddingPlayer(gameObj);
+    // Move to next player (common for all actions except re-double which ends immediately)
+    if (gameObj.postRaisedDoubleRound) {
+      // Special logic for post-raise round: skip players based on team
+      gameObj.currentBiddingPlayerId = this.getNextPostRaisePlayer(
+        gameObj,
+        action,
+      );
 
-    // Check if bidding should end
-    if (this.shouldBiddingEnd(gameObj)) {
+      // Check if post-raise round should end
+      const shouldEnd = this.shouldPostRaiseRoundEnd(gameObj);
+      if (shouldEnd) {
+        gameObj.postRaisedDoubleRound = false;
+        this.endBiddingPhase(gameId);
+
+        cb(
+          null,
+          successResponse(RESPONSE_CODES.success, {
+            action: "postRaiseRoundComplete",
+          }),
+        );
+        return;
+      }
+    } else {
+      // Normal bidding: move to next player sequentially
+      gameObj.currentBiddingPlayerId = this.getNextBiddingPlayer(gameObj);
+    }
+
+    // Check if bidding should end (normal phase only, not post-raise)
+    if (!gameObj.postRaisedDoubleRound && this.shouldBiddingEnd(gameObj)) {
+      // Enter bid raise phase instead of immediately ending bidding
       this.endBiddingPhase(gameId);
+
+      // Return early - don't broadcast regular bidding update
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, {
+          action: "biddingComplete",
+        }),
+      );
+      return;
     }
 
     // Save updated game state
@@ -3307,6 +3540,8 @@ export class GameCore {
         lastBiddingTeam: gameObj.lastBiddingTeam,
         bidDouble: gameObj.bidDouble,
         bidReDouble: gameObj.bidReDouble,
+        postRaisedDoubleRound: gameObj.postRaisedDoubleRound || false,
+        postRaisedDoubleCount: gameObj.postRaisedDoubleCount || 0,
       },
     };
 
@@ -3338,7 +3573,7 @@ export class GameCore {
   }
 
   /**
-   * Get the next player for bidding
+   * Get the next player for bidding (normal sequential order)
    * @param gameObj The game object
    * @returns The next player ID
    */
@@ -3349,6 +3584,125 @@ export class GameCore {
 
     const nextIndex = (currentPlayerIndex + 1) % gameObj.players.length;
     return gameObj.players[nextIndex].playerId;
+  }
+
+  /**
+   * Get the next player for post-raise bidding (skip based on team logic)
+   * @param gameObj The game object
+   * @param lastAction The last action taken
+   * @returns The next player ID
+   */
+  private getNextPostRaisePlayer(
+    gameObj: GameModel,
+    lastAction: string,
+  ): string {
+    const biddingTeam = gameObj.lastBiddingTeam;
+    const currentPlayerIndex = gameObj.players.findIndex(
+      (p: IPlayer) => p.playerId === gameObj.currentBiddingPlayerId,
+    );
+
+    // If opponent just doubled, move to next teammate in seating order
+    if (lastAction === "double") {
+      for (let offset = 1; offset < gameObj.players.length; offset++) {
+        const nextIndex =
+          (currentPlayerIndex + offset) % gameObj.players.length;
+        const nextPlayerId = gameObj.players[nextIndex].playerId;
+        const nextPlayerTeam = this.getPlayerTeam(gameObj, nextPlayerId);
+
+        if (nextPlayerTeam === biddingTeam) {
+          return nextPlayerId;
+        }
+      }
+    }
+
+    // Otherwise, move to next player of the same "type" (opponent or teammate)
+    const currentPlayerTeam = this.getPlayerTeam(
+      gameObj,
+      gameObj.currentBiddingPlayerId,
+    );
+    const isOpponentTurn = currentPlayerTeam !== biddingTeam;
+
+    // Find next player from the appropriate team
+    for (let offset = 1; offset < gameObj.players.length; offset++) {
+      const nextIndex = (currentPlayerIndex + offset) % gameObj.players.length;
+      const nextPlayerId = gameObj.players[nextIndex].playerId;
+      const nextPlayerTeam = this.getPlayerTeam(gameObj, nextPlayerId);
+
+      // If we're looking for opponents, skip teammates
+      // If we're looking for teammates (after double), skip opponents
+      if (isOpponentTurn && nextPlayerTeam !== biddingTeam) {
+        return nextPlayerId;
+      } else if (!isOpponentTurn && nextPlayerTeam === biddingTeam) {
+        return nextPlayerId;
+      }
+    }
+
+    // Fallback - just return the next player
+    return this.getNextBiddingPlayer(gameObj);
+  }
+
+  /**
+   * Check if post-raise round should end
+   * @param gameObj The game object
+   * @returns true if post-raise round should end
+   */
+  private shouldPostRaiseRoundEnd(gameObj: GameModel): boolean {
+    // Find the raise-bid entry
+    const raiseEntry = gameObj.bidHistory.findIndex(
+      (e) => e.action === "raise-bid",
+    );
+
+    if (raiseEntry === -1) return false; // No raise found, shouldn't happen
+
+    // Get all actions after the raise
+    const postRaiseActions = gameObj.bidHistory.slice(raiseEntry + 1);
+
+    // Check if we have a double
+    const hasDouble = postRaiseActions.some((e) => e.action === "double");
+
+    if (!hasDouble) {
+      // No double yet - check if all opponents have passed
+      const biddingTeam = gameObj.lastBiddingTeam;
+      const opponents = gameObj.players.filter((p: IPlayer) => {
+        const team = this.getPlayerTeam(gameObj, p.playerId);
+        return team !== biddingTeam;
+      });
+
+      // Count opponent passes in post-raise round
+      const opponentPasses = postRaiseActions.filter((a) => {
+        if (a.action !== "pass") return false;
+        const team = this.getPlayerTeam(gameObj, a.playerId);
+        return team !== biddingTeam;
+      });
+
+      // If all opponents have passed, end post-raise round
+      return opponentPasses.length >= opponents.length;
+    } else {
+      // Double occurred - check if all teammates have passed after the double (or re-doubled)
+      const biddingTeam = gameObj.lastBiddingTeam;
+      const teammates = gameObj.players.filter((p: IPlayer) => {
+        const team = this.getPlayerTeam(gameObj, p.playerId);
+        return team === biddingTeam;
+      });
+
+      // Find double index in post-raise actions
+      const doubleIndexInPostRaise = postRaiseActions.findIndex(
+        (e) => e.action === "double",
+      );
+      const actionsAfterDouble = postRaiseActions.slice(
+        doubleIndexInPostRaise + 1,
+      );
+
+      // Count teammate passes after double
+      const teammatePasses = actionsAfterDouble.filter((a) => {
+        if (a.action !== "pass") return false;
+        const team = this.getPlayerTeam(gameObj, a.playerId);
+        return team === biddingTeam;
+      });
+
+      // If all teammates have passed (or re-doubled), end post-raise round
+      return teammatePasses.length >= teammates.length;
+    }
   }
 
   /**
@@ -3553,6 +3907,146 @@ export class GameCore {
       this.botTimers[gameId] = setTimeout(() => {
         this.playBotAgentTurn(gameId, currentPlayer.playerId);
       }, 500);
+    }
+  }
+
+  /**
+   * Get the next valid bid levels for raising
+   * @param currentBid The current bid value
+   * @returns Array of valid next bid values
+   */
+  private getNextBidLevels(currentBid: number): number[] {
+    if (currentBid < 40) {
+      return [40, 48, 56];
+    } else if (currentBid === 40) {
+      return [48, 56];
+    } else if (currentBid === 48) {
+      return [56];
+    } else {
+      return []; // No raises allowed above 56
+    }
+  }
+
+  /**
+   * Check if the current bid can be raised
+   * @param currentBid The current bid value
+   * @returns true if the bid can be raised, false otherwise
+   */
+  private canRaiseBid(currentBid: number): boolean {
+    return currentBid < 56;
+  }
+
+  /**
+   * Enter the bid raise phase (opportunity to bid winner to raise)
+   * @param gameId The game ID
+   */
+  private enterBidRaisePhase(gameId: string): void {
+    const gameObj = this.inMemoryStore.fetchGame(gameId);
+    if (!gameObj) return;
+
+    // Find the last bidder
+    let lastBidderId: string | undefined;
+    for (let i = gameObj.bidHistory.length - 1; i >= 0; i--) {
+      if (gameObj.bidHistory[i].action === "bid") {
+        lastBidderId = gameObj.bidHistory[i].playerId;
+        break;
+      }
+    }
+
+    if (!lastBidderId) {
+      // No bid found, just end normally
+      this.endBiddingPhase(gameId);
+      return;
+    }
+
+    const currentBidValue = parseInt(gameObj.currentBet || "28");
+
+    // Check if bid can be raised
+    if (!this.canRaiseBid(currentBidValue)) {
+      // Bid is already set to 56, can't raised further
+      this.endBiddingPhase(gameId);
+      return;
+    }
+
+    // Enter bid raise phase
+    gameObj.bidRaisePhase = true;
+    gameObj.bidRaiseOfferedTo = lastBidderId;
+    gameObj.currentBiddingPlayerId = lastBidderId; // Move turn to bid winner for raise decision
+
+    this.inMemoryStore.saveGame(gameId, gameObj);
+
+    // Notify all players about the bid raise phase
+    const bidRaisePayload: GameActionResponse = {
+      action: "bidRaisePhase",
+      data: {
+        bidRaiseOfferedTo: lastBidderId,
+        currentBid: currentBidValue,
+        availableBidLevels: this.getNextBidLevels(currentBidValue),
+        trumpSuit: gameObj.trumpSuit,
+      },
+    };
+
+    const response = successResponse(
+      RESPONSE_CODES.gameNotification,
+      bidRaisePayload,
+    );
+    this.ioServer.to(gameId).emit("data", response);
+
+    // Check if its a bot's turn to decide on bid raise
+    this.checkAndPlayBotBidRaise(gameId);
+  }
+
+  /**
+   * Check if it's a bot's turn to decide on bid raise and auto-decide if needed
+   * @param gameId The game ID
+   */
+  private checkAndPlayBotBidRaise(gameId: string): void {
+    const game = this.inMemoryStore.fetchGame(gameId);
+    if (!game || !game.bidRaisePhase) return;
+
+    const currentPlayer = game.players.find(
+      (p: IPlayer) => p.playerId === game.bidRaiseOfferedTo,
+    );
+
+    if (currentPlayer && currentPlayer.isBotAgent) {
+      // Bot agent - use Intelligent bidding decision for raise
+      const botAgent = new TeamBotAgent();
+      const decision = botAgent.decideBidRaise(
+        game,
+        currentPlayer.token,
+        currentPlayer.playerId,
+      );
+
+      // Dynamic timing: 2 seconds for decision
+      setTimeout(() => {
+        const freshGame = this.inMemoryStore.fetchGame(gameId);
+        if (
+          !freshGame ||
+          !freshGame.bidRaisePhase ||
+          freshGame.bidRaiseOfferedTo !== currentPlayer.playerId
+        ) {
+          return;
+        }
+
+        const payload: any = {
+          gameId,
+          token: currentPlayer.token,
+          action: decision.raise ? "raise-bid" : "skip-raise",
+        };
+
+        if (decision.raise && decision.newBidValue) {
+          payload.bidValue = decision.newBidValue;
+        }
+
+        this.onBiddingAction(payload, (err: any, result: any) => {
+          if (err) {
+            console.error(
+              `[BOT BID RAISE ERROR] Failed for ${currentPlayer.playerId}:`,
+              err,
+            );
+          }
+        });
+      }, 2000);
     }
   }
 }

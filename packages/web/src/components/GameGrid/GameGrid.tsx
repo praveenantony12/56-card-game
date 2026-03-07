@@ -212,13 +212,22 @@ class GameGrid extends React.Component<IProps, IState> {
         <Grid.Row centered={true} columns={1}>
           <Grid.Column className="cardHeight cardTable">
             <div className="cardOnTable">
+              {/* Show post-raise UI in center if in post-raise round */}
+              {(() => {
+                const { postRaiseDoubleRound } = this.store.game;
+                if (postRaiseDoubleRound && isBiddingPhase) {
+                  return this.renderPostRaiseButtonsInCenter();
+                }
+                return null;
+              })()}
               <Button.Group
                 className="handleBiddingPass"
                 style={{
                   display:
                     this.state.currentBiddingsuit !== "" ||
                     gameStarted ||
-                    !isYourBiddingTurn
+                    !isYourBiddingTurn ||
+                    this.store.game.postRaiseDoubleRound
                       ? "none"
                       : "block",
                 }}
@@ -508,6 +517,91 @@ class GameGrid extends React.Component<IProps, IState> {
   };
 
   private renderBiddingUI(isYourBiddingTurn: boolean) {
+    const {
+      bidRaisePhase,
+      bidRaiseOfferedTo,
+      currentBet,
+      trumpSuit,
+      postRaiseDoubleRound,
+    } = this.store.game;
+    const playerId = this.store.user.playerId as string;
+
+    // Show bid raise UI if in bid raise phase and it's this player's turn
+    if (bidRaisePhase && bidRaiseOfferedTo === playerId) {
+      const currentBidValue = parseInt(currentBet || "28");
+      const availableLevels: number[] = [];
+
+      if (currentBidValue < 40) {
+        availableLevels.push(40, 48, 56);
+      } else if (currentBidValue < 48) {
+        availableLevels.push(48, 56);
+      } else if (currentBidValue < 56) {
+        availableLevels.push(56);
+      }
+
+      return (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              backgroundColor: "rgba(0, 0, 0, 0.85)",
+              color: "white",
+              padding: "30px",
+              borderRadius: "15px",
+              textAlign: "center",
+              zIndex: 1000,
+              width: "400px",
+            }}
+          >
+            <h2 style={{ marginBottom: "20px" }}>Raise your Bid?</h2>
+            <p style={{ marginBottom: "10px" }}>
+              You won the bidding with{" "}
+              <strong>
+                {currentBidValue} {trumpSuit}
+              </strong>
+            </p>
+            <p
+              style={{ marginBottom: "20px", fontSize: "14px", color: "#ccc" }}
+            >
+              You can raise your bid to a higher level for the same suit
+            </p>
+            <div style={{ marginBottom: "20px" }}>
+              {availableLevels.map((level) => (
+                <Button
+                  key={level}
+                  color="green"
+                  size="large"
+                  style={{ margin: "5px" }}
+                  onClick={() => this.handleRaiseBid(level)}
+                >
+                  Raise to {level}
+                </Button>
+              ))}
+            </div>
+            <Button
+              color="red"
+              size="large"
+              onClick={() => this.handleSkipRaise.bind(this)}
+            >
+              Skip - Start Game
+            </Button>
+          </div>
+        </>
+      );
+    }
+
+    // Show notification if in post-raise double round
+    if (postRaiseDoubleRound) {
+      return this.renderPostRaiseBiddingUI(isYourBiddingTurn);
+    }
+
+    return this.renderNormalBiddingUI(isYourBiddingTurn);
+  }
+
+  private renderNormalBiddingUI(isYourBiddingTurn: boolean) {
     const suits = [
       { symbol: "♥", name: "H", label: "Hearts" },
       { symbol: "♠", name: "E", label: "Spade" },
@@ -829,25 +923,52 @@ class GameGrid extends React.Component<IProps, IState> {
               >
                 <Icon name="arrow circle right" /> &nbsp; Bid
               </Button>
-              {hasActualBid &&
-                lastBidValue > 0 &&
-                !bidDouble &&
-                !bidReDouble && (
-                  <Button
-                    color="yellow"
-                    onClick={this.handleBiddingDouble.bind(this)}
-                  >
-                    <Icon name="bolt" /> Double
-                  </Button>
-                )}
-              {bidDouble && !bidReDouble && (
-                <Button
-                  color="violet"
-                  onClick={this.handleBiddingReDouble.bind(this)}
-                >
-                  <Icon name="chess king" /> Re-Double
-                </Button>
-              )}
+              {(() => {
+                // Only show Double/Re-Double buttons if player is on the correct team
+                const currentPlayerTeam = this.getPlayerTeam(
+                  this.store.user.playerId as string,
+                );
+                const { lastBiddingTeam } = this.store.game;
+
+                // Double: only show to opponents of the bidding team
+                const canDouble =
+                  hasActualBid &&
+                  lastBidValue > 0 &&
+                  !bidDouble &&
+                  !bidReDouble &&
+                  currentPlayerTeam &&
+                  lastBiddingTeam &&
+                  currentPlayerTeam !== lastBiddingTeam;
+
+                // Re-Double: only show to members of the bidding team after a double
+                const canReDouble =
+                  bidDouble &&
+                  !bidReDouble &&
+                  currentPlayerTeam &&
+                  lastBiddingTeam &&
+                  currentPlayerTeam === lastBiddingTeam;
+
+                return (
+                  <>
+                    {canDouble && (
+                      <Button
+                        color="yellow"
+                        onClick={this.handleBiddingDouble.bind(this)}
+                      >
+                        <Icon name="bolt" /> Double
+                      </Button>
+                    )}
+                    {canReDouble && (
+                      <Button
+                        color="violet"
+                        onClick={this.handleBiddingReDouble.bind(this)}
+                      >
+                        <Icon name="chess king" /> Re-Double
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
             </Button.Group>
           </>
         )}
@@ -1187,6 +1308,24 @@ class GameGrid extends React.Component<IProps, IState> {
     } as any);
   };
 
+  /**
+   * Get the team of a player based on their index in the players array
+   * Team A: players at index 0, 2, 4
+   * Team B: players at index 1, 3, 5
+   */
+  private getPlayerTeam(playerId: string): "A" | "B" | null {
+    const { players } = this.store.game;
+    if (!players) return null;
+
+    const playerIndex = players
+      ? players.findIndex((p: any) => p === playerId || p.playerId === playerId)
+      : -1;
+    if (playerIndex === -1) return null;
+
+    // Team A: even positions (0, 2, 4), Team B: odd positions (1, 3, 5)
+    return playerIndex % 2 === 0 ? "A" : "B";
+  }
+
   private handleBiddingPass = () => {
     // "Not Bidding" button always sends a regular pass action
     // Players must intentionally select bid value + "Pass" no-trump type to bid "28 Pass"
@@ -1231,6 +1370,228 @@ class GameGrid extends React.Component<IProps, IState> {
       noTrumpType: null,
     } as any);
   };
+
+  private handleRaiseBid = (newBidValue: number) => {
+    this.store.raiseBid(newBidValue);
+  };
+
+  private handleSkipRaise = () => {
+    this.store.skipRaise();
+  };
+
+  private renderPostRaiseBiddingUI(isYourBiddingTurn: boolean) {
+    const { bidHistory, bidDouble, bidReDouble, currentBet, trumpSuit } =
+      this.store.game;
+
+    // Determine current bid from history
+    let lastBidValue = parseInt(currentBet || "28");
+    let lastBiddingPlayer = "";
+
+    if (bidHistory && bidHistory.length > 0) {
+      for (let i = bidHistory.length - 1; i >= 0; i--) {
+        const entry = bidHistory[i] as any;
+        if (entry.action === "bid" || entry.action === "raise-bid") {
+          if (entry.bidValue) {
+            lastBidValue = entry.bidValue;
+          }
+          lastBiddingPlayer = entry.playerId || "";
+          break;
+        }
+      }
+    }
+
+    const suits = [
+      { symbol: "♥", name: "H", label: "Hearts" },
+      { symbol: "♠", name: "E", label: "Spade" },
+      { symbol: "♦", name: "D", label: "Diamond" },
+      { symbol: "♣", name: "C", label: "Clubs" },
+    ];
+    const suitInfo = suits.find((s) => s.name === trumpSuit);
+    const suitDisplay =
+      trumpSuit === "N"
+        ? "Noes"
+        : `${suitInfo?.label || ""} ${suitInfo?.symbol || ""}`;
+
+    return (
+      <>
+        {/* Show current raised bid */}
+        <Button.Group
+          fluid={true}
+          style={{ width: "100%", display: "block", marginBottom: "10px" }}
+        >
+          <Button
+            color="black"
+            style={{
+              justifyContent: "center",
+              color: "orange",
+              border: "1px solid orange",
+            }}
+          >
+            {`${lastBiddingPlayer} raised bid → ${suitDisplay} [${lastBidValue}]`}
+            {bidDouble && " (Double)"}
+            {bidReDouble && " (Re-Double)"}
+          </Button>
+        </Button.Group>
+      </>
+    );
+  }
+
+  private renderPostRaiseButtonsInCenter() {
+    const {
+      bidHistory,
+      bidDouble,
+      bidReDouble,
+      currentBet,
+      trumpSuit,
+      lastBiddingTeam,
+      currentBiddingPlayerId,
+    } = this.store.game;
+    const playerId = this.store.user.playerId as string;
+    const currentPlayerTeam = this.getPlayerTeam(playerId);
+    const isYourBiddingTurn = currentBiddingPlayerId === playerId;
+
+    // Determine current bid from history
+    let lastBidValue = parseInt(currentBet || "28");
+    let lastBiddingPlayer = "";
+
+    if (bidHistory && bidHistory.length > 0) {
+      for (let i = bidHistory.length - 1; i >= 0; i--) {
+        const entry = bidHistory[i] as any;
+        if (entry.action === "bid" || entry.action === "raise-bid") {
+          if (entry.bidValue) {
+            lastBidValue = entry.bidValue;
+          }
+          lastBiddingPlayer = entry.playerId || "";
+          break;
+        }
+      }
+    }
+
+    const suits = [
+      { symbol: "♥", name: "H", label: "Hearts" },
+      { symbol: "♠", name: "E", label: "Spade" },
+      { symbol: "♦", name: "D", label: "Diamond" },
+      { symbol: "♣", name: "C", label: "Clubs" },
+    ];
+
+    const suitInfo = suits.find((s) => s.name === trumpSuit);
+    const suitDisplay =
+      trumpSuit === "N"
+        ? "Noes"
+        : `${suitInfo?.label || ""} ${suitInfo?.symbol || ""}`;
+
+    // Determine available actions based on team
+    const isOpponentTeam =
+      currentPlayerTeam &&
+      lastBiddingTeam &&
+      currentPlayerTeam !== lastBiddingTeam;
+    const isBiddingTeam =
+      currentPlayerTeam &&
+      lastBiddingTeam &&
+      currentPlayerTeam === lastBiddingTeam;
+
+    if (!isYourBiddingTurn) {
+      // Show notification for other players
+      return (
+        <div
+          className="handleBiddingPass"
+          style={{
+            backgroundColor: "rgba(255, 165, 0, 0.95)",
+            color: "white",
+            padding: "20px",
+            borderRadius: "10px",
+            textAlign: "center",
+            maxWidth: "400px",
+            margin: "0 auto",
+          }}
+        >
+          <strong style={{ fontSize: "16px" }}>Post-Raise Round</strong>
+          <p
+            style={{ fontSize: "13px", marginTop: "8px", marginBottom: "5px" }}
+          >
+            {lastBiddingPlayer} raised bid → {suitDisplay} [{lastBidValue}]
+          </p>
+          <p style={{ fontSize: "12px", marginTop: "5px", opacity: 0.9 }}>
+            Waiting for {currentBiddingPlayerId}...
+          </p>
+        </div>
+      );
+    }
+
+    // Show action buttons for current player
+    return (
+      <div
+        className="handleBiddingPass"
+        style={{
+          backgroundColor: "rgba(255, 165, 0, 0.95)",
+          color: "white",
+          padding: "20px",
+          borderRadius: "10px",
+          textAlign: "center",
+          maxWidth: "500px",
+          margin: "0 auto",
+        }}
+      >
+        <strong style={{ fontSize: "16px" }}>Post-Raise Round</strong>
+        <p style={{ fontSize: "13px", marginTop: "8px", marginBottom: "5px" }}>
+          {lastBiddingPlayer} raised bid → {suitDisplay} [{lastBidValue}]
+          {bidDouble && " (Double)"}
+          {bidReDouble && " (Re-Double)"}
+        </p>
+        <p
+          style={{
+            fontSize: "12px",
+            marginTop: "5px",
+            marginBottom: "15px",
+            opacity: 0.9,
+          }}
+        >
+          {isOpponentTeam && !bidDouble && "You can Double or Pass"}
+          {isBiddingTeam && bidDouble && "You can Re-Double or Pass"}
+        </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "10px",
+          }}
+        >
+          {/* Pass button - always available */}
+          <Button
+            color="red"
+            onClick={this.handleBiddingPass.bind(this)}
+            size="large"
+          >
+            Pass
+          </Button>
+
+          {/* Double button - only for opponents if not already doubled */}
+          {isOpponentTeam && !bidDouble && !bidReDouble && (
+            <Button
+              color="yellow"
+              onClick={this.handleBiddingDouble.bind(this)}
+              size="large"
+            >
+              <Icon name="bolt" />
+              Double
+            </Button>
+          )}
+
+          {/* Re-Double button - only for opponents if already doubled */}
+          {isOpponentTeam && bidDouble && !bidReDouble && (
+            <Button
+              color="violet"
+              onClick={this.handleBiddingReDouble.bind(this)}
+              size="large"
+            >
+              <Icon name="bolt" />
+              Re-Double
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   private addNameToCardOnTable = (card: string, dropCardPlayer: string[]) => {
     const cardPrefix = `${card}-`;

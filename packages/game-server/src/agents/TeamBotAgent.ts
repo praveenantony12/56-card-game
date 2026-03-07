@@ -14,6 +14,14 @@ interface BotBidDecision {
 }
 
 /**
+ * Bot bid raise decision interface (for doubling/re-doubling)
+ */
+interface BotBidRaiseDecision {
+  raise: boolean;
+  newBidValue?: number;
+}
+
+/**
  * Suit profile interface for hand analysis
  */
 interface SuitProfile {
@@ -2067,6 +2075,144 @@ export class TeamBotAgent {
     );
     this.logBiddingReasoning(reasoning);
     return decision;
+  }
+
+  /**
+   * Decide whether to raise the bid after winning the bidding round
+   * @param gameState Current game state
+   * @param botToken Bot's token for card access
+   * @param botPlayerId Bot's player ID
+   * @returns Bid raise decision
+   */
+  decideBidRaise(
+    gameState: ICardGame,
+    botToken: string,
+    botPlayerId: string,
+  ): BotBidRaiseDecision {
+    const myCards = gameState[botToken] || [];
+    const currentBidValue = parseInt(gameState.currentBet || "28");
+    const currentSuit = gameState.currentSuit || "N";
+
+    console.log(
+      "\n┌──────────────────────────────────────────────────────────────────────┐",
+    );
+    console.log(
+      `│ Bot BID RAISE DECISION - Player: ${botPlayerId.padEnd(38)} │`,
+    );
+    console.log(
+      "├──────────────────────────────────────────────────────────────────────┤",
+    );
+    console.log(`│ Current Bid: ${currentBidValue.toString().padEnd(54)} │`);
+    console.log(`│ Current Suit: ${currentSuit.padEnd(53)} │`);
+
+    // CAn't raise if already at 56
+    if (currentBidValue >= 56) {
+      console.log(
+        "│ Decision: SKIP (already at maximum bid)                              │",
+      );
+      console.log(
+        "└──────────────────────────────────────────────────────────────────────┘\n",
+      );
+      return { raise: false };
+    }
+
+    // Analyze hand to see if we have unrevealed strength
+    const handProfile = this.analyzeHandForBidding(myCards);
+    const suitProfile = handProfile.suitProfiles[currentSuit];
+
+    // Check if we have unrevealed cards in the trump suit
+    const bidHistory = gameState.bidHistory || [];
+    const myBids = bidHistory.filter(
+      (entry) => entry.playerId === botPlayerId && entry.action === "bid",
+    );
+
+    // Calculate how many cards we've revealed through bidding
+    let revealedCards = 0;
+    for (const bid of myBids) {
+      if (bid.suit === currentSuit) {
+        // Look at bid selection type to determine revealed cards
+        if (bid.bidSelectionType === "direct") {
+          revealedCards = Math.max(revealedCards, 2); // Direct bid reveals 2 cards minimum
+        } else if (bid.bidSelectionType === "modifier" && bid.bidModifier) {
+          revealedCards = Math.max(revealedCards, 2 + bid.bidModifier);
+        }
+      }
+    }
+
+    const unrevealedCards = Math.max(
+      0,
+      (suitProfile?.length || 0) - revealedCards,
+    );
+
+    console.log(
+      `│ Trump Suit Cards: ${(suitProfile?.length || 0).toString().padEnd(51)} │`,
+    );
+    console.log(`│ Revealed Cards: ${revealedCards.toString().padEnd(53)} │`);
+    console.log(
+      `│ Unrevealed Cards: ${unrevealedCards.toString().padEnd(51)} │`,
+    );
+    console.log(
+      `│ Hand Points: ${handProfile.totalPoints.toString().padEnd(54)} │`,
+    );
+    console.log(
+      `│ Trump Suit Jacks: ${(suitProfile?.jacks || 0).toString().padEnd(51)} │`,
+    );
+
+    // Determine if we should raise
+    let shouldRaise = false;
+    let targetBidLevel = currentBidValue;
+    let reasoning = "";
+
+    // Decision criteria:
+    // 1. Have unrevealed cards that could win more points
+    // 2. Have strong hand (5+ cards with or 6+ cards)
+    // 3. Have overall hand strength
+
+    if (suitProfile && suitProfile.length >= 5 && suitProfile.jacks >= 1) {
+      // Strong hand with Jack - can likely win higher bid
+      const estimatedTricks = this.estimateTricksForSuit(suitProfile);
+
+      if (estimatedTricks >= 4 && currentBidValue < 40) {
+        shouldRaise = true;
+        targetBidLevel = 40; // Aim for 40 if we have strong hand with Jack
+        reasoning = `Strong hand ${suitProfile.length} cards, ${suitProfile.jacks} J) with ${estimatedTricks} estimated tricks. Raising to 40.`;
+      } else if (estimatedTricks >= 5 && currentBidValue < 48) {
+        shouldRaise = true;
+        targetBidLevel = 48;
+        reasoning = `Very strong hand ${suitProfile.length} cards, ${suitProfile.jacks} J) with ${estimatedTricks} estimated tricks. Raising to 48.`;
+      } else if (estimatedTricks >= 6 && currentBidValue < 56) {
+        shouldRaise = true;
+        targetBidLevel = 56;
+        reasoning = `Exceptional hand ${suitProfile.length} cards, ${suitProfile.jacks} J) with ${estimatedTricks} estimated tricks. Raising to 56.`;
+      }
+    } else if (unrevealedCards >= 2 && handProfile.totalPoints >= 35) {
+      // Have unrevealed strength that could justify higher bid
+      if (currentBidValue < 40 && handProfile.totalPoints >= 35) {
+        shouldRaise = true;
+        targetBidLevel = 40;
+        reasoning = `Have ${unrevealedCards} unrevealed cards and ${handProfile.totalPoints} points. Raising to 40.`;
+      } else if (currentBidValue < 48 && handProfile.totalPoints >= 40) {
+        shouldRaise = true;
+        targetBidLevel = 48;
+        reasoning = `Have ${unrevealedCards} unrevealed cards and ${handProfile.totalPoints} points. Raising to 48.`;
+      }
+    }
+
+    console.log(`│ Reasoning: ${reasoning.substring(0, 57).padEnd(57)} │`);
+    if (reasoning.length > 57) {
+      console.log(`│            ${reasoning.substring(57, 114).padEnd(57)} │`);
+    }
+    console.log(
+      `│ Decision: ${(shouldRaise ? `RAISE to ${targetBidLevel}` : "SKIP").padEnd(60)} │`,
+    );
+    console.log(
+      "└──────────────────────────────────────────────────────────────────────┘",
+    );
+
+    return {
+      raise: shouldRaise,
+      newBidValue: shouldRaise ? targetBidLevel : undefined,
+    };
   }
 
   /**
