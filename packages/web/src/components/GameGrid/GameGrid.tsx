@@ -687,6 +687,28 @@ class GameGrid extends React.Component<IProps, IState> {
             {bidDouble && " (Double)"}
             {bidReDouble && " (Re-Double)"}
           </Button>
+          <Button
+            color="black"
+            style={{
+              justifyContent: "center",
+              color: "yellow",
+              border: "1px solid yellow",
+            }}
+          >
+            Your Bid:{" "}
+            {hasPlayerMadeSelections
+              ? this.formatBidDisplay(
+                  currentBiddingValue,
+                  currentBiddingsuit,
+                  lastBidValue,
+                  displayedSuitInfo,
+                  undefined,
+                  undefined,
+                  undefined,
+                  noTrumpType,
+                )
+              : "Not selected"}
+          </Button>
         </Button.Group>
 
         {isYourBiddingTurn && (
@@ -812,43 +834,11 @@ class GameGrid extends React.Component<IProps, IState> {
             </div>
 
             {/* Suit Selection */}
-            {/* No-Trump Type Selection */}
-            <Button.Group
-              fluid={true}
-              style={{ width: "100%", display: "block" }}
-            >
-              {noTrumpTypes.map((type) => {
-                const isSelected =
-                  currentBiddingsuit === "N" && noTrumpType === type.name;
-                return (
-                  <Label
-                    as="a"
-                    basic={!isSelected}
-                    key={type.name}
-                    color={isSelected ? "green" : "purple"}
-                    onClick={() =>
-                      this.handleNoTrumpTypeClick(
-                        type.name as "Noes" | "Pass" | "No-Trump",
-                      )
-                    }
-                    title={type.label}
-                    style={{
-                      cursor: "pointer",
-                      padding: "8px 12px",
-                      margin: "2px",
-                    }}
-                  >
-                    {type.label}
-                  </Label>
-                );
-              })}
-            </Button.Group>
-
-            {/* Regular Suit Selection */}
             <Button.Group
               fluid={true}
               style={{ width: "100%", display: "block", marginBottom: "10px" }}
             >
+              {/* Regular Suit Selection */}
               {suits.map((suit) =>
                 (() => {
                   const isSuitAvailable = this.hasSuitInHand(suit.name);
@@ -878,34 +868,32 @@ class GameGrid extends React.Component<IProps, IState> {
                   );
                 })(),
               )}
-            </Button.Group>
-
-            {/* Bid Value Display */}
-            <Button.Group
-              fluid={true}
-              style={{
-                width: "25%",
-                display: "flex",
-                justifyContent: "center",
-                marginBottom: "10px",
-                minWidth: "300px",
-              }}
-            >
-              <Button disabled color="blue">
-                Your Bid:{" "}
-                {hasPlayerMadeSelections
-                  ? this.formatBidDisplay(
-                      currentBiddingValue,
-                      currentBiddingsuit,
-                      lastBidValue,
-                      displayedSuitInfo,
-                      undefined,
-                      undefined,
-                      undefined,
-                      noTrumpType,
-                    )
-                  : "Not selected"}
-              </Button>
+              {/* No-Trump Type Selection */}
+              {noTrumpTypes.map((type) => {
+                const isSelected =
+                  currentBiddingsuit === "N" && noTrumpType === type.name;
+                return (
+                  <Label
+                    as="a"
+                    basic={!isSelected}
+                    key={type.name}
+                    color={isSelected ? "green" : "purple"}
+                    onClick={() =>
+                      this.handleNoTrumpTypeClick(
+                        type.name as "Noes" | "Pass" | "No-Trump",
+                      )
+                    }
+                    title={type.label}
+                    style={{
+                      cursor: "pointer",
+                      padding: "8px 12px",
+                      margin: "2px",
+                    }}
+                  >
+                    {type.label}
+                  </Label>
+                );
+              })}
             </Button.Group>
 
             {/* Action Buttons */}

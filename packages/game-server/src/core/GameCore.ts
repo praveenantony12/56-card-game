@@ -3513,7 +3513,7 @@ export class GameCore {
     // Check if bidding should end (normal bidding phase only, not post-raise)
     if (!gameObj.postRaiseDoubleRound && this.shouldBiddingEnd(gameObj)) {
       // Enter bid raise phase instead of immediately ending bidding
-      this.endBiddingPhase(gameId);
+      this.enterBidRaisePhase(gameId);
 
       // Return early - don't broadcast regular bidding update
       cb(

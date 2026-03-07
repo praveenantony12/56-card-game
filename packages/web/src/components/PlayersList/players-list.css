@@ -1,8 +1,5 @@
 .playersGrid {
-  padding: 2rem 0 0 !important;
-  @media screen and (max-width: 480px) { 
-    padding: .5rem 0 0 !important;
-  }
+  padding: .5rem 0 0 !important;  
 }
 
 .playerIcon {
