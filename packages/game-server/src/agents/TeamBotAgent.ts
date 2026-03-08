@@ -39,6 +39,16 @@ interface SuitProfile {
  */
 
 export class TeamBotAgent {
+  /** Most recent reasoning snapshot — read by GameCore after calling decide() or decideBid() */
+  public lastReasoning: {
+    botId: string;
+    type: "card" | "bid";
+    strategy: string;
+    reasoning: string;
+    decision: string;
+    gameMode: string;
+  } | null = null;
+
   /**
    * Make a decision about which card to play based on game state.
    * @param gameState Current game state
@@ -726,6 +736,16 @@ export class TeamBotAgent {
    * Log the reasoning behind a bot's decision
    */
   private logReasoning(reasoning: any): void {
+    // Capture for GameCore to emit to clients
+    this.lastReasoning = {
+      botId: reasoning.botId,
+      type: reasoning.selectedCard !== undefined ? "card" : "bid",
+      strategy: reasoning.strategy || "",
+      reasoning: reasoning.reasoning || "",
+      decision: reasoning.selectedCard ?? reasoning.decision ?? "",
+      gameMode: reasoning.gameMode || "",
+    };
+
     console.log(
       "┌──────────────────────────────────────────────────────────────────────┐",
     );
@@ -1946,6 +1966,16 @@ export class TeamBotAgent {
    * Log bidding reasoning in a formatted box
    */
   private logBiddingReasoning(reasoning: any): void {
+    // Capture for GameCore to emit to clients
+    this.lastReasoning = {
+      botId: reasoning.botId,
+      type: "bid",
+      strategy: reasoning.strategy || "",
+      reasoning: reasoning.reasoning || "",
+      decision: reasoning.decision || "",
+      gameMode: reasoning.teamId === 0 ? "Team A" : "Team B",
+    };
+
     console.log(
       "├──────────────────────────────────────────────────────────────────────┤",
     );

@@ -20,7 +20,10 @@ class Store implements IStore {
   @observable private isReconnecting: boolean = false;
 
   constructor() {
-    this.gameService = new GameService(this.subscribeToNotifications);
+    this.gameService = new GameService(
+      this.subscribeToNotifications,
+      this.subscribeToBotReasoning,
+    );
     this.initializeStore();
     // Check URL parameters for game ID to join
     this.checkAndApplyUrlParameters();
@@ -631,13 +634,13 @@ class Store implements IStore {
     this.userInfo.isSignedIn = false;
   }
 
+  private subscribeToBotReasoning = (data: any) => {
+    this.gameInfo.botReasoning = { ...data, ts: Date.now() };
+  };
+
   private subscribeToNotifications = (
     response: common.SuccessResponse | common.ErrorResponse,
   ) => {
-    this.clearNotifications();
-
-    console.log("[STORE] Recieved response:", response);
-
     const error = (response as common.ErrorResponse).message;
 
     if (error) {

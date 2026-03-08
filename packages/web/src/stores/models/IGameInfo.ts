@@ -75,4 +75,14 @@ export interface IGame {
   isGameCreator?: boolean;
   sharedGameId?: string;
   showGameModeSelection?: boolean;
+  /** Latest bot reasoning snapshot — updated on every bot card/bid action */
+  botReasoning?: {
+    botId: string;
+    type: "card" | "bid";
+    strategy: string;
+    reasoning: string;
+    decision: string;
+    gameMode: string;
+    ts: number;
+  };
 }

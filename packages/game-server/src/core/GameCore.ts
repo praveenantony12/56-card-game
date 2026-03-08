@@ -2997,21 +2997,21 @@ export class GameCore {
         return;
       }
 
-      // console.log("[BOT AGENT]", {
-      //   botAgentId: botPlayerId,
-      //   botToken: botPlayer.token,
-      //   card,
-      //   gameId,
-      // });
+      // Broadcast bot reasoning to all players in the game room
+      if (agent.lastReasoning) {
+        this.ioServer.to(gameId).emit("bot_reasoning", agent.lastReasoning);
+      }
 
-      // Simulate human delay (1 second)
+      // Add extra delay when bot reasoning panel is enabled so players can read it
+      const reasoningDelay =
+        process.env.ENABLE_BOT_REASONING_IN_UI === "true" ? 3000 : 0;
       const botTimer = setTimeout(() => {
         this.handleBotCardPlay(gameId, botPlayerId, card);
         // Clean up timer
         if (this.botTimers[gameId]) {
           delete this.botTimers[gameId];
         }
-      }, 1000);
+      }, 1000 + reasoningDelay);
 
       // Store timer for cleanup if needed
       this.botTimers[gameId] = botTimer;
@@ -3834,8 +3834,17 @@ export class GameCore {
         currentBiddingPlayer.playerId,
       );
 
+      // Broadcast bot bidding reasoning to all players in the game room
+      if (botAgent.lastReasoning) {
+        this.ioServer.to(gameId).emit("bot_reasoning", botAgent.lastReasoning);
+      }
+
+      // Add extra delay when bot reasoning panel is enabled so players can read it
+      const reasoningExtraDelay =
+        process.env.ENABLE_BOT_REASONING_IN_UI === "true" ? 3000 : 0;
       // Dynamic timing: 2 seconds for bid action, 1 second for pass
-      const delay = decision.action === "pass" ? 1000 : 2000;
+      const delay =
+        (decision.action === "pass" ? 1000 : 2000) + reasoningExtraDelay;
 
       setTimeout(() => {
         // Double-check bot is still the current bidder (game state might have changed)

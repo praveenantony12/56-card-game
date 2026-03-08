@@ -43,11 +43,20 @@ class GameService {
   /**
    * Initializes a new instance of the GameService.
    * @param subscribeToNotifications The callback to subscribe notifications
+   * @param subscribeToBotReasoning The callback for bot reasoning events
    */
   constructor(
     private subscribeToNotifications: (data: SuccessResponse, cb: any) => void,
+    private subscribeToBotReasoning?: (data: any) => void,
   ) {
     ioClient.on("data", this.subscribeToNotifications);
+
+    if (
+      subscribeToBotReasoning &&
+      process.env.ENABLE_BOT_REASONING_IN_UI === "true"
+    ) {
+      ioClient.on("bot_reasoning", subscribeToBotReasoning);
+    }
 
     setInterval(() => {
       this.ping().then(() => "");
