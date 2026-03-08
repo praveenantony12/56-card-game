@@ -48,7 +48,7 @@ export class GameCore {
       [playerId: string]: NodeJS.Timeout;
     };
   } = {};
-  private readonly DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly DISCONNECT_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes - increased from 5 minute to allow longer breaks
   private readonly GAME_ABANDON_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
   /**

@@ -25,8 +25,8 @@ app.get("/", (req, res, next) =>
 
 const httpServer = http.createServer(app);
 const ioServer = io(httpServer, {
-  pingTimeout: 200000,
-  pingInterval: 300000,
+  pingTimeout: 600000, // 10 minutes - increased from 200s to handle slow connections and prevent premature disconnections
+  pingInterval: 500000, // 8.3 minutes - increased from 300s to reduce frequency of pings while still keeping connection alive
 });
 
 let ioHandlers: SocketServer;

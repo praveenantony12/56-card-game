@@ -170,7 +170,7 @@ class BotSelection extends React.Component<IProps, IState> {
                 }
               >
                 Start Game with {this.state.selectedBotCount} Bot
-                {this.state.selectedBotCount > 1 ? "s" : ""} (6 Total)
+                {this.state.selectedBotCount > 1 ? "s" : ""}
               </Button>
 
               <Button

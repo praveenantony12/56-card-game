@@ -306,7 +306,37 @@ export class TeamBotAgent {
           );
 
           if (nonTrumpMoves.length > 0) {
-            // Throw highest-point non-trump card
+            // IMPROVEMENT #2: Prioritize discarding single-card non-trump suits
+            const singleCardSuits = this.findSingleCardNonTrumpSuits(
+              myCards,
+              trumpSuit,
+            );
+            const singleCardSuitMoves = nonTrumpMoves.filter((card) =>
+              singleCardSuits.includes(card),
+            );
+
+            if (singleCardSuitMoves.length > 0) {
+              // Discard the single-card suit to create future trumping opportunity
+              selectedCard = singleCardSuitMoves[0]; // Any single-card suit is good
+              cardPoints = this.getCardPoints(selectedCard);
+              const trumpCardsInHand = legalMoves.filter(
+                (c) => this.getCardSuit(c) === trumpSuit,
+              );
+
+              reasoning.strategy = "TEAMMATE_WINNING_DISCARD_SINGLE_SUIT";
+              reasoning.reasoning =
+                `Teammate (${winningPlayerId}) winning with TRUMP card ${winningCardValue}. ` +
+                `TRUMP CONSERVATION: Saving trump cards for critical rounds. ` +
+                `Found single-card non-trump suit [${this.getCardSuit(selectedCard)}] - discarding this to create future trumping opportunity. ` +
+                `Selected [${selectedCard}] (${cardPoints} points). ` +
+                `Single-card suits in hand: [${singleCardSuits.join(", ")}]. ` +
+                `Trump cards in hand: [${trumpCardsInHand.join(", ")}]. `;
+              reasoning.selectedCard = selectedCard;
+              this.logReasoning(reasoning);
+              return selectedCard;
+            }
+
+            // No single-card suits - throw highest non-trump card
             selectedCard = this.highestPointCard(nonTrumpMoves);
             cardPoints = this.getCardPoints(selectedCard);
             const trumpCardsInHand = legalMoves.filter(
@@ -321,7 +351,7 @@ export class TeamBotAgent {
                 ", ",
               )}] for critical rounds. ` +
               `${remainingTrumps} trump cards remain in play. ` +
-              `Throwing highest-point NON-TRUMP card [${selectedCard}] (${cardPoints} points). ` +
+              `No single-card suits to discard. Throwing highest-point NON-TRUMP card [${selectedCard}] (${cardPoints} points). ` +
               `Available non-trump cards: [${nonTrumpMoves.join(", ")}].`;
             reasoning.selectedCard = selectedCard;
             this.logReasoning(reasoning);
@@ -448,6 +478,40 @@ export class TeamBotAgent {
       );
 
       if (isLastPlayer) {
+        // IMPROVEMENT #1: Smart trump card selection when trumping
+        const leadSuit = this.getLeadSuit(currentRoundCards);
+        const trumpMoves = winningMoves.filter(
+          (card) => trumpSuit && this.getCardSuit(card) === trumpSuit,
+        );
+        const isUsingTrump = trumpMoves.length > 0 && leadSuit !== trumpSuit;
+
+        if (isUsingTrump && trumpSuit) {
+          // Determine if this is initial trumping (no trumps played yet in round)
+          const trumpAlreadyPlayed = currentRoundCards.some((cardDrop) => {
+            const card = cardDrop.split("-")[0];
+            return this.getCardSuit(card) === trumpSuit;
+          });
+
+          const selectedCard = this.selectSmartTrumpCard(
+            trumpMoves,
+            currentRoundCards,
+            trumpSuit,
+            !trumpAlreadyPlayed,
+          );
+
+          reasoning.strategy = "LAST_PLAYER_SMART_TRUMP";
+          reasoning.reasoning =
+            `Last player in round and can win by trumping. ` +
+            `Lead suit is ${leadSuit}, trump suit is ${trumpSuit}. ` +
+            `Trump moves available: [${trumpMoves.join(", ")}]. ` +
+            `Selected trump card: ${selectedCard}. ` +
+            `Smart selection considers: ${!trumpAlreadyPlayed ? "initial trumping (no trumps played yet)" : "trump already played in round"}. ` +
+            `This optimizes for winning the current round while preserving higher trumps for future rounds.`;
+          reasoning.selectedCard = selectedCard;
+          this.logReasoning(reasoning);
+          return selectedCard;
+        }
+
         // If we are last, and we can win, we win! Play the lowest card that is sufficient to win.
         const selectedCard = this.lowestCard(winningMoves);
         reasoning.strategy = "LAST_PLAYER_WIN";
@@ -560,6 +624,60 @@ export class TeamBotAgent {
             this.logReasoning(reasoning);
             return selectedCard;
           }
+        }
+      }
+    }
+
+    // STRATEGY 2.75: IMPROVEMENT #3 - Play teammate's discarded suits
+    // Track suits that teammates have discarded (played different suits)
+    // Play those suits to give teammate opportunity to trump
+    if (trumpSuit && currentRoundCards.length === 0 && !isNoesGame) {
+      const teammateDiscards = this.extractTeammateDiscardedSuits(
+        gameState,
+        botAgentId,
+      );
+
+      // Collect all suits that at least one teammate is missing
+      const discardedSuits: Set<string> = new Set();
+      teammateDiscards.forEach((suits, teammateId) => {
+        suits.forEach((suit) => discardedSuits.add(suit));
+      });
+
+      if (discardedSuits.size > 0) {
+        // Find cards in suits that teammates have discarded
+        const discardSuitMoves = legalMoves.filter((card) => {
+          const suit = this.getCardSuit(card);
+          return discardedSuits.has(suit);
+        });
+
+        if (discardSuitMoves.length > 0) {
+          // Play highest card in discarded suit (not J to preserve it)
+          const nonJackMoves = discardSuitMoves.filter(
+            (c) => c.slice(2) !== "J",
+          );
+          const movesToConsider =
+            nonJackMoves.length > 0 ? nonJackMoves : discardSuitMoves;
+          const selectedCard = this.highestCard(movesToConsider);
+          const selectedSuit = this.getCardSuit(selectedCard);
+
+          // Find which teammates are missing this suit
+          const teammatesCanTrump: string[] = [];
+          teammateDiscards.forEach((suits, teammateId) => {
+            if (suits.has(selectedSuit)) {
+              teammatesCanTrump.push(teammateId);
+            }
+          });
+
+          reasoning.strategy = "TEAMMATE_DISCARD_TRUMP_OPPORTUNITY";
+          reasoning.reasoning =
+            `Analyzing teammate discarded suits for trumping opportunities. ` +
+            `Teammates have discarded suits: [${Array.from(discardedSuits).join(", ")}]. ` +
+            `Playing ${selectedCard} in suit ${selectedSuit} that teammates have discarded to give them opportunity to trump. ` +
+            `This can help teammates win the round while we conserve other cards. ` +
+            `Teammates who can potentially trump this: [${teammatesCanTrump.join(", ")}].`;
+          reasoning.selectedCard = selectedCard;
+          this.logReasoning(reasoning);
+          return selectedCard;
         }
       }
     }
@@ -1243,6 +1361,192 @@ export class TeamBotAgent {
 
     // Return combined value: points * 10 + tie-breaker for proper ordering
     return points * 10 + (tieBreaker[rank] || 0);
+  }
+
+  /**
+   * =============================================================================
+   * NEW BOT LOGIC IMPROVEMENTS
+   * =============================================================================
+   * Extract information from bidding phase to inform card play decisions
+   */
+
+  /**
+   * Select a smart trump card when trumping a suit initially
+   * PRESERVE HIGH TRUMP CARDS (J and 9) for later round with bigger points.
+   * Use medium-level trump cards (A, 10, K, Q) when first trumping a suit.
+   * Only use J or 9 when absolutely necessary (e.g., opponent already played a trump)
+   * @param trumpCards Array of trump cards in hand
+   * @param currentRoundCards Cards already played in the current round
+   * @param trumpSuit The trump suit for the game
+   * @param isInitialTrump Whether this is the initial trumping of a suit (first time playing a trump in this round)
+   * @returns Selected trump card to play
+   */
+  private selectSmartTrumpCard(
+    trumpCards: string[],
+    currentRoundCards: string[],
+    trumpSuit: string,
+    isInitialTrump: boolean,
+  ): string {
+    if (trumpCards.length === 0) return "";
+
+    // Check if any trump has already been played in this round
+    const trumpAlreadyPlayed = currentRoundCards.some((cardDrop) => {
+      const card = cardDrop.split("-")[0];
+      return this.getCardSuit(card) === trumpSuit;
+    });
+
+    // If opponent already played trump, we might need to use J or 9 to win
+    if (trumpAlreadyPlayed) {
+      // Find the highest trump card played so far
+      const trumpsPlayed = currentRoundCards
+        .filter((cardDrop) => {
+          const card = cardDrop.split("-")[0];
+          return this.getCardSuit(card) === trumpSuit;
+        })
+        .map((cardDrop) => cardDrop.split("-")[0]);
+
+      const highestTrumpPlayed = this.highestCard(trumpsPlayed);
+      const highestTrumpValue = this.getCardValue(highestTrumpPlayed);
+
+      // Find trump cards that can beat the highest trump played
+      const winningTrumps = trumpCards.filter(
+        (card) => this.getCardValue(card) > highestTrumpValue,
+      );
+
+      if (winningTrumps.length > 0) {
+        // Use the lowest trump that can still win (preserve higher ones)
+        return this.lowestCard(winningTrumps);
+      }
+    }
+
+    // If trumping initially (first time, no trump player yet)
+    // PRESERVE J and 9 - use a medium-level trump (A, 10, K, Q) if possible
+    if (isInitialTrump) {
+      const mediumTrumps = trumpCards.filter((card) => {
+        const rank = card.slice(2);
+        return rank !== "J" && rank !== "9";
+      });
+
+      if (mediumTrumps.length > 0) {
+        // Use the highest medium trump to ensure win (A >10 > K > Q)
+        return this.highestCard(mediumTrumps);
+      }
+    }
+
+    // If we have no choice but to use J or 9, use the lowest trump card available
+    return this.lowestCard(trumpCards);
+  }
+
+  /**
+   * Find single-card non-trump suits in hand
+   * These are ideal candidates for discarding to create future trumping opportunities
+   * @param myCards Bot's current hand
+   * @param trumpSuit The trump suit for the game
+   * @returns Array of single-card non-trump suits in hand
+   */
+  private findSingleCardNonTrumpSuits(
+    myCards: string[],
+    trumpSuit: string,
+  ): string[] {
+    if (!trumpSuit || trumpSuit === "N") return [];
+
+    const suitCounts: Map<string, string[]> = new Map();
+
+    // Group cards by suit (excluding trump suit)
+    myCards.forEach((card) => {
+      const suit = this.getCardSuit(card);
+      if (suit !== trumpSuit) {
+        if (!suitCounts.has(suit)) {
+          suitCounts.set(suit, []);
+        }
+        suitCounts.get(suit)!.push(card);
+      }
+    });
+
+    // Find suits with exactly one card
+    const singleCards: string[] = [];
+    suitCounts.forEach((cards, suit) => {
+      if (cards.length === 1) {
+        singleCards.push(cards[0]);
+      }
+    });
+
+    return singleCards;
+  }
+
+  /**
+   * Extract suits that teammates have discarded (played different suit when leading).
+   * This indicates they don't have that suit and can trump it.
+   * Tracks from the game's round history
+   * @param gameState Current game state
+   * @param botAgentId Bot's player ID
+   * @returns Map of teammate ID to array of suits they're missing
+   */
+  private extractTeammateDiscardedSuits(
+    gameState: ICardGame,
+    botAgentId: string,
+  ): Map<string, Set<string>> {
+    const teammateDiscards: Map<string, Set<string>> = new Map();
+    const teammates = this.getTeammates(botAgentId, gameState);
+
+    // Initialize for each teammate
+    teammates.forEach((teammateId) => {
+      teammateDiscards.set(teammateId, new Set<string>());
+    });
+
+    // Analyze completed rounds from team piles
+    // If a teammate played a different suit than the lead suit, they likely don't have that suit
+    const allRounds = gameState.roundHistory || [];
+
+    allRounds.forEach((round) => {
+      if (!round.cards || round.cards.length === 0) return;
+
+      const leadCard = round.cards[0];
+      const leadSuit = this.getCardSuit(leadCard.split("-")[0]);
+
+      round.forEach((cardDrop: string) => {
+        const [card, playerId] = cardDrop.split("-");
+        const cardSuit = this.getCardSuit(card);
+
+        // If teammate played a different suit than the lead suit, they likely don't have that suit
+        if (
+          teammates.includes(playerId) &&
+          cardSuit !== leadSuit &&
+          cardDrop !== leadCard
+        ) {
+          if (!teammateDiscards.has(playerId)) {
+            teammateDiscards.set(playerId, new Set<string>());
+          }
+          teammateDiscards.get(playerId)!.add(leadSuit);
+        }
+      });
+    });
+
+    // Also check current round
+    const currentRoundCards =
+      gameState.dropCardPlayer || gameState.dropDetails || [];
+    if (currentRoundCards.length > 0) {
+      const leadCard = currentRoundCards[0];
+      const leadSuit = this.getCardSuit(leadCard.split("-")[0]);
+
+      currentRoundCards.forEach((cardDrop) => {
+        const [card, playerId] = cardDrop.split("-");
+        const cardSuit = this.getCardSuit(card);
+
+        if (
+          teammates.includes(playerId) &&
+          cardSuit !== leadSuit &&
+          cardDrop !== leadCard
+        ) {
+          if (!teammateDiscards.has(playerId)) {
+            teammateDiscards.set(playerId, new Set<string>());
+          }
+          teammateDiscards.get(playerId)!.add(leadSuit);
+        }
+      });
+    }
+
+    return teammateDiscards;
   }
 
   /**

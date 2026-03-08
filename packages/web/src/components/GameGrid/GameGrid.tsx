@@ -23,6 +23,7 @@ interface IState {
   bidModifier: number;
   clickOrder: "bidFirst" | "suitFirst" | null; // Track which was clicked first
   noTrumpType: "Noes" | "Pass" | "No-Trump" | null;
+  isProcessingAction: boolean; // Prevent double-click and rapid actions
 }
 
 @inject("store")
@@ -51,6 +52,7 @@ class GameGrid extends React.Component<IProps, IState> {
       bidModifier: 0,
       clickOrder: null,
       noTrumpType: null,
+      isProcessingAction: false,
     };
   }
 
@@ -234,11 +236,20 @@ class GameGrid extends React.Component<IProps, IState> {
                 }}
                 onClick={this.handleBiddingPass.bind(this)}
               >
-                <Button as="div" labelPosition="left" color="red">
+                <Button
+                  as="div"
+                  labelPosition="left"
+                  color="red"
+                  disabled={this.state.isProcessingAction}
+                >
                   <Label as="a" basic={true} color="black" pointing="right">
                     Pass
                   </Label>
-                  <Button color="red">Not Bidding</Button>
+                  <Button color="red" disabled={this.state.isProcessingAction}>
+                    {this.state.isProcessingAction
+                      ? "Processing..."
+                      : "Not Bidding"}
+                  </Button>
                 </Button>
               </Button.Group>
               {this.renderCards(droppedCards, false, false, dropCardPlayer)}
@@ -502,14 +513,26 @@ class GameGrid extends React.Component<IProps, IState> {
   };
 
   private handleCardClick = (card: string) => {
+    // Prevent double-clicks and rapid actions while processing
+    if (this.state.isProcessingAction) {
+      return;
+    }
+
+    this.setState({ isProcessingAction: true });
+
     const el = document.getElementById(card);
     if (el) {
       el.classList.add("disabled");
     }
-    setTimeout(() => {
-      this.enableCardClicks();
-    }, 1000);
+
+    //Call the drop card action
     this.store.dropCard(card);
+
+    // Re-enable after 3 seconds (increased from 1s to handle slow connections)
+    setTimeout(() => {
+      this.setState({ isProcessingAction: false });
+      this.enableCardClicks();
+    }, 3000);
   };
 
   private enableCardClicks = () => {
@@ -563,8 +586,11 @@ class GameGrid extends React.Component<IProps, IState> {
                   size="large"
                   style={{ margin: "5px" }}
                   onClick={() => this.handleRaiseBid(level)}
+                  disabled={this.state.isProcessingAction}
                 >
-                  Raise to {level}
+                  {this.state.isProcessingAction
+                    ? "Processing..."
+                    : `Raise to ${level}`}
                 </Button>
               ))}
             </div>
@@ -572,8 +598,11 @@ class GameGrid extends React.Component<IProps, IState> {
               color="red"
               size="large"
               onClick={this.handleSkipRaise.bind(this)}
+              disabled={this.state.isProcessingAction}
             >
-              Skip - Start Game
+              {this.state.isProcessingAction
+                ? "Processing..."
+                : "Skip - Start Game"}
             </Button>
           </div>
         </>
@@ -903,12 +932,17 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button
                 color="green"
                 onClick={this.handleBiddingDone.bind(this)}
-                disabled={!hasPlayerMadeSelections || lastBidValue >= 56}
+                disabled={
+                  !hasPlayerMadeSelections ||
+                  lastBidValue >= 56 ||
+                  this.state.isProcessingAction
+                }
                 style={{
                   minWidth: "190px",
                 }}
               >
-                <Icon name="arrow circle right" /> &nbsp; Bid
+                <Icon name="arrow circle right" /> &nbsp;{" "}
+                {this.state.isProcessingAction ? "Processing..." : "Bid"}
               </Button>
               {(() => {
                 // Only show Double/Re-Double buttons if player is on the correct team
@@ -941,16 +975,24 @@ class GameGrid extends React.Component<IProps, IState> {
                       <Button
                         color="yellow"
                         onClick={this.handleBiddingDouble.bind(this)}
+                        disabled={this.state.isProcessingAction}
                       >
-                        <Icon name="bolt" /> Double
+                        <Icon name="bolt" />{" "}
+                        {this.state.isProcessingAction
+                          ? "Processing..."
+                          : "Double"}
                       </Button>
                     )}
                     {canReDouble && (
                       <Button
                         color="violet"
                         onClick={this.handleBiddingReDouble.bind(this)}
+                        disabled={this.state.isProcessingAction}
                       >
-                        <Icon name="chess king" /> Re-Double
+                        <Icon name="chess king" />{" "}
+                        {this.state.isProcessingAction
+                          ? "Processing..."
+                          : "Re-Double"}
                       </Button>
                     )}
                   </>
@@ -1260,6 +1302,13 @@ class GameGrid extends React.Component<IProps, IState> {
   };
 
   private handleBiddingDone = () => {
+    // Prevent double-clicks and rapid actions while processing
+    if (this.state.isProcessingAction) {
+      return;
+    }
+
+    this.setState({ isProcessingAction: true });
+
     const {
       currentBiddingValue,
       currentBiddingsuit,
@@ -1293,6 +1342,11 @@ class GameGrid extends React.Component<IProps, IState> {
       clickOrder: null,
       noTrumpType: null,
     } as any);
+
+    // Re-enable after 2 seconds
+    setTimeout(() => {
+      this.setState({ isProcessingAction: false });
+    }, 2000);
   };
 
   /**
@@ -1314,6 +1368,13 @@ class GameGrid extends React.Component<IProps, IState> {
   }
 
   private handleBiddingPass = () => {
+    // Prevent double-clicks and rapid actions while processing
+    if (this.state.isProcessingAction) {
+      return;
+    }
+
+    this.setState({ isProcessingAction: true });
+
     // "Not Bidding" button always sends a regular pass action
     // Players must intentionally select bid value + "Pass" no-trump type to bid "28 Pass"
     this.store.biddingAction("pass");
@@ -1328,9 +1389,21 @@ class GameGrid extends React.Component<IProps, IState> {
       clickOrder: null,
       noTrumpType: null,
     } as any);
+
+    // Re-enable after 2 seconds
+    setTimeout(() => {
+      this.setState({ isProcessingAction: false });
+    }, 2000);
   };
 
   private handleBiddingDouble = () => {
+    // Prevent double-clicks and rapid actions while processing
+    if (this.state.isProcessingAction) {
+      return;
+    }
+
+    this.setState({ isProcessingAction: true });
+
     this.store.biddingAction("double");
     // Reset local bidding state
     this.setState({
@@ -1342,9 +1415,21 @@ class GameGrid extends React.Component<IProps, IState> {
       clickOrder: null,
       noTrumpType: null,
     } as any);
+
+    // Re-enable after 2 seconds
+    setTimeout(() => {
+      this.setState({ isProcessingAction: false });
+    }, 2000);
   };
 
   private handleBiddingReDouble = () => {
+    // Prevent double-clicks and rapid actions while processing
+    if (this.state.isProcessingAction) {
+      return;
+    }
+
+    this.setState({ isProcessingAction: true });
+
     this.store.biddingAction("re-double");
     // Reset local bidding state
     this.setState({
@@ -1356,14 +1441,41 @@ class GameGrid extends React.Component<IProps, IState> {
       clickOrder: null,
       noTrumpType: null,
     } as any);
+
+    // Re-enable after 2 seconds
+    setTimeout(() => {
+      this.setState({ isProcessingAction: false });
+    }, 2000);
   };
 
   private handleRaiseBid = (newBidValue: number) => {
+    // Prevent double-clicks and rapid actions while processing
+    if (this.state.isProcessingAction) {
+      return;
+    }
+
+    this.setState({ isProcessingAction: true });
     this.store.raiseBid(newBidValue);
+
+    // Re-enable after 2 seconds
+    setTimeout(() => {
+      this.setState({ isProcessingAction: false });
+    }, 2000);
   };
 
   private handleSkipRaise = () => {
+    // Prevent double-clicks and rapid actions while processing
+    if (this.state.isProcessingAction) {
+      return;
+    }
+
+    this.setState({ isProcessingAction: true });
     this.store.skipRaise();
+
+    // Re-enable after 2 seconds
+    setTimeout(() => {
+      this.setState({ isProcessingAction: false });
+    }, 2000);
   };
 
   private renderPostRaiseBiddingUI(isYourBiddingTurn: boolean) {
