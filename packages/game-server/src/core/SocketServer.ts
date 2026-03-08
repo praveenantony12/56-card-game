@@ -75,7 +75,7 @@ export class SocketServer {
   private async onDataHandler(
     socket: IOSocket,
     request: Request,
-    cb: Function
+    cb: Function,
   ) {
     const { payload = {} } = request;
     switch (request.operation) {
@@ -86,12 +86,15 @@ export class SocketServer {
       case MESSAGES.login:
         const loginRequest = payload as SignInRequest;
         MetricsService.incrementLogin();
-        LoggerService.logEvent("user_login", { userId: loginRequest.userId, gameId: loginRequest.gameId });
+        LoggerService.logEvent("user_login", {
+          userId: loginRequest.userId,
+          gameId: loginRequest.gameId,
+        });
         await this.gameCore.addPlayerToGamePool(
           socket,
           loginRequest.userId,
           loginRequest.gameId,
-          cb
+          cb,
         );
         break;
 
@@ -107,7 +110,7 @@ export class SocketServer {
           reconnectRequest.playerId,
           cb,
           reconnectRequest.token,
-          reconnectRequest.gameId
+          reconnectRequest.gameId,
         );
         break;
 
@@ -118,7 +121,7 @@ export class SocketServer {
           approveRequest.gameId,
           approveRequest.playerId,
           approveRequest.approvingPlayerId,
-          cb
+          cb,
         );
         break;
 
@@ -129,7 +132,7 @@ export class SocketServer {
           denyRequest.gameId,
           denyRequest.playerId,
           denyRequest.denyingPlayerId,
-          cb
+          cb,
         );
         break;
 
@@ -216,7 +219,7 @@ export class SocketServer {
       this.gameCore.handlePlayerDisconnection(
         gameInfo.gameId,
         gameInfo.playerId,
-        socket.id
+        socket.id,
       );
     } else {
       LoggerService.log("Disconnected", "Player was not in active game");

@@ -43,7 +43,7 @@ class Header extends React.Component<IProps, {}> {
         size="small"
         className={this.store.user.isSignedIn ? "hide" : "show"}
       >
-        <Menu.Item active={true}>
+        <Menu.Item color="green" active={true}>
           <h5>56</h5>
         </Menu.Item>
 

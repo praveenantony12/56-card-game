@@ -58,17 +58,19 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
   }
 
   return (
-    <Container style={{ marginTop: "50px", maxwidth: "500px" }}>
-      <Segment raised padded>
+    <Container style={{ marginTop: "50px", maxWidth: "500px" }}>
+      <Segment
+        style={{ background: `url(./images/background_white.jpg)` }}
+        raised
+        padded
+      >
         <Header as="h1" textAlign="center" color="blue">
           56 Card Game
         </Header>
 
         {!selectedMode ? (
           <div style={{ textAlign: "center", marginTop: "30px" }}>
-            <Header as="h3" style={{ marginBottom: "30px" }}>
-              Choose Game Mode
-            </Header>
+            <Header as="h5">Choose Game Mode</Header>
 
             <Button
               size="large"
