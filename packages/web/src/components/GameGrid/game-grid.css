@@ -330,6 +330,48 @@
   }
 }
 
+.handleBiddingPassPostRaise {
+  padding-top: 2.5rem;
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) { 
+    padding-top: 1.5rem;
+    padding: 10px;
+    border-radius: 5px;
+  }
+}
+
+.raiseYourBidContainer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -170%);
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 16px; 
+  border-radius: 15px;
+  text-align: center;
+  z-index: 1000;
+  min-width: 400px;
+  @media screen and (max-width: 906px) { 
+    transform: translate(-50%, -230%);
+  }
+  @media screen and (max-width: 856px) { 
+    min-width: 500px;
+  }
+  @media screen and (max-width: 840px) { 
+    transform: translate(-50%, -230%);
+    padding: 12px;
+    border-radius: 10px;
+    min-width: 440px;
+  }
+  @media screen and (max-width: 768px) { 
+    transform: translate(-50%, -110%);
+    padding: 12px;
+    border-radius: 10px;
+    min-width: 400px;
+  }
+}
+
 .showCursor {
   cursor: pointer;
 }

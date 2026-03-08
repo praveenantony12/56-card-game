@@ -227,7 +227,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     this.state.currentBiddingsuit !== "" ||
                     gameStarted ||
                     !isYourBiddingTurn ||
-                    this.store.game.postRaiseDoubleRound
+                    this.store.game.postRaiseDoubleRound ||
+                    this.store.game.bidRaisePhase
                       ? "none"
                       : "block",
                 }}
@@ -541,21 +542,7 @@ class GameGrid extends React.Component<IProps, IState> {
 
       return (
         <>
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              backgroundColor: "rgba(0, 0, 0, 0.85)",
-              color: "white",
-              padding: "30px",
-              borderRadius: "15px",
-              textAlign: "center",
-              zIndex: 1000,
-              minWidth: "400px",
-            }}
-          >
+          <div className="raiseYourBidContainer">
             <h2 style={{ marginBottom: "20px" }}>Raise your Bid?</h2>
             <p style={{ marginBottom: "10px" }}>
               You won the bidding with{" "}
@@ -1494,7 +1481,7 @@ class GameGrid extends React.Component<IProps, IState> {
       // Show notification for other players
       return (
         <div
-          className="handleBiddingPass"
+          className="handleBiddingPassPostRaise"
           style={{
             backgroundColor: "rgba(255, 165, 0, 0.95)",
             color: "white",
@@ -1503,6 +1490,7 @@ class GameGrid extends React.Component<IProps, IState> {
             textAlign: "center",
             maxWidth: "400px",
             margin: "0 auto",
+            zIndex: 1000,
           }}
         >
           <strong style={{ fontSize: "16px" }}>Post-Raise Round</strong>
@@ -1521,7 +1509,7 @@ class GameGrid extends React.Component<IProps, IState> {
     // Show action buttons for current player
     return (
       <div
-        className="handleBiddingPass"
+        className="handleBiddingPassPostRaise"
         style={{
           backgroundColor: "rgba(255, 165, 0, 0.95)",
           color: "white",
@@ -1530,6 +1518,7 @@ class GameGrid extends React.Component<IProps, IState> {
           textAlign: "center",
           maxWidth: "500px",
           margin: "0 auto",
+          zIndex: 1000,
         }}
       >
         <strong style={{ fontSize: "16px" }}>Post-Raise Round</strong>
