@@ -17,6 +17,7 @@ import {
 } from "@rcg/common";
 import { GameCore } from "../core/GameCore";
 import { LoggerService } from "../services/LoggerService";
+import { MetricsService } from "../services/MetricsService";
 import { Server as IOServer, Socket as IOSocket } from "socket.io";
 
 /**
@@ -47,7 +48,8 @@ export class SocketServer {
    */
   public watchConnection() {
     this.ioServer.on("connection", (socket: IOSocket) => {
-      LoggerService.log("Connected", `"Socket connected - ${socket.id}"`);
+      MetricsService.incrementConnection();
+      LoggerService.log("Connected", `Socket connected - ${socket.id}`);
       this.subscribe(socket);
     });
   }
@@ -83,6 +85,8 @@ export class SocketServer {
 
       case MESSAGES.login:
         const loginRequest = payload as SignInRequest;
+        MetricsService.incrementLogin();
+        LoggerService.logEvent("user_login", { userId: loginRequest.userId, gameId: loginRequest.gameId });
         await this.gameCore.addPlayerToGamePool(
           socket,
           loginRequest.userId,
@@ -200,6 +204,7 @@ export class SocketServer {
    * @param socket The socket instance.
    */
   private onDisconnectHandler(socket: IOSocket) {
+    MetricsService.decrementConnection();
     LoggerService.log("Disconnected", `Socket disconnected - ${socket.id}`);
 
     const { gameInfo } = socket as any;

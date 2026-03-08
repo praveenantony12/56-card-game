@@ -27,6 +27,7 @@ import { cardToWeightagePoints, cardToWeightageDict } from "../constants/deck";
 import { InMemoryStore } from "../persistence/InMemoryStore";
 import { Server as IOServer, Socket as IOSocket } from "socket.io";
 import { TeamBotAgent } from "../agents/TeamBotAgent";
+import { MetricsService } from "../services/MetricsService";
 
 /**
  * Game :- A main class that manages all the game actions/logics.
@@ -979,6 +980,7 @@ export class GameCore {
    * @param gameId The game id.
    */
   public startGame(gameId: string, players: IPlayer[]) {
+    MetricsService.incrementGameStarted();
     // Reorder players to keep humans together on teams as much as possible
     const reorderedPlayers = this.optimizeTeamAssignment(players);
 
