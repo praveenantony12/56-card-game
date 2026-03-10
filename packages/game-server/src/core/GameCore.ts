@@ -296,6 +296,11 @@ export class GameCore {
           updatedGame.isGameStarted = true;
           this.inMemoryStore.saveGame(targetGameId, updatedGame);
 
+          // Clear playersPool so names are freed up for new games after this one ends
+          this.playersPoolForReGame = [...allPlayers];
+          this.playersPool = [];
+          this.currentGameId = getUniqueId();
+
           this.startGame(targetGameId, allPlayers);
         }
       }
@@ -2804,6 +2809,23 @@ export class GameCore {
       // Move player to disconnected players tracking
       game.disconnectedPlayers[playerId] = { ...player };
 
+      // If every human player is now disconnected, bots cannot approve re-connections
+      // so abort the game immediately to free up player names.
+      const allHumanPlayers = game.players.filter(
+        (p: IPlayer) => !p.isBotAgent,
+      );
+      const allHumansDisconnected =
+        allHumanPlayers.length > 0 &&
+        allHumanPlayers.every((p: IPlayer) => p.isDisconnected);
+
+      if (allHumansDisconnected) {
+        console.log(
+          `[DISCONNECT] All human players disconnected from game ${gameId}. Aborting game immediately.`,
+        );
+        this.abortGame(gameId);
+        return;
+      }
+
       // Check if game should be paused
       const connectedPlayersCount = game.players.filter(
         (p: IPlayer) => !p.isDisconnected,
@@ -2856,6 +2878,11 @@ export class GameCore {
           );
         }
       }
+
+      // Also remove from playersPool so the name becomes available again
+      this.playersPool = this.playersPool.filter(
+        (p) => p.playerId !== playerId,
+      );
     }
 
     // Save updated game
