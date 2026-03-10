@@ -16,7 +16,9 @@ class Game extends React.Component<{}, {}> {
         <Notification />
         <PlayersList />
         <GameGrid />
-        <BotReasoningPanel />
+        {process.env.REACT_APP_ENABLE_BOT_REASONING_IN_UI === "true" && (
+          <BotReasoningPanel />
+        )}
       </React.Fragment>
     );
   }

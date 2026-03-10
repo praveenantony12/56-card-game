@@ -59,7 +59,7 @@ process.env.NODE_PATH = (process.env.NODE_PATH || '')
 // Grab NODE_ENV, REACT_APP_* and selected custom environment variables and prepare them to be
 // injected into the application via DefinePlugin in Webpack configuration.
 const REACT_APP = /^REACT_APP_/i;
-const CUSTOM_CLIENT_VARS = ['ENABLE_BOT_REASONING_IN_UI'];
+const CUSTOM_CLIENT_VARS = ['REACT_APP_ENABLE_BOT_REASONING_IN_UI'];
 
 function getClientEnvironment(publicUrl) {
   const raw = Object.keys(process.env)

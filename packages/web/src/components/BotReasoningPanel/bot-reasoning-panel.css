@@ -54,6 +54,19 @@
   gap: 7px;
 }
 
+.brp-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.brp-bot-name {
+  font-size: 11px;
+  color: #e2e8f0;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+
 .brp-dot {
   width: 8px;
   height: 8px;

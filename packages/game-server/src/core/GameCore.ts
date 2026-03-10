@@ -3037,7 +3037,7 @@ export class GameCore {
 
       // Add extra delay when bot reasoning panel is enabled so players can read it
       const reasoningDelay =
-        process.env.ENABLE_BOT_REASONING_IN_UI === "true" ? 3000 : 0;
+        process.env.REACT_APP_ENABLE_BOT_REASONING_IN_UI === "true" ? 3000 : 0;
       const botTimer = setTimeout(() => {
         this.handleBotCardPlay(gameId, botPlayerId, card);
         // Clean up timer
@@ -3874,7 +3874,7 @@ export class GameCore {
 
       // Add extra delay when bot reasoning panel is enabled so players can read it
       const reasoningExtraDelay =
-        process.env.ENABLE_BOT_REASONING_IN_UI === "true" ? 3000 : 0;
+        process.env.REACT_APP_ENABLE_BOT_REASONING_IN_UI === "true" ? 3000 : 0;
       // Dynamic timing: 2 seconds for bid action, 1 second for pass
       const delay =
         (decision.action === "pass" ? 1000 : 2000) + reasoningExtraDelay;

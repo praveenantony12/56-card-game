@@ -69,7 +69,10 @@ class BotReasoningPanel extends React.Component<IProps, IState> {
         <div className="brp-header">
           <div className="brp-header-left">
             <div className="brp-dot" />
-            <span className="brp-title">AI Reasoning</span>
+            <div className="brp-title-group">
+              <span className="brp-title">AI Reasoning</span>
+              <span className="brp-bot-name">{reasoning.botId}</span>
+            </div>
           </div>
           <span className={`brp-type-badge ${reasoning.type}`}>
             {isCard ? "Card Play" : "Bid"}
