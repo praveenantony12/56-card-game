@@ -51,10 +51,7 @@ class GameService {
   ) {
     ioClient.on("data", this.subscribeToNotifications);
 
-    if (
-      subscribeToBotReasoning &&
-      process.env.ENABLE_BOT_REASONING_IN_UI === "true"
-    ) {
+    if (subscribeToBotReasoning) {
       ioClient.on("bot_reasoning", subscribeToBotReasoning);
     }
 

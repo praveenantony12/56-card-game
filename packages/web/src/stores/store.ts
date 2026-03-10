@@ -673,8 +673,8 @@ class Store implements IStore {
         (this, (this.gameInfo.isGameCreator = payload.isGameCreator));
         if (payload.isGameCreator && payload.gameId) {
           this.gameInfo.sharedGameId = payload.gameId;
-          // Show bot seelction for game creators
-          this.gameInfo.showBotSelection = false;
+          // Show bot selection for game creators
+          this.gameInfo.showBotSelection = true;
           console.log(
             `[STORE] Game Creator set up - Game ID: ${payload.gameId}, showing bot selection`,
           );

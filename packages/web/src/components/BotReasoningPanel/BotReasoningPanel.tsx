@@ -11,20 +11,26 @@ interface IProps {
 interface IState {
   fresh: boolean;
   lastTs: number;
+  mounting: boolean;
 }
 
 @inject("store")
 @observer
 class BotReasoningPanel extends React.Component<IProps, IState> {
   private freshTimer: any = null;
+  private mountTimer: any = null;
 
   constructor(props: IProps) {
     super(props);
-    this.state = { fresh: false, lastTs: 0 };
+    this.state = { fresh: false, lastTs: 0, mounting: true };
   }
 
   private get store(): IStore {
     return this.props.store as IStore;
+  }
+
+  componentDidMount() {
+    this.mountTimer = setTimeout(() => this.setState({ mounting: false }), 300);
   }
 
   componentDidUpdate() {
@@ -38,6 +44,7 @@ class BotReasoningPanel extends React.Component<IProps, IState> {
 
   componentWillUnmount() {
     if (this.freshTimer) clearTimeout(this.freshTimer);
+    if (this.mountTimer) clearTimeout(this.mountTimer);
   }
 
   public render() {
@@ -48,10 +55,17 @@ class BotReasoningPanel extends React.Component<IProps, IState> {
     }
 
     const isCard = reasoning.type === "card";
-    const { fresh } = this.state;
+    const { fresh, mounting } = this.state;
+    const classes = [
+      "bot-reasoning-panel",
+      mounting && "mounting",
+      fresh && "fresh",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     return (
-      <div className={`bot-reasoning-panel${fresh ? " fresh" : ""}`}>
+      <div className={classes}>
         <div className="brp-header">
           <div className="brp-header-left">
             <div className="brp-dot" />

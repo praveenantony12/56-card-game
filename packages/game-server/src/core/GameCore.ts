@@ -2529,6 +2529,12 @@ export class GameCore {
   private notifyTurn(gameId: string) {
     const gameObj = this.inMemoryStore.fetchGame(gameId);
     const playerToPlay = gameObj.players[gameObj.currentTurn];
+    if (!playerToPlay) {
+      console.error(
+        `[notifyTurn] playerToPlay undefined: gameId=${gameId}, currentTurn=${gameObj.currentTurn}, players.length=${gameObj.players?.length}`,
+      );
+      return;
+    }
     const payload: GameActionResponse = Payloads.sendNotifyTurn(
       playerToPlay.playerId,
     );

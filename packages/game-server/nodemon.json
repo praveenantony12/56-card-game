@@ -4,7 +4,7 @@
   "ignore": ["src/**/*.spec.ts"],
   "env": {
     "NODE_ENV": "development",
-    "ENABLE_BOT_REASONING_IN_UI": "false"
+    "ENABLE_BOT_REASONING_IN_UI": "true"
   },
   "exec": "ts-node ./src/index.ts"
 }

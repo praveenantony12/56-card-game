@@ -11,8 +11,11 @@
   font-size: 12px;
   z-index: 1000;
   box-shadow: 0 8px 32px rgba(99, 102, 241, 0.25), 0 0 0 1px rgba(99, 102, 241, 0.1);
-  animation: panel-slide-in 0.3s ease-out;
   overflow: hidden;
+}
+
+.bot-reasoning-panel.mounting {
+  animation: panel-slide-in 0.3s ease-out;
 }
 
 @keyframes panel-slide-in {
