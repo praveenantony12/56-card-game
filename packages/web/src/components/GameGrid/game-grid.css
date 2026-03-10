@@ -302,6 +302,79 @@
   margin: 1rem;
 }
 
+.teamCards .card {
+  margin-bottom: .25rem !important;
+  @media screen and (max-width: 1376px) { 
+    font-size: 18pt;
+  }
+  @media screen and (max-width: 1308px) { 
+    font-size: 17pt;
+  }
+  @media screen and (max-width: 1240px) { 
+    font-size: 16pt;
+  }
+  @media screen and (max-width: 1172px) { 
+    font-size: 14pt;
+  }
+  @media screen and (max-width: 1036px) { 
+    font-size: 12pt;
+  }
+  @media screen and (max-width: 900px) { 
+    font-size: 11pt;
+  }
+  @media screen and (max-width: 832px) { 
+    font-size: 10pt;
+  }
+  @media screen and (max-width: 764px) { 
+    font-size: 9pt;
+  }
+  @media screen and (max-width: 696px) { 
+    font-size: 8pt;
+  }
+  @media screen and (max-width: 696px) { 
+    font-size: 7pt;
+  }
+  @media screen and (max-width: 560px) { 
+    font-size: 6.5pt;
+  }
+  @media screen and (max-width: 560px) { 
+    font-size: 6.5pt;
+  }
+  @media screen and (max-width: 526px) { 
+    font-size: 6pt;
+  }
+  @media screen and (max-width: 492px) { 
+    font-size: 5.75pt;
+  }
+  @media screen and (max-width: 474px) { 
+    font-size: 5.5pt;
+  }
+  @media screen and (max-width: 458px) { 
+    font-size: 5.25pt;
+  }
+  @media screen and (max-width: 440px) { 
+    font-size: 5pt;
+  }
+  @media screen and (max-width: 424px) { 
+    font-size: 4.75pt;
+  }
+  @media screen and (max-width: 406px) { 
+    font-size: 4.5pt;
+  }
+  @media screen and (max-width: 390px) { 
+    font-size: 4.25pt;
+  }
+  @media screen and (max-width: 372px) { 
+    font-size: 4pt;
+  }
+  @media screen and (max-width: 356px) { 
+    font-size: 3.75pt;
+  }
+  @media screen and (max-width: 338px) { 
+    font-size: 3.5pt;
+  }
+}
+  
 .teamAButtonGroup {
   padding-left: 1rem !important;
   /* Mobile only (0 to 480px) */
