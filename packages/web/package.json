@@ -60,6 +60,7 @@
     "@types/react-dom": "^16.0.7",
     "@types/socket.io-client": "^1.4.32",
     "rimraf": "^2.6.2",
+    "sharp": "^0.34.5",
     "ts-loader": "^5.4.5",
     "typescript": "^4.9.4"
   },
