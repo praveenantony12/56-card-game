@@ -1,1 +1,25 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name="author" content="Praveen Antony"><meta name="description" content="Play the classic 56 card game online with friends or bots!"><meta name="theme-color" content="#1a472a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="56 Card Game"><link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png"><link rel="apple-touch-startup-image" sizes="152x152" href="/icons/icon-152x152.png"><link rel="apple-touch-startup-image" sizes="192x192" href="/icons/icon-192x192.png"><meta name="mobile-web-app-capable" content="yes"><meta name="msapplication-TileColor" content="#1a472a"><meta name="msapplication-TileImage" content="/icons/icon-144x144.png"><link rel="manifest" href="/manifest.json"><link rel="shortcut icon" href="/favicon.ico"><link href="/css/card.css" rel="stylesheet"/><script src="/js/card.js"></script><title>56</title><link href="/static/css/main.07171319.css" rel="stylesheet"></head><body style="background:url(images/background.jpg)"><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script type="text/javascript" src="/static/js/main.0417a9c5.js"></script></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name="author" content="Praveen Antony"><meta name="description" content="Play the classic 56 card game online with friends or bots!"><meta name="theme-color" content="#1a472a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="56 Card Game"><link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png"><link rel="apple-touch-startup-image" sizes="152x152" href="/icons/icon-152x152.png"><link rel="apple-touch-startup-image" sizes="192x192" href="/icons/icon-192x192.png"><meta name="mobile-web-app-capable" content="yes"><meta name="msapplication-TileColor" content="#1a472a"><meta name="msapplication-TileImage" content="/icons/icon-144x144.png"><link rel="manifest" href="/manifest.json"><link rel="shortcut icon" href="/favicon.ico"><link href="/css/card.css" rel="stylesheet"/><script src="/js/card.js"></script><title>56</title><link href="/static/css/main.07171319.css" rel="stylesheet"></head><body style="background:url(images/background.jpg)"><div id="loading-screen" style="position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;z-index:9999"><div class="spinner"></div><p id="loading-msg" style="margin-top:20px;font-family:sans-serif;color:#555">Waking up the server...</p></div><script>const messages = [
+      "Waking up the server...",
+      "Render is starting your instance...",
+      "AI bots are getting ready...",
+      "Loading game intelligence...",
+      "Calibrating bidding strategies...",
+      "Optimizing decision engine...",
+      "Warming up the strategy engine...",
+      "Finalizing the game table...",
+      "Almost there, just a moment..."
+    ];
+    let i = 0;
+    const msgElement = document.getElementById('loading-msg');
+
+    // Rotate text every 4 seconds
+    const interval = setInterval(() => {
+      i = (i + 1) % messages.length;
+      msgElement.innerText = messages[i];
+    }, 4000);
+
+    // Function to hide the loader once your main app is ready
+    window.addEventListener('load', () => {
+      clearInterval(interval);
+      document.getElementById('loading-screen').style.display = 'none';
+    });</script><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script type="text/javascript" src="/static/js/main.0417a9c5.js"></script></body></html>

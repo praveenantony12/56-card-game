@@ -36,6 +36,49 @@
 </head>
 
 <body style="background: url(./images/background.jpg)">
+
+  <!-- Loading Screen -->
+  <!-- This will be displayed while the app is loading, especially useful for slow server wake-up times -->
+  <div id="loading-screen"
+    style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#ffffff; z-index:9999;">
+    <!-- Your Logo or Spinner here -->
+    <div class="spinner"></div>
+
+    <!-- Dynamic Loading Text -->
+    <p id="loading-msg" style="margin-top: 20px; font-family: sans-serif; color: #555;">
+      Waking up the server...
+    </p>
+  </div>
+
+  <script>
+    const messages = [
+      "Waking up the server...",
+      "Render is starting your instance...",
+      "AI bots are getting ready...",
+      "Loading game intelligence...",
+      "Calibrating bidding strategies...",
+      "Optimizing decision engine...",
+      "Warming up the strategy engine...",
+      "Finalizing the game table...",
+      "Almost there, just a moment..."
+    ];
+    let i = 0;
+    const msgElement = document.getElementById('loading-msg');
+
+    // Rotate text every 4 seconds
+    const interval = setInterval(() => {
+      i = (i + 1) % messages.length;
+      msgElement.innerText = messages[i];
+    }, 4000);
+
+    // Function to hide the loader once your main app is ready
+    window.addEventListener('load', () => {
+      clearInterval(interval);
+      document.getElementById('loading-screen').style.display = 'none';
+    });
+  </script>
+  <!-- End of Loading Screen -->
+
   <noscript>
     You need to enable JavaScript to run this app.
   </noscript>
