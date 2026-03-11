@@ -1647,6 +1647,11 @@ export class GameCore {
 
     const gameObject = this.inMemoryStore.fetchGame(gameId);
 
+    if (!gameObject) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found"));
+      return;
+    }
+
     // Check if bidding phase is still active
     if (gameObject.isBiddingPhase) {
       cb(
