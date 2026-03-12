@@ -51,7 +51,7 @@ class BotSelection extends React.Component<IProps, IState> {
 
     return (
       <Message icon={true} info>
-        <Icon name="users" />
+        <Icon name="users" className="hiddenOnMobile" />
         <Message.Content>
           <Message.Header>Choose your game setup</Message.Header>
 
@@ -165,22 +165,33 @@ class BotSelection extends React.Component<IProps, IState> {
                 size="large"
                 onClick={this.onStartWithBots}
                 loading={this.state.isStartingGame}
-                disabled={
-                  this.state.isStartingGame || this.state.selectedBotCount !== 5
-                }
+                style={{
+                  display:
+                    this.state.isStartingGame ||
+                    this.state.selectedBotCount !== 5
+                      ? "none"
+                      : "inline-block",
+                }}
               >
+                <Icon name="reddit alien" />
                 Start Game with {this.state.selectedBotCount} Bot
                 {this.state.selectedBotCount > 1 ? "s" : ""}
               </Button>
 
               <Button
-                basic
-                color="blue"
+                color="green"
                 size="large"
                 onClick={this.onWaitForPlayers}
-                disabled={this.state.isStartingGame}
-                style={{ marginLeft: "10px" }}
+                style={{
+                  display:
+                    this.state.isStartingGame ||
+                    this.state.selectedBotCount === 5
+                      ? "none"
+                      : "inline-block",
+                  marginLeft: "10px",
+                }}
               >
+                <Icon name="users" />
                 {this.state.selectedBotCount === 0
                   ? "Wait for 5 Human Players"
                   : `Wait for ${6 - 1 - this.state.selectedBotCount} More Human Player${6 - 1 - this.state.selectedBotCount !== 1 ? "s" : ""}`}
