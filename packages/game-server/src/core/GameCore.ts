@@ -984,10 +984,17 @@ export class GameCore {
    * Starts the game.
    * @param gameId The game id.
    */
-  public startGame(gameId: string, players: IPlayer[]) {
+  public startGame(
+    gameId: string,
+    players: IPlayer[],
+    preserveOrder: boolean = false,
+  ) {
     MetricsService.incrementGameStarted();
-    // Reorder players to keep humans together on teams as much as possible
-    const reorderedPlayers = this.optimizeTeamAssignment(players);
+    // Reorder players to keep humans together on teams as much as possible.
+    // Skip when restarting an existing game — positions are already fixed.
+    const reorderedPlayers = preserveOrder
+      ? players
+      : this.optimizeTeamAssignment(players);
 
     const gameObject = this.createGameObject(
       reorderedPlayers,
@@ -1110,8 +1117,8 @@ export class GameCore {
         // Ensure we have the most current socket ID for each player
       }));
 
-    // Start the game with updated starter index
-    this.startGame(gameId, playersForRestart);
+    // Start the game with updated starter index — preserve existing player order so teams don't change
+    this.startGame(gameId, playersForRestart, true);
 
     // Restore the preserved team scores after game creation
     const gameObj = this.inMemoryStore.fetchGame(gameId);
@@ -1496,8 +1503,8 @@ export class GameCore {
         verifyDeleted ? "FOUND (ERROR!)" : "undefined (correct)",
       );
 
-      // Start the game with updated starter index
-      this.startGame(gameId, playersForRestart);
+      // Start the game with updated starter index — preserve existing player order so teams don't change
+      this.startGame(gameId, playersForRestart, true);
 
       // Get the game that was just created by startGame
       let gameObj = this.inMemoryStore.fetchGame(gameId);

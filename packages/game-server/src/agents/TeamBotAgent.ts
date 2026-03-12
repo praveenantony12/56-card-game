@@ -217,6 +217,117 @@ export class TeamBotAgent {
     const playedPerSuit = this.getPlayedCardsPerSuit(playedCards);
     const remainingTrumps = this.countRemainingTrumps(trumpSuit, playedCards);
 
+    // POINT STATUS: Track team/opponent points and bid target
+    const pointStatus = this.computePointStatus(gameState, botAgentId);
+    (reasoning as any).pointStatus = pointStatus;
+
+    // Log point status
+    const bidTeamLabel = pointStatus.myTeamIsTarget ? "US" : "OPPONENTS";
+    console.log(
+      "├──────────────────────────────────────────────────────────────────────┤",
+    );
+    console.log(
+      "│ POINT STATUS:                                                        │",
+    );
+    console.log(
+      `│ Our points: ${pointStatus.myTeamPoints} | Opp points: ${pointStatus.opponentPoints} | Bid: ${pointStatus.bidTarget} by ${bidTeamLabel}`.padEnd(
+        70,
+      ) + " │",
+    );
+    console.log(
+      `│ Current round pts: ${pointStatus.currentRoundPoints} | Need: ${pointStatus.myTeamIsTarget ? pointStatus.pointsNeededByUs + " more" : "deny opp " + pointStatus.pointsNeededByOpp}`.padEnd(
+        70,
+      ) + " │",
+    );
+
+    const isLastPlayer = this.isLastPlayerInRound(
+      currentRoundCards.length,
+      gameState,
+    );
+
+    // STRATEGY CLINCH: If we are the last player and can clinch the game this trick,
+    // play the minimum card needed to do so — even if that means playing a Jack.
+    // "Clinching" = our team reaches the bid target on this trick.
+    if (
+      isLastPlayer &&
+      pointStatus.myTeamIsTarget &&
+      pointStatus.pointsNeededByUs > 0
+    ) {
+      const pointsIfWinTrick =
+        pointStatus.myTeamPoints + pointStatus.currentRoundPoints;
+      // Would winning this trick with any card push us to target?
+      const winningMovesClinch = this.getWinningMoves(
+        legalMoves,
+        currentRoundCards,
+        trumpSuit,
+      );
+
+      if (winningMovesClinch.length > 0) {
+        // Sort by card value ascending — use the weakest win possible to clinch
+        const sortedWinners = [...winningMovesClinch].sort(
+          (a, b) => this.getCardValue(a) - this.getCardValue(b),
+        );
+
+        for (const candidate of sortedWinners) {
+          const pointsAfterWin =
+            pointsIfWinTrick + this.getCardPoints(candidate);
+          if (pointsAfterWin >= pointStatus.bidTarget) {
+            reasoning.strategy = "CLINCH_GAME";
+            reasoning.reasoning =
+              `POINT COUNTING: Last player in trick. My team needs ${pointStatus.pointsNeededByUs} more point(s) to reach bid target ${pointStatus.bidTarget}. ` +
+              `Points on table: ${pointStatus.currentRoundPoints}. My team currently has ${pointStatus.myTeamPoints} pts. ` +
+              `Playing [${candidate}] (${this.getCardPoints(candidate)} pts) will give team ${pointsAfterWin} total — ` +
+              `CLINCHING THE GAME! No need to hold strong cards; the goal is won this trick.`;
+            reasoning.selectedCard = candidate;
+            this.logReasoning(reasoning);
+            return candidate;
+          }
+        }
+      }
+    }
+
+    // STRATEGY DENY: If we are the last player and opponents are 1 trick away from winning,
+    // play the minimum card that beats the current winning card to deny them the trick.
+    if (
+      isLastPlayer &&
+      !pointStatus.myTeamIsTarget &&
+      pointStatus.pointsNeededByOpp > 0
+    ) {
+      const opponentCurrentWinner =
+        winningCard !== null &&
+        winningPlayerId !== null &&
+        !this.isSameTeam(winningPlayerId, botAgentId, gameState);
+
+      if (opponentCurrentWinner) {
+        const pointsOppWouldGet =
+          pointStatus.opponentPoints + pointStatus.currentRoundPoints;
+        const opponentWouldWin = pointsOppWouldGet >= pointStatus.bidTarget;
+
+        if (opponentWouldWin) {
+          const winningMovesForDeny = this.getWinningMoves(
+            legalMoves,
+            currentRoundCards,
+            trumpSuit,
+          );
+
+          if (winningMovesForDeny.length > 0) {
+            // Use the lowest-value card that beats the current winner
+            const lowestWinner = this.lowestCard(winningMovesForDeny);
+            reasoning.strategy = "DENY_OPPONENT_WIN";
+            reasoning.reasoning =
+              `POINT COUNTING: Last player in trick. Opponents need ${pointStatus.pointsNeededByOpp} more point(s) to reach bid target ${pointStatus.bidTarget}. ` +
+              `Points on table: ${pointStatus.currentRoundPoints}. Opponents currently have ${pointStatus.opponentPoints} pts. ` +
+              `If opponents win this trick they reach ${pointsOppWouldGet} — winning the game! ` +
+              `Playing [${lowestWinner}] to DENY opponents this trick even at the cost of a high card. ` +
+              `Blocking this trick is more important than conserving cards for future rounds.`;
+            reasoning.selectedCard = lowestWinner;
+            this.logReasoning(reasoning);
+            return lowestWinner;
+          }
+        }
+      }
+    }
+
     // STRATEGY 0: VOID SUIT EXPLOITATION - If bot has all remaining cards of a suit, play it!
     // This is a guaranteed winner strategy especially in No-Trump games
     const isNoesGame = !trumpSuit || gameState.trumpSuit === "N";
@@ -301,6 +412,63 @@ export class TeamBotAgent {
     if (teammateWinning) {
       let selectedCard: string;
       let cardPoints: number;
+
+      // COVER TEAMMATE'S LOW TRUMP WITH JACK
+      // When a teammate leads with a low trump (not J/9), play our J of trump to
+      // guarantee the team wins the trick — an opponent playing after us could still
+      // have a 9/J and steal it if we just dump points.
+      // Key insight from bidding: if both Jacks were signalled as within the team,
+      // opponents can't have a Jack to beat ours, making this 100% safe.
+      if (trumpSuit && gameState.trumpSuit !== "N") {
+        const leadSuitOfRound = this.getLeadSuit(currentRoundCards);
+
+        if (leadSuitOfRound === trumpSuit) {
+          // Find which card the teammate played in this trick
+          const teammateCardDrop = currentRoundCards.find((cardDrop) => {
+            const playerId = this.extractPlayerFromCardDrop(cardDrop);
+            return (
+              playerId !== botAgentId &&
+              this.isSameTeam(playerId, botAgentId, gameState)
+            );
+          });
+
+          if (teammateCardDrop) {
+            const teammateCardStr = teammateCardDrop.split("-")[0];
+            const teammateRank = teammateCardStr.slice(2);
+
+            // Teammate played a low trump (not J, not 9) — they want us to cover with J
+            if (teammateRank !== "J" && teammateRank !== "9") {
+              const trumpJacks = legalMoves.filter(
+                (c) => this.getCardSuit(c) === trumpSuit && c.slice(2) === "J",
+              );
+
+              if (trumpJacks.length > 0) {
+                // Prefer the lower-deck Jack first (1xx) to save the second Jack
+                const jackToPlay =
+                  trumpJacks.find((c) => c.startsWith("1")) || trumpJacks[0];
+
+                // Count total team trump Jacks (from bidding + hand)
+                const teamJacksFromBidding = Object.values(
+                  jackKnowledge.teammateJacks,
+                ).some((suits: any) => suits.includes(trumpSuit));
+                const botHasJack = true; // we already found one above
+                const teamHasBothJacks = teamJacksFromBidding || botHasJack;
+
+                reasoning.strategy = "COVER_LOW_TRUMP_WITH_JACK";
+                reasoning.reasoning =
+                  `Teammate (${winningPlayerId}) led with LOW trump [${teammateCardStr}] (rank ${teammateRank}). ` +
+                  `This is the standard signal: "I don't have J, please cover with yours." ` +
+                  `Covering with J [${jackToPlay}] to GUARANTEE team wins this trick. ` +
+                  `${teamHasBothJacks ? "Bidding confirms both trump Jacks are with the team — opponents cannot beat our J." : "Playing J to secure the trick before remaining players act."} ` +
+                  `This also exhausts any opponent trump cards from their hand.`;
+                reasoning.selectedCard = jackToPlay;
+                this.logReasoning(reasoning);
+                return jackToPlay;
+              }
+            }
+          }
+        }
+      }
 
       // TRUMP CONSERVATION: Don't waste trump cards if teammate winning with trump
       if (trumpSuit && gameState.trumpSuit !== "N") {
@@ -393,27 +561,39 @@ export class TeamBotAgent {
       const isNoesGame = !trumpSuit || gameState.trumpSuit === "N";
 
       if (isNoesGame) {
-        // Filter out Jacks from legal moves
+        // Filter out Jacks AND last-connection cards from discard candidates
         const nonJackMoves = legalMoves.filter((card) => {
           const rank = card.slice(2);
           return rank !== "J";
         });
 
-        if (nonJackMoves.length > 0) {
-          // Throw highest-point non-Jack card
-          selectedCard = this.highestPointCard(nonJackMoves);
+        // Further filter: protect the last card in a suit where a teammate has Jacks
+        // (that card is the "connection" needed to pass control later)
+        const safeDiscards = nonJackMoves.filter(
+          (card) =>
+            !this.isLastConnectionCard(card, myCards, gameState, botAgentId),
+        );
+        const movesToDiscard =
+          safeDiscards.length > 0 ? safeDiscards : nonJackMoves;
+
+        if (movesToDiscard.length > 0) {
+          // Throw highest-point non-Jack, non-last-connection card
+          selectedCard = this.highestPointCard(movesToDiscard);
           cardPoints = this.getCardPoints(selectedCard);
+          const protectedCards = legalMoves.filter(
+            (c) =>
+              c.slice(2) === "J" ||
+              this.isLastConnectionCard(c, myCards, gameState, botAgentId),
+          );
           reasoning.strategy = "TEAMMATE_WINNING";
           reasoning.reasoning =
             `Teammate (${winningPlayerId}) is currently winning with ${
               winningCard?.split("-")[0]
             }. ` +
-            `NOES GAME: Preserving all Jacks for future rounds (Jacks guarantee wins in No-Trump(Noes) game. ` +
-            `SUPPORTING teammate by throwing highest-point NON-JACK card [${selectedCard}] (${cardPoints} points). ` +
-            `Available non - Jack cards: [${nonJackMoves.join(", ")}]. ` +
-            `Jacks preserved: [${legalMoves
-              .filter((c) => c.slice(2) === "J")
-              .join(", ")}].`;
+            `NOES GAME: Preserving Jacks (winning moves) and last connection cards (needed to pass control). ` +
+            `SUPPORTING teammate by throwing highest-point safe card [${selectedCard}] (${cardPoints} points). ` +
+            `Available discard candidates: [${movesToDiscard.join(", ")}]. ` +
+            `Protected cards: [${protectedCards.join(", ")}].`;
         } else {
           // Only have Jacks left - must throw one, but note this in reasoning
           selectedCard = this.highestPointCard(legalMoves);
@@ -423,20 +603,128 @@ export class TeamBotAgent {
             `Teammate (${winningPlayerId}) is currently winning with ${
               winningCard?.split("-")[0]
             }. ` +
-            `NOES GAME: Would prefer to preserve Jacks, but only Jacks remain in legal moves. ` +
-            `Forced to throw Jack [${selectedCard}] (${cardPoints} points). ` +
-            `This Jack won't be available for future rounds - strategic cost accepted.`;
+            `NOES GAME: Would prefer to preserve Jacks/connection cards, but only they remain. ` +
+            `Forced to throw [${selectedCard}] (${cardPoints} points). ` +
+            `This card won't be available for future rounds — strategic cost accepted.`;
         }
       } else {
-        // Trump game - teammate NOT winning with trump, throw highest-point card
-        selectedCard = this.highestPointCard(legalMoves);
-        cardPoints = this.getCardPoints(selectedCard);
-        reasoning.strategy = "TEAMMATE_WINNING";
-        reasoning.reasoning =
-          `Teammate (${winningPlayerId}) is currently winning (not with trump). ` +
-          `TRUMP GAME (${trumpSuit}): SUPPORTING teammate by throwing highest-point card [${selectedCard}] (${cardPoints} points) ` +
-          `to maximize team's score for this round. This is standard strategy - ` +
-          `drop valuable cards when teammate has secured the win`;
+        // Trump game — teammate winning with a NON-trump card (e.g. Jack of spades).
+        // CRITICAL: NEVER trump your own teammate's winning card.
+        // If legalMoves includes trump cards (because we couldn't follow suit),
+        // discard a non-trump card instead — preserve trumps for rounds we need them.
+        const nonTrumpMoves = legalMoves.filter(
+          (card) => !trumpSuit || this.getCardSuit(card) !== trumpSuit,
+        );
+
+        if (nonTrumpMoves.length > 0) {
+          // JACK PROTECTION RULE:
+          // A Jack in a non-trump suit is a potential round-winner IF:
+          //   - We bid it (clickOrder=bidFirst signals "I have a Jack in this suit"), OR
+          //   - A teammate bid it (they are counting on it in the 56 plan).
+          // Such Jacks must NOT be discarded — they are needed to win future rounds.
+          //
+          // A Jack is SAFE to discard (maximise points dump) if:
+          //   - Neither we nor any teammate ever signalled a Jack in that suit via bidding.
+          //   - It is an "unaccounted" Jack that isn't part of the team's winning plan.
+
+          // Build set of "protected" Jack suits (bot's own + teammate-revealed Jacks)
+          const protectedJackSuits = new Set<string>();
+
+          // Jacks the bot itself revealed via bidding (bidFirst = has Jack)
+          const botPreviousBids = this.getBotPreviousBids(
+            botAgentId,
+            gameState,
+          );
+          botPreviousBids.forEach((bid) => {
+            if (
+              bid.suit &&
+              bid.suit !== "N" &&
+              (bid as any).clickOrder === "bidFirst"
+            ) {
+              protectedJackSuits.add(bid.suit);
+            }
+          });
+
+          // Jacks teammates revealed via bidding
+          Object.values(jackKnowledge.teammateJacks).forEach((suits: any) => {
+            (suits as string[]).forEach((s: string) =>
+              protectedJackSuits.add(s),
+            );
+          });
+
+          // Separate discard candidates: prefer non-Jack cards, then unaccounted Jacks
+          const nonJackNonTrump = nonTrumpMoves.filter(
+            (c) => c.slice(2) !== "J",
+          );
+          const unaccountedJackMoves = nonTrumpMoves.filter(
+            (c) =>
+              c.slice(2) === "J" &&
+              !protectedJackSuits.has(this.getCardSuit(c)),
+          );
+          const protectedJackMoves = nonTrumpMoves.filter(
+            (c) =>
+              c.slice(2) === "J" && protectedJackSuits.has(this.getCardSuit(c)),
+          );
+
+          let discardPool: string[];
+          let jackProtectionNote: string;
+
+          if (nonJackNonTrump.length > 0) {
+            // Best case: discard high-point non-Jack, non-trump card
+            discardPool = nonJackNonTrump;
+            jackProtectionNote =
+              `${protectedJackMoves.length} protected Jack(s) [${protectedJackMoves.join(", ")}] preserved ` +
+              `(bid-signalled by self or teammate). ` +
+              (unaccountedJackMoves.length > 0
+                ? `Unaccounted Jack(s) [${unaccountedJackMoves.join(", ")}] also preserved as backup.`
+                : "");
+          } else if (unaccountedJackMoves.length > 0) {
+            // No plain non-trump cards — discard unaccounted Jacks for max points
+            discardPool = unaccountedJackMoves;
+            jackProtectionNote =
+              `No plain non-trump cards to discard. ` +
+              `Discarding unaccounted Jack(s) [${unaccountedJackMoves.join(", ")}] — ` +
+              `not part of team's bid-revealed winning plan, so safe to use as point dump. ` +
+              (protectedJackMoves.length > 0
+                ? `Protected (plan-critical) Jack(s) [${protectedJackMoves.join(", ")}] still preserved.`
+                : "");
+          } else {
+            // Only protected Jacks or trump left in non-trump pool — use lowest-value protected Jack
+            discardPool =
+              protectedJackMoves.length > 0
+                ? protectedJackMoves
+                : nonTrumpMoves;
+            jackProtectionNote =
+              `Only bid-signalled Jacks remain as non-trump options — forced to discard one. ` +
+              `Choosing lowest-value Jack to minimise strategic loss.`;
+          }
+
+          selectedCard =
+            discardPool === protectedJackMoves
+              ? this.lowestCard(discardPool) // lose least when forced
+              : this.highestPointCard(discardPool);
+          cardPoints = this.getCardPoints(selectedCard);
+          const trumpCardsInHand = legalMoves.filter(
+            (c) => trumpSuit && this.getCardSuit(c) === trumpSuit,
+          );
+          reasoning.strategy = "TEAMMATE_WINNING_NO_TRUMP_DISCARD";
+          reasoning.reasoning =
+            `Teammate (${winningPlayerId}) is currently winning with NON-trump card ${winningCard?.split("-")[0]}. ` +
+            `TRUMP GAME (${trumpSuit}): NEVER trump your own teammate's winning trick! ` +
+            `Jack protection: [${Array.from(protectedJackSuits).join(", ") || "none"}] (bid-signalled suits). ` +
+            `${jackProtectionNote} ` +
+            `Discarding [${selectedCard}] (${cardPoints} pts). ` +
+            `Preserving ${trumpCardsInHand.length} trump card(s) [${trumpCardsInHand.join(", ")}] for rounds we need to win.`;
+        } else {
+          // Only trump cards available — throw lowest to waste as few as possible
+          selectedCard = this.lowestCard(legalMoves);
+          cardPoints = this.getCardPoints(selectedCard);
+          reasoning.strategy = "TEAMMATE_WINNING_FORCED_TRUMP_DISCARD";
+          reasoning.reasoning =
+            `Teammate (${winningPlayerId}) is currently winning with NON-trump card ${winningCard?.split("-")[0]}. ` +
+            `TRUMP GAME (${trumpSuit}): Would prefer not to play trump, but only trump cards remain. ` +
+            `Throwing LOWEST trump [${selectedCard}] (${cardPoints} points) to waste as little trump strength as possible.`;
+        }
       }
 
       reasoning.selectedCard = selectedCard;
@@ -453,6 +741,67 @@ export class TeamBotAgent {
 
     if (winningMoves.length > 0) {
       // We have cards that can currently win the round
+
+      // LEAD WITH SAFE JACK (Trump game, leading the round)
+      // After collecting trump Jacks, it's time to lead with Jacks of other suits
+      // where opponents haven't announced a Jack (so less risk of being trumped or
+      // beaten by an opponent's Jack of the same suit).
+      // This is the classic "cash your safe Jacks" strategy.
+      if (
+        trumpSuit &&
+        gameState.trumpSuit !== "N" &&
+        currentRoundCards.length === 0
+      ) {
+        const myJacks = legalMoves.filter((c) => c.slice(2) === "J");
+        const nonTrumpJacks = myJacks.filter(
+          (c) => this.getCardSuit(c) !== trumpSuit,
+        );
+
+        if (nonTrumpJacks.length > 0) {
+          // Find a Jack in a suit where NO opponent has a Jack (safe suit)
+          // and where the OTHER Jack of that suit has already been played
+          // (making our Jack the highest remaining)
+          const safeJacks = nonTrumpJacks.filter((c) =>
+            this.isHighestCard(c, playedCards, trumpSuit),
+          );
+
+          // Also find Jacks in suits not claimed by opponents in bidding
+          const opponentJackSuits = new Set<string>();
+          Object.values(jackKnowledge.opponentJacks).forEach((suits: any) => {
+            (suits as string[]).forEach((s: string) =>
+              opponentJackSuits.add(s),
+            );
+          });
+          const safeJacksNoBidOpponent = nonTrumpJacks.filter(
+            (c) => !opponentJackSuits.has(this.getCardSuit(c)),
+          );
+
+          const jacksToConsider =
+            safeJacks.length > 0
+              ? safeJacks
+              : safeJacksNoBidOpponent.length > 0
+                ? safeJacksNoBidOpponent
+                : null;
+
+          if (jacksToConsider && jacksToConsider.length > 0) {
+            const selectedCard = jacksToConsider[0];
+            const selectedSuit = this.getCardSuit(selectedCard);
+            const isBossCard = safeJacks.includes(selectedCard);
+
+            reasoning.strategy = "LEAD_SAFE_JACK";
+            reasoning.reasoning =
+              `TRUMP GAME: Leading with safe non-trump Jack [${selectedCard}] in suit ${selectedSuit}. ` +
+              (isBossCard
+                ? `This Jack is the HIGHEST remaining card in ${selectedSuit} (other Jack already played) — guaranteed win. `
+                : `Opponents have NOT bid Jacks in ${selectedSuit} — lower risk of being beaten or trumped. `) +
+              `Strategy: after exhausting trump Jacks, cash safe side-suit Jacks to collect points. ` +
+              `Opponent Jack suits from bidding: [${Array.from(opponentJackSuits).join(", ") || "none revealed"}].`;
+            reasoning.selectedCard = selectedCard;
+            this.logReasoning(reasoning);
+            return selectedCard;
+          }
+        }
+      }
 
       // Filter for "Highest" card - cards that are the highest remaining in their suit/trump
       const highestCardMoves = winningMoves.filter((card) =>
@@ -694,6 +1043,51 @@ export class TeamBotAgent {
 
     // STRATEGY 3: Cannot win or chose not to win - Duck strategy
     // BIDDING-AWARE: Prefer playing safe suits (where teammate has Jack or opponent doesn't)
+
+    // STRATEGY 3-A: CONNECTION PASS (No-Trump games only, leading the round)
+    // If this is a No-Trump game and we are leading (no cards in round yet),
+    // and we have no winning moves, play a "connection card" in a suit where
+    // a teammate has revealed Jacks — passing control so they can win.
+    if (isNoesGame && currentRoundCards.length === 0) {
+      const connectionSuit = this.getBestConnectionSuit(
+        gameState,
+        botAgentId,
+        myCards,
+        playedCards,
+      );
+
+      if (connectionSuit) {
+        const connectionCards = myCards.filter(
+          (c) => this.getCardSuit(c) === connectionSuit,
+        );
+        // Prefer a non-Jack card so we keep Jacks for our own winning rounds
+        const nonJackConnections = connectionCards.filter(
+          (c) => c.slice(2) !== "J",
+        );
+        const candidatePool =
+          nonJackConnections.length > 0 ? nonJackConnections : connectionCards;
+        const selectedCard = this.lowestCard(candidatePool);
+
+        // Double-check we really have no boss cards in our hand before passing
+        const myBossCards = legalMoves.filter((c) =>
+          this.isHighestCard(c, playedCards, undefined),
+        );
+
+        if (myBossCards.length === 0) {
+          reasoning.strategy = "CONNECTION_PASS";
+          reasoning.reasoning =
+            `NO-TRUMP GAME: No boss cards remaining in hand — all my winning rounds are done. ` +
+            `Identified connection suit [${connectionSuit}] where a teammate has Jacks. ` +
+            `Playing [${selectedCard}] as connection card to PASS CONTROL to that teammate. ` +
+            `Teammate can then win the remaining rounds with their Jack(s) in ${connectionSuit}. ` +
+            `This is the key 56 No-Trump chain: win your rounds → play connection → teammate wins theirs.`;
+          reasoning.selectedCard = selectedCard;
+          this.logReasoning(reasoning);
+          return selectedCard;
+        }
+      }
+    }
+
     const safeSuitMoves = legalMoves.filter((card) =>
       safeSuits.includes(this.getCardSuit(card)),
     );
@@ -2176,6 +2570,103 @@ export class TeamBotAgent {
       };
     }
 
+    // ── HARD STOP: if the bid is already at 56 there is nothing left to bid ──
+    // 56 is the highest possible bid. After 56 is bid, the only legal actions
+    // are Double and Re-Double. Any further suit/value bid would be invalid.
+    if (currentHighBid && currentHighBid.bidValue >= 56) {
+      reasoning.strategy = "PASS_BID_ALREADY_56";
+      reasoning.reasoning =
+        `Current high bid is already 56 (${currentHighBid.suit} by ${currentHighBid.playerId}). ` +
+        `56 is the maximum bid — no further bids are valid. ` +
+        `Only Double/Re-Double can follow. Passing.`;
+      reasoning.decision = "PASS (bid already at 56)";
+      this.logBiddingReasoning(reasoning);
+      return { action: "pass" };
+    }
+
+    // ── NEW STRATEGIES ──────────────────────────────────────────────────────────
+
+    // STRATEGY: FINAL 56 NO-TRUMP CALL
+    // When team has claimed all 8 rounds and No-Trump is established, caller wins.
+    const final56 = this.checkFinal56Call(botPlayerId, gameState);
+    if (final56) {
+      const teamRoundsFor56 = this.estimateTeamRoundsFromBids(
+        botPlayerId,
+        gameState,
+      );
+      reasoning.strategy = "FINAL_56_NO_TRUMP";
+      reasoning.reasoning = `I made the original strong bid for the team. Team has collectively claimed ${teamRoundsFor56} rounds through bidding (≥8). No-Trump has been proposed by the team. This is the moment to call 56 No-Trump — the team has revealed enough strength across suits + connection to win all 8 rounds without trump!`;
+      reasoning.decision = "BID 56 No-Trump (FINAL CALL!)";
+      this.logBiddingReasoning(reasoning);
+      return final56;
+    }
+
+    // STRATEGY: CONNECTION BID
+    // After revealing own suit, if I have a card in a teammate's revealed suit,
+    // bid "+1 [that suit]" to signal I can pass control to that teammate.
+    const connectionBid = this.checkConnectionBid(
+      botPlayerId,
+      gameState,
+      handProfile,
+      myCards,
+      currentHighBid,
+    );
+    if (connectionBid) {
+      const teammateBidSuitsForLog = this.getTeammateBidSuits(
+        botPlayerId,
+        gameState,
+      );
+      const connectionSuit = connectionBid.suit!;
+      const myCardsInConnectionSuit = myCards.filter(
+        (c) => this.getCardSuit(c) === connectionSuit,
+      );
+      reasoning.strategy = "CONNECTION_BID";
+      reasoning.reasoning =
+        `Already revealed my main suit(s). Teammate revealed strong hand (Jacks) in ${connectionSuit}. ` +
+        `I have ${myCardsInConnectionSuit.length} card(s) in ${connectionSuit} — this is my CONNECTION CARD. ` +
+        `Bidding +1 ${connectionSuit} signals: "Once I finish winning my rounds I can play ${connectionSuit} to pass control to teammate who will win remaining rounds." ` +
+        `This is critical for 56 No-Trump: without a connection, we cannot chain the 8-round win.`;
+      reasoning.decision = `BID +1 ${connectionSuit} (CONNECTION)`;
+      this.logBiddingReasoning(reasoning);
+      return connectionBid;
+    }
+
+    // STRATEGY: NO-TRUMP PROPOSAL
+    // When team has revealed ≥7 rounds (or teammate already proposed No-Trump),
+    // push towards No-Trump game mode instead of a trump suit.
+    const noTrumpProposal = this.checkNoTrumpProposal(
+      botPlayerId,
+      gameState,
+      handProfile,
+      currentHighBid,
+    );
+    if (noTrumpProposal) {
+      const teamRoundsForNT = this.estimateTeamRoundsFromBids(
+        botPlayerId,
+        gameState,
+      );
+      const teammateBidSuitsForNT = this.getTeammateBidSuits(
+        botPlayerId,
+        gameState,
+      );
+      const allTeammateSuits = ([] as { suit: string; hasJack: boolean }[])
+        .concat(...Object.values(teammateBidSuitsForNT))
+        .map((s) => s.suit)
+        .join(", ");
+      reasoning.strategy = "NO_TRUMP_PROPOSAL";
+      reasoning.reasoning =
+        `Team has collectively claimed ${teamRoundsForNT} rounds through bidding. ` +
+        `Teammate suits revealed: [${allTeammateSuits || "none yet"}]. ` +
+        `Proposing No-Trump game: in a No-Trump game the team can win 56 points by chaining Jacks across suits + connection cards. ` +
+        `Bidding No-Trump gives the main bidder the opportunity to reveal connection OR call 56 No-Trump. ` +
+        `Playing No-Trump avoids giving opponents trump-advantage; the team wins with pure card strength.`;
+      reasoning.decision = `BID ${noTrumpProposal.bidValue} No-Trump (PROPOSE)`;
+      this.logBiddingReasoning(reasoning);
+      return noTrumpProposal;
+    }
+
+    // ── END NEW STRATEGIES ───────────────────────────────────────────────────────
+
     // LAST PLAYER RESCUE: If first teammate made strong bid and second passed,
     // last player should bid to keep auction alive for progressive revelation
     const strongBidInfo = this.didFirstTeammateMakeStrongBid(
@@ -3072,6 +3563,133 @@ export class TeamBotAgent {
     const botPlayerId = reasoning.botId;
     const teammateOpened = this.didTeammateStartAuction(botPlayerId, gameState);
 
+    // ── SPECIAL CASE: Partner bid NOES (suit="N", noTrumpType="Noes") ────────
+    // A "Noes" bid means: "I don't have the current suit; I can trump if opponents
+    // play it."  This is NOT a No-Trump game proposal — it is a conventional signal.
+    // The correct response for a bot that holds the previously-established team suit
+    // is to BID BACK to that suit (e.g. 31 Diamond), so that:
+    //   1. The game stays in the strong trump suit instead of defaulting to No-Trump.
+    //   2. Other teammates / player get another opportunity to change or confirm the suit.
+    if (partnerBid.suit === "N" && partnerBid.noTrumpType === "Noes") {
+      // Find the team's established strong suit (last real suit bid by ANY teammate)
+      const bidHistory = gameState.bidHistory || [];
+      const teamId = this.getTeamId(botPlayerId, gameState);
+      let teamEstablishedSuit: string | null = null;
+
+      // Walk history backwards to find the most recent real suit bid from the team
+      for (let i = bidHistory.length - 1; i >= 0; i--) {
+        const entry = bidHistory[i];
+        if (
+          entry.action === "bid" &&
+          entry.suit &&
+          entry.suit !== "N" &&
+          this.getTeamId(entry.playerId, gameState) === teamId
+        ) {
+          teamEstablishedSuit = entry.suit;
+          break;
+        }
+      }
+
+      if (teamEstablishedSuit && currentHighBid) {
+        const suitProfile = handProfile.suitProfiles[teamEstablishedSuit];
+        const myCardsInSuit = suitProfile ? suitProfile.length : 0;
+
+        // Only bid back if we have cards in the team's suit
+        if (myCardsInSuit >= 1) {
+          const bidValue = Math.min(56, currentHighBid.bidValue + 1);
+          const hasJack = suitProfile ? suitProfile.jacks >= 1 : false;
+          const signal = this.determineBiddingSignal(
+            myCardsInSuit,
+            hasJack,
+            true, // isSupporting
+          );
+
+          reasoning.strategy = "NOES_RECLAIM_TEAM_SUIT";
+          reasoning.reasoning =
+            `Teammate bid Noes (suit=N, noTrumpType=Noes), signalling they do NOT have ` +
+            `${teamEstablishedSuit} and can trump it if opponents play it. ` +
+            `This is a conventional signal — NOT a proposal to play No-Trump. ` +
+            `Bidding back to ${teamEstablishedSuit} (${bidValue}) to: ` +
+            `(1) keep the game in the team's established strong trump suit, ` +
+            `(2) give other teammates and the main player another round to change or confirm the suit, ` +
+            `(3) prevent the auction from defaulting to a No-Trump game the team didn't intend. ` +
+            `I have ${myCardsInSuit} card(s) in ${teamEstablishedSuit}${hasJack ? " including a Jack" : ""}.`;
+          reasoning.decision = `BID ${bidValue} ${teamEstablishedSuit} (reclaim team suit after Noes)`;
+          this.logBiddingReasoning(reasoning);
+          return {
+            action: "bid",
+            bidValue,
+            suit: teamEstablishedSuit,
+            bidSelectionType: signal.bidSelectionType,
+            clickOrder: signal.clickOrder,
+            bidModifier: signal.bidModifier,
+            noTrumpType: null,
+          };
+        }
+      }
+      // If we have no cards in the team suit, fall through to normal logic
+    }
+    // ── END Noes response handling ────────────────────────────────────────────
+
+    // ── SPECIAL CASE: Partner's latest bid is a No-Trump PROPOSAL ────────────
+    // When a teammate bids No-Trump (suit="N", noTrumpType="No-Trump") they are
+    // proposing to play the game without trump.  We should:
+    //   A) Confirm with our own No-Trump bid if the team already has enough rounds, or
+    //   B) Pass to give the main bidder room to reveal their connection card / call 56.
+    // We must NOT change back to a regular suit here (old NOES_RESPONSE logic).
+    if (partnerBid.suit === "N" && partnerBid.noTrumpType === "No-Trump") {
+      const teamRounds = this.estimateTeamRoundsFromBids(
+        botPlayerId,
+        gameState,
+      );
+
+      // Check if I already proposed No-Trump
+      const bidHistory = gameState.bidHistory || [];
+      const iAlreadyProposed = bidHistory.some(
+        (bid) =>
+          bid.action === "bid" &&
+          bid.suit === "N" &&
+          bid.noTrumpType === "No-Trump" &&
+          bid.playerId === botPlayerId,
+      );
+
+      if (!iAlreadyProposed && teamRounds >= 6 && currentHighBid) {
+        // Confirm No-Trump to help push the team towards the 56 call
+        const bidValue = Math.min(56, currentHighBid.bidValue + 1);
+        reasoning.strategy = "CONFIRM_NO_TRUMP_PROPOSAL";
+        reasoning.reasoning =
+          `Teammate proposed No-Trump (suit=N, noTrumpType=No-Trump). ` +
+          `Team has claimed ${teamRounds} rounds so far. ` +
+          `Confirming No-Trump to reinforce the game-mode preference and ` +
+          `give the main bidder a chance to reveal connection or call 56 No-Trump. ` +
+          `In No-Trump the team wins by chaining Jack-rounds across suits with connection cards.`;
+        reasoning.decision = `BID ${bidValue} No-Trump (CONFIRM)`;
+        this.logBiddingReasoning(reasoning);
+        return {
+          action: "bid",
+          bidValue,
+          suit: "N",
+          bidSelectionType: "direct",
+          clickOrder: null,
+          noTrumpType: "No-Trump",
+          bidModifier: 0,
+        };
+      }
+
+      // Not enough rounds or already confirmed — pass to let main bidder move
+      reasoning.strategy = "NO_TRUMP_PASS_TO_MAIN_BIDDER";
+      reasoning.reasoning =
+        `Teammate proposed No-Trump. ` +
+        (iAlreadyProposed
+          ? `I already confirmed No-Trump. `
+          : `Team has ${teamRounds} rounds claimed (need ≥6 to confirm). `) +
+        `Passing to give the main bidder room to reveal connection card or call 56 No-Trump.`;
+      reasoning.decision = "PASS (let main bidder call 56)";
+      this.logBiddingReasoning(reasoning);
+      return { action: "pass" };
+    }
+    // ── END No-Trump proposal handling ──────────────────────────────────────────
+
     // SPECIAL CASE: Teammate opened the auction
     // Standard practice: reveal hand if 3+ cards of same suit with at least one Jack (support convention)
     if (teammateOpened) {
@@ -3727,5 +4345,413 @@ export class TeamBotAgent {
       bidModifier: signal.bidModifier,
       noTrumpType: noTrumpType,
     };
+  }
+
+  // =============================================================================
+  // NO-TRUMP STRATEGY HELPERS
+  // =============================================================================
+
+  /**
+   * Estimate total winning rounds the team has claimed via bidding.
+   * Rule: each bid increment (+N above previous bid) from a team member = N rounds claimed.
+   * No-Trump bids (suit="N") update the running bid value but don't claim new rounds.
+   */
+  private estimateTeamRoundsFromBids(
+    botPlayerId: string,
+    gameState: ICardGame,
+  ): number {
+    const bidHistory = gameState.bidHistory || [];
+    const teamId = this.getTeamId(botPlayerId, gameState);
+    let totalRounds = 0;
+    let previousBidValue = 28;
+
+    for (const bid of bidHistory) {
+      if (bid.action !== "bid" || !bid.bidValue) continue;
+
+      if (bid.suit === "N") {
+        // No-Trump bids don't claim new rounds but move the running value
+        previousBidValue = bid.bidValue;
+        continue;
+      }
+
+      const bidderTeam = this.getTeamId(bid.playerId, gameState);
+      if (bidderTeam === teamId) {
+        const increment = bid.bidValue - previousBidValue;
+        if (increment > 0) {
+          totalRounds += increment;
+        }
+      }
+      previousBidValue = bid.bidValue;
+    }
+
+    return totalRounds;
+  }
+
+  /**
+   * Return a map of teammate → suits they have explicitly revealed via bidding
+   * (including whether they indicated a Jack via bidFirst clickOrder).
+   */
+  private getTeammateBidSuits(
+    botPlayerId: string,
+    gameState: ICardGame,
+  ): { [playerId: string]: { suit: string; hasJack: boolean }[] } {
+    const bidHistory = gameState.bidHistory || [];
+    const teamId = this.getTeamId(botPlayerId, gameState);
+    const result: { [playerId: string]: { suit: string; hasJack: boolean }[] } =
+      {};
+
+    for (const bid of bidHistory) {
+      if (bid.action !== "bid" || !bid.suit || bid.suit === "N") continue;
+      const bidderTeam = this.getTeamId(bid.playerId, gameState);
+      if (bidderTeam !== teamId || bid.playerId === botPlayerId) continue;
+
+      if (!result[bid.playerId]) result[bid.playerId] = [];
+
+      const existing = result[bid.playerId].find((s) => s.suit === bid.suit);
+      if (!existing) {
+        result[bid.playerId].push({
+          suit: bid.suit,
+          hasJack: bid.clickOrder === "bidFirst",
+        });
+      } else if (bid.clickOrder === "bidFirst") {
+        // Upgrade to hasJack=true if later bid reveals it
+        existing.hasJack = true;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Check whether the bot should reveal a "connection" card —
+   * i.e., it has at least one card in a suit where a teammate announced Jacks,
+   * signalling that the bot can pass control to that teammate.
+   *
+   * Returns the BotBidDecision to make, or null if no connection to reveal.
+   */
+  private checkConnectionBid(
+    botPlayerId: string,
+    gameState: ICardGame,
+    handProfile: any,
+    myCards: string[],
+    currentHighBid: any,
+  ): BotBidDecision | null {
+    // Only applicable after bot has already revealed its own main suit
+    const botPreviousBids = this.getBotPreviousBids(botPlayerId, gameState);
+    if (botPreviousBids.length === 0) return null;
+
+    const botBidSuits = new Set(
+      botPreviousBids.map((b) => b.suit).filter((s) => s && s !== "N"),
+    );
+
+    const teammateBidSuits = this.getTeammateBidSuits(botPlayerId, gameState);
+
+    for (const suits of Object.values(teammateBidSuits)) {
+      for (const { suit, hasJack } of suits) {
+        if (!hasJack) continue; // Only connect to teammate's Jack suits
+        if (botBidSuits.has(suit)) continue; // Already bid this suit
+
+        const myCardsInSuit = myCards.filter(
+          (c) => this.getCardSuit(c) === suit,
+        );
+        if (myCardsInSuit.length === 0) continue;
+
+        // We have a connection card!
+        if (!currentHighBid) return null;
+        const bidValue = Math.min(56, currentHighBid.bidValue + 1);
+
+        return {
+          action: "bid",
+          bidValue,
+          suit,
+          bidSelectionType: "modifier",
+          clickOrder: "suitFirst", // No Jack — just signalling connection
+          bidModifier: 1,
+          noTrumpType: null,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check whether the bot should propose "No-Trump" game mode.
+   * Conditions:
+   *  - Team has ≥7 bid-round claims (need one more for full 8 via connection or confirmation)
+   *  - OR a teammate has already proposed No-Trump (bot should confirm)
+   *  - Bot has no unrevealed strong suit left to show
+   *  - Bot hasn't already proposed No-Trump
+   */
+  private checkNoTrumpProposal(
+    botPlayerId: string,
+    gameState: ICardGame,
+    handProfile: any,
+    currentHighBid: any,
+  ): BotBidDecision | null {
+    if (!currentHighBid) return null;
+
+    const bidHistory = gameState.bidHistory || [];
+    const teamId = this.getTeamId(botPlayerId, gameState);
+
+    // Has the bot already proposed No-Trump?
+    const iAlreadyProposed = bidHistory.some(
+      (bid) =>
+        bid.action === "bid" &&
+        bid.suit === "N" &&
+        bid.noTrumpType === "No-Trump" &&
+        bid.playerId === botPlayerId,
+    );
+    if (iAlreadyProposed) return null;
+
+    const teamRounds = this.estimateTeamRoundsFromBids(botPlayerId, gameState);
+
+    // Did a teammate already propose No-Trump?
+    const teammateProposedNoTrump = bidHistory.some(
+      (bid) =>
+        bid.action === "bid" &&
+        bid.suit === "N" &&
+        bid.noTrumpType === "No-Trump" &&
+        this.getTeamId(bid.playerId, gameState) === teamId &&
+        bid.playerId !== botPlayerId,
+    );
+
+    const shouldPropose = teamRounds >= 7 || teammateProposedNoTrump;
+    if (!shouldPropose) return null;
+
+    // Don't propose if we still have an unrevealed strong suit to show
+    const hasUnrevealed = this.hasUnrevealedStrongSuit(
+      botPlayerId,
+      gameState,
+      handProfile,
+    );
+    if (hasUnrevealed.hasStrong && !teammateProposedNoTrump) return null;
+
+    // Also make sure there's a connection bid opportunity or the connection is already shown
+    // i.e., the team will have its 8th round covered
+    const bidValue = Math.min(56, currentHighBid.bidValue + 1);
+
+    return {
+      action: "bid",
+      bidValue,
+      suit: "N",
+      bidSelectionType: "direct",
+      clickOrder: null,
+      noTrumpType: "No-Trump",
+      bidModifier: 0,
+    };
+  }
+
+  /**
+   * Check whether the bot — as the original strong bidder — should make the
+   * final "56 No-Trump" call.
+   * Conditions:
+   *  - Bot was the FIRST team member to make a real (non-28-Noes) bid
+   *  - Team has ≥8 bid-round claims
+   *  - No-Trump has been proposed at least once by the team
+   *  - Current high bid is NOT already 56
+   */
+  private checkFinal56Call(
+    botPlayerId: string,
+    gameState: ICardGame,
+  ): BotBidDecision | null {
+    const bidHistory = gameState.bidHistory || [];
+    const teamId = this.getTeamId(botPlayerId, gameState);
+
+    // Find the first real bid by our team (excluding 28-Noes auto-pass)
+    const firstRealTeamBid = bidHistory.find(
+      (bid) =>
+        bid.action === "bid" &&
+        this.getTeamId(bid.playerId, gameState) === teamId &&
+        !(bid.bidValue === 28 && bid.suit === "N"),
+    );
+
+    if (!firstRealTeamBid || firstRealTeamBid.playerId !== botPlayerId)
+      return null;
+
+    const teamRounds = this.estimateTeamRoundsFromBids(botPlayerId, gameState);
+    if (teamRounds < 8) return null;
+
+    // No-Trump must have been proposed by the team at least once
+    const noTrumpProposed = bidHistory.some(
+      (bid) =>
+        bid.action === "bid" &&
+        bid.suit === "N" &&
+        bid.noTrumpType === "No-Trump" &&
+        this.getTeamId(bid.playerId, gameState) === teamId,
+    );
+    if (!noTrumpProposed) return null;
+
+    // Already at 56?
+    const currentHighBid = this.getCurrentHighBid(gameState);
+    if (currentHighBid && currentHighBid.bidValue >= 56) return null;
+
+    return {
+      action: "bid",
+      bidValue: 56,
+      suit: "N",
+      bidSelectionType: "direct",
+      clickOrder: null,
+      noTrumpType: "No-Trump",
+      bidModifier: 0,
+    };
+  }
+
+  // =============================================================================
+  // CONNECTION-AWARE CARD PLAY HELPERS
+  // =============================================================================
+
+  /**
+   * Find the best suit to lead as a "connection pass" in a No-Trump game.
+   * A connection suit is one where a teammate announced Jacks (via bidFirst)
+   * and the bot still has a card in that suit to play as the pass card.
+   *
+   * Prefer suits where the teammate has MORE high cards (more winning potential).
+   */
+  private getBestConnectionSuit(
+    gameState: ICardGame,
+    botAgentId: string,
+    myCards: string[],
+    playedCards: Set<string>,
+  ): string | null {
+    const jackKnowledge = this.extractJackKnowledge(gameState, botAgentId);
+    const suits = ["H", "E", "D", "C"];
+    let bestSuit: string | null = null;
+    let bestScore = 0;
+
+    for (const [, jacksArr] of Object.entries(jackKnowledge.teammateJacks)) {
+      for (const suit of jacksArr as string[]) {
+        const myCardsInSuit = myCards.filter(
+          (c) => this.getCardSuit(c) === suit,
+        );
+        if (myCardsInSuit.length === 0) continue;
+
+        // Prefer a non-Jack card as the connection pass (preserve Jacks for winning)
+        const nonJackCount = myCardsInSuit.filter(
+          (c) => c.slice(2) !== "J",
+        ).length;
+        if (nonJackCount === 0 && myCardsInSuit.length === 0) continue;
+
+        // Score = how many high cards remain in that suit for the team
+        const remainingInSuit = this.getRemainingCardsInSuit(suit, playedCards);
+        const score = remainingInSuit.length;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestSuit = suit;
+        }
+      }
+    }
+
+    return bestSuit;
+  }
+
+  /**
+   * In a No-Trump game, check whether the candidate discard is the LAST
+   * connection card (the only card the bot has in a suit where a teammate
+   * has Jacks). If so, it must be protected.
+   */
+  private isLastConnectionCard(
+    card: string,
+    myCards: string[],
+    gameState: ICardGame,
+    botAgentId: string,
+  ): boolean {
+    const suit = this.getCardSuit(card);
+    const jackKnowledge = this.extractJackKnowledge(gameState, botAgentId);
+
+    // Check if a teammate has Jacks in this suit
+    const teammateHasJackInSuit = Object.values(
+      jackKnowledge.teammateJacks,
+    ).some((jacks: any) => jacks.includes(suit));
+
+    if (!teammateHasJackInSuit) return false;
+
+    // Only the last card in this suit matters
+    const myCardsInSuit = myCards.filter((c) => this.getCardSuit(c) === suit);
+    return myCardsInSuit.length === 1;
+  }
+
+  // =============================================================================
+  // POINT STATUS HELPERS
+  // =============================================================================
+
+  /**
+   * Compute the current point totals for both teams and determine targets.
+   *
+   * Returns:
+   *  - myTeamPoints:       points the bot's team has captured so far (won trick piles)
+   *  - opponentPoints:     points the opponent team has captured so far
+   *  - myTeamIsTarget:     true if the bot's team placed the winning bid
+   *  - bidTarget:          points the bidding team must reach to win (finalBid or currentBet)
+   *  - pointsNeededByUs:   points the bot's team still needs to reach target (0 if not target team)
+   *  - pointsNeededByOpp:  points the opponent team still needs to reach target (0 if not target team)
+   *  - currentRoundPoints: total points in the current (in-progress) trick
+   */
+  private computePointStatus(
+    gameState: ICardGame,
+    botAgentId: string,
+  ): {
+    myTeamPoints: number;
+    opponentPoints: number;
+    myTeamIsTarget: boolean;
+    bidTarget: number;
+    pointsNeededByUs: number;
+    pointsNeededByOpp: number;
+    currentRoundPoints: number;
+  } {
+    const teamId = this.getTeamId(botAgentId, gameState);
+    const isTeamA = teamId === 0;
+
+    // Points captured in completed tricks
+    const teamAPoints = this.sumCardPoints(gameState.teamACards || []);
+    const teamBPoints = this.sumCardPoints(gameState.teamBCards || []);
+    const myTeamPoints = isTeamA ? teamAPoints : teamBPoints;
+    const opponentPoints = isTeamA ? teamBPoints : teamAPoints;
+
+    // Points currently on the table in this trick
+    const currentRoundCards =
+      gameState.dropCardPlayer || gameState.dropDetails || [];
+    const currentRoundPoints = currentRoundCards.reduce(
+      (sum: number, drop: string) => {
+        const card = drop.split("-")[0];
+        return sum + this.getCardPoints(card);
+      },
+      0,
+    );
+
+    // Determine bidding team and target
+    const bidTarget = parseInt(
+      gameState.finalBid || gameState.currentBet || "28",
+      10,
+    );
+    const biddingTeam =
+      gameState.biddingTeam || gameState.lastBiddingTeam || null;
+    // biddingTeam is "A" or "B"
+    const biddingTeamId =
+      biddingTeam === "A" ? 0 : biddingTeam === "B" ? 1 : -1;
+    const myTeamIsTarget = biddingTeamId === teamId;
+
+    const pointsNeededByUs = myTeamIsTarget
+      ? Math.max(0, bidTarget - myTeamPoints)
+      : 0;
+    const pointsNeededByOpp = !myTeamIsTarget
+      ? Math.max(0, bidTarget - opponentPoints)
+      : 0;
+
+    return {
+      myTeamPoints,
+      opponentPoints,
+      myTeamIsTarget,
+      bidTarget,
+      pointsNeededByUs,
+      pointsNeededByOpp,
+      currentRoundPoints,
+    };
+  }
+
+  /** Sum point values of a list of cards (from a team's won-trick pile). */
+  private sumCardPoints(cards: string[]): number {
+    return cards.reduce((sum, c) => sum + this.getCardPoints(c), 0);
   }
 }
