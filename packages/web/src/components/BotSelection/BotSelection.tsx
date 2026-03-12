@@ -19,6 +19,7 @@ interface IProps {
 interface IState {
   selectedBotCount: number;
   isStartingGame: boolean;
+  gameSetupComplete: boolean;
 }
 
 @inject("store")
@@ -41,6 +42,7 @@ class BotSelection extends React.Component<IProps, IState> {
     this.state = {
       selectedBotCount: 0, // Default to 0 bots for 6 human game
       isStartingGame: false,
+      gameSetupComplete: false,
     };
   }
 
@@ -55,7 +57,7 @@ class BotSelection extends React.Component<IProps, IState> {
         <Message.Content>
           <Message.Header>Choose your game setup</Message.Header>
 
-          {this.gameInfo.sharedGameId && (
+          {this.gameInfo.sharedGameId && this.state.gameSetupComplete && (
             <Message positive style={{ marginBottom: "20px" }}>
               <Message.Header>Share Game with Friends</Message.Header>
               <p>
@@ -171,6 +173,7 @@ class BotSelection extends React.Component<IProps, IState> {
                     this.state.selectedBotCount !== 5
                       ? "none"
                       : "inline-block",
+                  marginLeft: "5px",
                 }}
               >
                 <Icon name="reddit alien" />
@@ -188,7 +191,7 @@ class BotSelection extends React.Component<IProps, IState> {
                     this.state.selectedBotCount === 5
                       ? "none"
                       : "inline-block",
-                  marginLeft: "10px",
+                  marginLeft: "5px",
                 }}
               >
                 <Icon name="users" />
@@ -337,7 +340,7 @@ class BotSelection extends React.Component<IProps, IState> {
       // For fewer bots, startImmediately will be false by default
       const startImmediately = this.state.selectedBotCount === 5;
       await this.store.addBots(this.state.selectedBotCount, startImmediately);
-      // The game will start automatically on the server side
+      this.setState({ gameSetupComplete: true });
     } catch (error) {
       console.error("Error adding bots:", error);
     } finally {
@@ -352,7 +355,7 @@ class BotSelection extends React.Component<IProps, IState> {
 
     try {
       await this.store.addBots(this.state.selectedBotCount, false); // startImmediately = false
-      // Hide bot selection and show wait message instead
+      this.setState({ gameSetupComplete: true });
       this.store.hideBotSelection();
     } catch (error) {
       console.error("Error adding bots:", error);

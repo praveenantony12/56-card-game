@@ -51,10 +51,9 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
     if (error) setError("");
   };
 
-  // Only return null if a game mode selection action is in progress
-  // Otherwise show the mode selection UI
-  if (selectedMode !== null) {
-    return null; // Parent component will handle the next step
+  // Only return null when creating a game - parent handles the next step
+  if (selectedMode === "create") {
+    return null;
   }
 
   return (
