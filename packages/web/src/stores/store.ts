@@ -3,6 +3,7 @@ import { computed, observable, ObservableMap } from "mobx";
 import { persist } from "mobx-persist";
 
 import GameService from "../services/GameService";
+import { speechService } from "../services/SpeechService";
 import { IStore } from "./IStore";
 import { IGame } from "./models/IGameInfo";
 import { IUser } from "./models/IUserInfo";
@@ -636,6 +637,12 @@ class Store implements IStore {
 
   private subscribeToBotReasoning = (data: any) => {
     this.gameInfo.botReasoning = { ...data, ts: Date.now() };
+
+    // Speak the bot's bid during the bidding phase only.
+    // The SpeechService handles mode gating (SILENT / MINIMAL / etc.).
+    if (this.gameInfo.isBiddingPhase && data.type === "bid") {
+      speechService.speakBid(data.botId, data.decision, data.reasoning);
+    }
   };
 
   private subscribeToNotifications = (

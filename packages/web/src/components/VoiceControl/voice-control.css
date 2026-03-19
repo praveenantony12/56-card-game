@@ -1,0 +1,175 @@
+/* ============================================================
+   VoiceControl — floating bottom-right panel
+   ============================================================ */
+
+/* Root container — fixed so it floats above the game board */
+.voice-control {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none; /* children opt-in */
+}
+
+/* ── Toggle button ──────────────────────────────────────── */
+
+.vc-toggle {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  background: rgba(12, 12, 28, 0.88);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.vc-toggle:hover {
+  background: rgba(25, 25, 55, 0.95);
+  border-color: rgba(91, 142, 240, 0.5);
+  color: #fff;
+}
+
+.vc-toggle-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.vc-toggle-label {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.vc-toggle-arrow {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* ── Expanded panel ─────────────────────────────────────── */
+
+.vc-panel {
+  pointer-events: auto;
+  background: rgba(12, 12, 28, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  min-width: 260px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55);
+  animation: vc-fade-in 0.15s ease;
+}
+
+@keyframes vc-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.vc-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 12px;
+}
+
+/* ── Slider ─────────────────────────────────────────────── */
+
+.vc-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vc-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  /* background is set via inline style to reflect current value */
+}
+
+/* Thumb — WebKit */
+.vc-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #5b8ef0;
+  border: 2px solid #fff;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(91, 142, 240, 0.65);
+  margin-top: -7px; /* vertically centre on the track */
+}
+
+/* Thumb — Firefox */
+.vc-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #5b8ef0;
+  border: 2px solid #fff;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(91, 142, 240, 0.65);
+}
+
+/* Track — WebKit (needed so background shows) */
+.vc-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+}
+
+/* ── Stop labels ─────────────────────────────────────────── */
+
+.vc-stops {
+  display: flex;
+  justify-content: space-between;
+}
+
+.vc-stop {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.38);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s;
+  line-height: 1.2;
+}
+
+.vc-stop:hover {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.vc-stop--active {
+  color: #5b8ef0;
+  font-weight: 700;
+}
+
+/* ── Description row ─────────────────────────────────────── */
+
+.vc-description {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.5;
+  min-height: 30px;
+}
