@@ -2545,6 +2545,20 @@ export class TeamBotAgent {
       handProfile,
     );
 
+    // -- HARD STOP: If the bid is already at 56, there is nothing left to bid.
+    // 56 is the highest possible bid. After 56 is bid, the only legal actions
+    // are Double and Re-Double. Any further suit/value bid would be invalid. We must pass.
+    if (currentHighBid && currentHighBid.bidValue >= 56) {
+      reasoning.strategy = "PASS_BID_ALREADY_56";
+      reasoning.reasoning =
+        `Current high bid is already 56 (${currentHighBid.suit} by ${currentHighBid.playerId}). ` +
+        `56 is the maximum bid — no further bids are valid. ` +
+        `Only Double/Re-Double can follow. Passing.`;
+      reasoning.decision = "PASS (bid already at 56)";
+      this.logBiddingReasoning(reasoning);
+      return { action: "pass" };
+    }
+
     if (
       !hasNewStrongSuit.hasStrong &&
       revealAdditional.shouldReveal &&

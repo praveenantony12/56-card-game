@@ -1106,8 +1106,8 @@ export class GameCore {
     );
 
     // Preserve team score before restarting
-    const preserveTeamAScore = currentGameObj?.teamAScore || 10;
-    const preserveTeamBScore = currentGameObj?.teamBScore || 10;
+    const preserveTeamAScore = currentGameObj?.teamAScore ?? 10;
+    const preserveTeamBScore = currentGameObj?.teamBScore ?? 10;
 
     // Update socket IDs from current game state to handle reconnected players
     const playersForRestart = currentPlayers
@@ -1389,6 +1389,15 @@ export class GameCore {
         losePoints = -2;
       }
 
+      // Apply double/re-double multipliers if applicable
+      const doubleMultiplier = currentGameObj.bidReDouble
+        ? 3
+        : currentGameObj.bidDouble
+          ? 2
+          : 1;
+      winPoints = winPoints * doubleMultiplier;
+      losePoints = losePoints * doubleMultiplier;
+
       let teamAScoreChange = 0;
       let teamBScoreChange = 0;
 
@@ -1414,9 +1423,9 @@ export class GameCore {
 
       // Update scores
       currentGameObj.teamAScore =
-        (currentGameObj.teamAScore || 10) + teamAScoreChange;
+        (currentGameObj.teamAScore ?? 10) + teamAScoreChange;
       currentGameObj.teamBScore =
-        (currentGameObj.teamBScore || 10) + teamBScoreChange;
+        (currentGameObj.teamBScore ?? 10) + teamBScoreChange;
 
       // Mark game as complete
       currentGameObj.isGameComplete = true;
@@ -2402,6 +2411,11 @@ export class GameCore {
       losePoints = -2;
     }
 
+    // Apply double/redouble multiplier if applicable
+    const bidMultiplier = gameObj.isRedouble ? 3 : gameObj.isDouble ? 2 : 1;
+    winPoints = winPoints * bidMultiplier;
+    losePoints = losePoints * bidMultiplier;
+
     if (biddingTeamAchievedBid) {
       // Bidding team achieved their bid: they get winPoints, other team gets -winPoints
       if (biddingTeam === "A") {
@@ -2423,8 +2437,8 @@ export class GameCore {
     }
 
     // Apply score changes
-    const newTeamAScore = (gameObj.teamAScore || 10) + teamAScoreChange;
-    const newTeamBScore = (gameObj.teamBScore || 10) + teamBScoreChange;
+    const newTeamAScore = (gameObj.teamAScore ?? 10) + teamAScoreChange;
+    const newTeamBScore = (gameObj.teamBScore ?? 10) + teamBScoreChange;
 
     // Check for negative scores and reset if needed
     let winnerMessage;
