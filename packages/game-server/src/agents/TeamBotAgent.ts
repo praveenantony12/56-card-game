@@ -830,6 +830,156 @@ export class TeamBotAgent {
         return selectedCard;
       }
 
+      // STRATEGY TRUMP OPPORTUNITY: Bot is void in the led suit, has trump cards,
+      // and opponent is currently winning trump to take control of the round.
+      // Three exceptions where discarding is smarter than wasting a trump:
+      // 1. First time this suit is led AND teammate has signaled via bidding a 3 of
+      //    that suit. On a fresh suit most players still hold suit cards and must follow,
+      //    so the J is dominant and will likely win without any help from trump.
+      // 2. Teammate has already trumped and is currently winning the trick this is 17
+      //    already handled by the earlier teammateWinning guard above.
+      // 3. All J and 9 cards of the led suit have already been won in previous rounds -
+      //    no point-bearing cards remain in that suit, so the round has low intrinsic
+      //    value and trump is better saved for a more valuable opportunity.
+      {
+        const trumpWinMoves = winningMoves.filter(
+          (card) => trumpSuit && this.getCardSuit(card) === trumpSuit,
+        );
+        const leadSuitForTrump = this.getLeadSuit(currentRoundCards);
+
+        const voidInLeadSuit =
+          currentRoundCards.length > 0 &&
+          leadSuitForTrump !== null &&
+          leadSuitForTrump !== trumpSuit &&
+          !legalMoves.some((c) => this.getCardSuit(c) === leadSuitForTrump);
+
+        if (
+          voidInLeadSuit &&
+          trumpSuit &&
+          !teammateWinning &&
+          trumpWinMoves.length > 0
+        ) {
+          const wonInPreviousRounds = new Set<string>();
+          if (Array.isArray(gameState.teamACards)) {
+            gameState.teamACards.forEach((c: string) =>
+              wonInPreviousRounds.add(c),
+            );
+          }
+          if (Array.isArray(gameState.teamBCards)) {
+            gameState.teamBCards.forEach((c: string) =>
+              wonInPreviousRounds.add(c),
+            );
+          }
+
+          let suitAppearedInPreviousRounds = false;
+          wonInPreviousRounds.forEach((c) => {
+            if (this.getCardSuit(c) === leadSuitForTrump) {
+              suitAppearedInPreviousRounds = true;
+            }
+          });
+
+          const teammatesSignaledJForSuit = Object.keys(
+            jackKnowledge.teammateJacks,
+          ).filter((pid) =>
+            jackKnowledge.teammateJacks[pid].includes(leadSuitForTrump!),
+          );
+
+          const jacksAlreadyPlayed = [
+            `1${leadSuitForTrump}J`,
+            `2${leadSuitForTrump}J`,
+          ].filter((jack) => wonInPreviousRounds.has(jack)).length;
+
+          const teamHoldsBothJacks =
+            teammatesSignaledJForSuit.length + jacksAlreadyPlayed >= 2;
+
+          let allOpponentJsAfterTeammate = false;
+          if (!teamHoldsBothJacks && teammatesSignaledJForSuit.length >= 1) {
+            const opponentsWithJ = Object.keys(
+              jackKnowledge.opponentJacks,
+            ).filter((pid) =>
+              jackKnowledge.opponentJacks[pid].includes(leadSuitForTrump!),
+            );
+
+            if (opponentsWithJ.length > 0) {
+              const alreadyPlayedPlayers = new Set(
+                currentRoundCards.map((cd: string) =>
+                  this.extractPlayerFromCardDrop(cd),
+                ),
+              );
+              const allPlayers: any[] = gameState.players || [];
+              const leadPlayerId = this.extractPlayerFromCardDrop(
+                currentRoundCards[0],
+              );
+              const leadIdx = allPlayers.findIndex(
+                (p: any) => p.playerId === leadPlayerId,
+              );
+
+              if (leadIdx !== -1) {
+                const remainingInOrder: string[] = [];
+                for (let i = 1; i < allPlayers.length; i++) {
+                  const idx = (leadIdx + i) % allPlayers.length;
+                  const pid: string = allPlayers[idx]?.playerId;
+                  if (pid && !alreadyPlayedPlayers.has(pid)) {
+                    remainingInOrder.push(pid);
+                  }
+                }
+
+                allOpponentJsAfterTeammate = opponentsWithJ.every((oppId) => {
+                  const oppPos = remainingInOrder.indexOf(oppId);
+                  if (oppPos === -1) {
+                    return true;
+                  }
+                  return teammatesSignaledJForSuit.some((tmId) => {
+                    const tmPos = remainingInOrder.indexOf(tmId);
+                    return tmPos !== -1 && tmPos < oppPos;
+                  });
+                });
+              }
+            }
+          }
+
+          const skipFreshSuitTeammateJ =
+            !suitAppearedInPreviousRounds &&
+            (teamHoldsBothJacks || allOpponentJsAfterTeammate);
+
+          const allPointCardsGone =
+            wonInPreviousRounds.has(`1${leadSuitForTrump}J`) &&
+            wonInPreviousRounds.has(`2${leadSuitForTrump}J`) &&
+            wonInPreviousRounds.has(`1${leadSuitForTrump}9`) &&
+            wonInPreviousRounds.has(`2${leadSuitForTrump}9`);
+
+          if (skipFreshSuitTeammateJ && !allPointCardsGone) {
+            const trumpAlreadyInRound = currentRoundCards.some((cardDrop) => {
+              const card = cardDrop.split("-")[0];
+              return this.getCardSuit(card) === trumpSuit;
+            });
+
+            const selectedCard = this.selectSmartTrumpCard(
+              trumpWinMoves,
+              currentRoundCards,
+              trumpSuit,
+              !trumpAlreadyInRound,
+            );
+
+            reasoning.strategy = "TRUMP_OPPORTUNITY";
+            reasoning.reasoning =
+              `Void in led suit (${leadSuitForTrump}), opponent winning with [${winningCard?.split("-")[0]}]. ` +
+              `TRUMP RULE: When void and opponent winning, trump unless an exception applies. ` +
+              `Exception 1: (Fresh suit, both Js safe): ${skipFreshSuitTeammateJ} ` +
+              `[fresh: ${!suitAppearedInPreviousRounds}, teammates hold both Js: ${teamHoldsBothJacks}, opponents Js after teammate: ${allOpponentJsAfterTeammate}]. ` +
+              `Exception 3: (all J/9 of suit gone): ${allPointCardsGone} [J and 9 of ${leadSuitForTrump} in won piles]. ` +
+              `No exceptions apply, so trumping is the best play to take control of the round. ` +
+              `Selected trump card: ${selectedCard}. ` +
+              `Smart selection considers: ${!trumpAlreadyInRound ? "initial trumping (no trumps played yet)" : "trump already played in round"}. ` +
+              `This optimizes for winning the current round while preserving higher trumps for future rounds.`;
+
+            reasoning.selectedCard = selectedCard;
+            this.logReasoning(reasoning);
+            return selectedCard;
+          }
+        }
+      }
+
       // We can win, but we don't hold the Boss card.
       const isLastPlayer = this.isLastPlayerInRound(
         currentRoundCards.length,
