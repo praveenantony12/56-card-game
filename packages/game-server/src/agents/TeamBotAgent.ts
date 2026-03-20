@@ -990,7 +990,6 @@ export class TeamBotAgent {
               `Selected trump card: ${selectedCard}. ` +
               `Smart selection considers: ${!trumpAlreadyInRound ? "initial trumping (no trumps played yet)" : "trump already played in round"}. ` +
               `This optimizes for winning the current round while preserving higher trumps for future rounds.`;
-
             reasoning.selectedCard = selectedCard;
             this.logReasoning(reasoning);
             return selectedCard;
