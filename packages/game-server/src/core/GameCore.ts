@@ -2926,6 +2926,10 @@ export class GameCore {
         }
       }
 
+      console.log(
+        `Player ${playerId} disconnected from lobby in game ${gameId}`,
+      );
+
       if (game.gamePlayersInfo) {
         const playerIndex = game.gamePlayersInfo.findIndex(
           (p: any) => p.playerId === playerId && p.socketId === socketId,
@@ -4201,23 +4205,23 @@ export class GameCore {
         dropCardPlayer: game.dropCardPlayer || [],
         teamACards: game.teamACards || [],
         teamBCards: game.teamBCards || [],
-        currentBet: game.currentBet || null,
-        trumpSuit: game.trumpSuit || null,
-        finalBid: game.finalBid || null,
-        biddingTeam: game.biddingTeam || null,
-        biddingPlayer: game.biddingPlayer || null,
-        isGameComplete: game.isGameComplete || false,
-        teamAScore: game.teamAScore || 0,
-        teamBScore: game.teamBScore || 0,
+        currentBet: game.currentBet,
+        trumpSuit: game.trumpSuit,
+        finalBid: game.finalBid,
+        biddingTeam: game.biddingTeam,
+        biddingPlayer: game.biddingPlayer,
+        isGameComplete: game.isGameComplete,
+        teamAScore: game.teamAScore,
+        teamBScore: game.teamBScore,
         isBiddingPhase: game.isBiddingPhase || false,
-        currentBiddingPlayerId: game.currentBiddingPlayerId || null,
-        startingPlayerId: game.startingPlayerId || null,
+        currentBiddingPlayerId: game.currentBiddingPlayerId,
+        startingPlayerId: game.startingPlayerId,
         bidHistory: game.bidHistory || [],
         bidPassCount: game.bidPassCount || 0,
         bidDouble: game.bidDouble || false,
         bidReDouble: game.bidReDouble || false,
         bidRaisePhase: game.bidRaisePhase || false,
-        bidRaiseOfferedTo: game.bidRaiseOfferedTo || null,
+        bidRaiseOfferedTo: game.bidRaiseOfferedTo,
         postRaiseDoubleRound: game.postRaiseDoubleRound || false,
         teamAPositionSwitchUsed: game.teamAPositionSwitchUsed || false,
         teamBPositionSwitchUsed: game.teamBPositionSwitchUsed || false,
@@ -4230,8 +4234,8 @@ export class GameCore {
 
     cb(null, successResponse(RESPONSE_CODES.loginSuccess, spectatorGameState));
 
-    // Notify existing players about new spectator
-    const spectatorJoinedPayload: GameActionResponse = {
+    // Notify existing players about new spectator (not the spectator) that someone joined to watch
+    const spectatorJoinedPayload = {
       action: "SPECTATOR_JOINED",
       data: { playerId, message: `${playerId} joined to watch this game.` },
     };
@@ -4251,10 +4255,8 @@ export class GameCore {
    *  Handle a team position switch request.
    *  Only valid before any bid is made in the current round.
    */
-
   public onSwitchTeamPositions(req: any, cb: Function): void {
     const { gameId, playerId, team } = req;
-
     const game = this.inMemoryStore.fetchGame(gameId);
 
     if (!game) {
@@ -4278,7 +4280,6 @@ export class GameCore {
     }
 
     // Check if this team has already used their switch
-
     if (team === "A" && game.teamAPositionSwitchUsed) {
       cb(
         null,
@@ -4289,7 +4290,6 @@ export class GameCore {
       );
       return;
     }
-
     if (team === "B" && game.teamBPositionSwitchUsed) {
       cb(
         null,
@@ -4304,11 +4304,9 @@ export class GameCore {
     // Validate the requesting player belongs to the requested team
 
     const players = game.players || [];
-
     const playerIndex = players.findIndex(
       (p: IPlayer) => p.playerId === playerId,
     );
-
     if (playerIndex === -1) {
       cb(
         null,
@@ -4316,9 +4314,7 @@ export class GameCore {
       );
       return;
     }
-
     const playerTeam = playerIndex % 2 === 0 ? "A" : "B";
-
     if (playerTeam !== team) {
       cb(
         null,
@@ -4327,7 +4323,6 @@ export class GameCore {
           "You can only request a position switch for your own team.",
         ),
       );
-
       return;
     }
 
@@ -4356,17 +4351,18 @@ export class GameCore {
     this.inMemoryStore.saveGame(gameId, game);
 
     // Find other human team members to ask for approval
-    const teamIndices = team == "A" ? [0, 2, 4] : [1, 3, 5];
+    const teamIndices = team === "A" ? [0, 2, 4] : [1, 3, 5];
 
     const otherTeamMembers = teamIndices
       .filter((i) => i < players.length)
       .map((i) => players[i] as IPlayer)
       .filter(
-        (p) => p.playerId !== playerId && !p.isBotAgent && !p.isDisconnected,
+        (p) =>
+          p && p.playerId !== playerId && !p.isBotAgent && !p.isDisconnected,
       );
 
     if (otherTeamMembers.length === 0) {
-      // No other human team members auto-approve
+      // No other human team members - auto-approve
       this.executePositionSwitch(gameId, game, team);
       cb(
         null,
@@ -4401,7 +4397,7 @@ export class GameCore {
     cb(
       null,
       successResponse(RESPONSE_CODES.success, {
-        message: "Position switch request sent to teammates for approval.",
+        message: "Position switch request sent to your teammates for approval.",
       }),
     );
   }
@@ -4413,7 +4409,6 @@ export class GameCore {
     const { gameId, playerId, approvingPlayerId, approved } = req;
 
     const game = this.inMemoryStore.fetchGame(gameId);
-
     if (!game || !game.pendingPositionSwitch) {
       cb(
         null,
@@ -4426,7 +4421,7 @@ export class GameCore {
     }
 
     if (!approved) {
-      // Switch denied clear pending request and notify requester
+      // Switch denied - clear pending request and notify requester
       const requesterId = game.pendingPositionSwitch.requestedBy;
       const team = game.pendingPositionSwitch.team;
       delete game.pendingPositionSwitch;
@@ -4457,7 +4452,7 @@ export class GameCore {
       cb(
         null,
         successResponse(RESPONSE_CODES.success, {
-          message: "Position switch denied.",
+          message: "Position switch denied",
         }),
       );
       return;
@@ -4470,7 +4465,7 @@ export class GameCore {
     cb(
       null,
       successResponse(RESPONSE_CODES.success, {
-        message: "Position switch approved and executed.",
+        message: "Position switch approved and executed",
       }),
     );
   }
@@ -4481,7 +4476,6 @@ export class GameCore {
    * The gameStartIndex seat doesn't change value, so whoever ends up in that
    * seat becomes the new starting/bidding player.
    */
-
   private executePositionSwitch(
     gameId: string,
     game: GameModel,
@@ -4502,19 +4496,17 @@ export class GameCore {
     }
 
     // Place back, updating gameId on each
-
     teamIndices
-
       .filter((i) => i < players.length)
       .forEach((idx, arrayPos) => {
         (game.players as any)[idx] = teamPlayers[arrayPos];
       });
 
-    // Update current BiddingPlayerId to reflect who is now in the starting seat
+    // Update currentBiddingPlayerId to reflect who is now in the starting seat
     game.currentBiddingPlayerId =
-      players[this.gameStartIndex].playerId || game.currentBiddingPlayerId;
+      players[this.gameStartIndex]?.playerId || game.currentBiddingPlayerId;
 
-    // The "Start" label tracks the seat, not the player keep startingPlayerId in sync
+    // The "Start" label tracks the seat, not the player - keep startingPlayerId in sync
     game.startingPlayerId = game.currentBiddingPlayerId;
 
     // Mark this team's switch as used
@@ -4525,9 +4517,7 @@ export class GameCore {
     }
 
     // Clear the pending request
-
     delete game.pendingPositionSwitch;
-
     this.inMemoryStore.saveGame(gameId, game);
 
     // Broadcast updated player list and bidding start notification
@@ -4553,7 +4543,6 @@ export class GameCore {
     // Broadcast switch-completed notification to all players
     const switchCompletePayload = {
       action: "POSITION_SWITCH_COMPLETED",
-
       data: {
         team,
         message: `Team ${team} has shuffled their seating positions!`,
@@ -4561,7 +4550,6 @@ export class GameCore {
         teamBPositionSwitchUsed: game.teamBPositionSwitchUsed || false,
       },
     };
-
     this.ioServer
       .to(gameId)
       .emit(

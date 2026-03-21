@@ -149,10 +149,10 @@ class Store implements IStore {
             finalBid: gs.finalBid,
             biddingTeam: gs.biddingTeam,
             biddingPlayer: gs.biddingPlayer,
-            isGameComplete: gs.isGameComplete,
+            isGameComplete: gs.isGameComplete || false,
             teamAScore: gs.teamAScore,
             teamBScore: gs.teamBScore,
-            isBiddingPhase: gs.isBiddingPhase,
+            isBiddingPhase: gs.isBiddingPhase || false,
             currentBiddingPlayerId: gs.currentBiddingPlayerId,
             bidHistory: gs.bidHistory || [],
             bidPassCount: gs.bidPassCount || 0,
@@ -1098,7 +1098,7 @@ class Store implements IStore {
         // Handle spectator joined notification
         const spectatorJoinedData = data as any;
         this.gameInfo.notification =
-          spectatorJoinedData.message || "A spectator has joined the game";
+          spectatorJoinedData.message || "A spectator joined the game";
         break;
 
       default:
@@ -1178,7 +1178,8 @@ class Store implements IStore {
       const errorMessage =
         typeof error === "string"
           ? error
-          : (error as any)?.message || "Failed to request position switch";
+          : (error as any)?.message ||
+            "Failed to request position switch request";
       this.gameInfo.error = errorMessage;
     }
   }

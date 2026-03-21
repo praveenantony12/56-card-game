@@ -304,7 +304,7 @@ class GameService {
    * @param playerId The player id.
    * @param team The team to switch positions for ("A" or "B")
    */
-  public async switchTeamPositions(
+  public switchTeamPositions(
     gameId: string,
     playerId: string,
     team: "A" | "B",
@@ -319,7 +319,7 @@ class GameService {
    * @param approvingPlayerId The player id of the player giving approval.
    * @param approved Whether the switch is approved or denied.
    */
-  public async approvePositionSwitch(
+  public approvePositionSwitch(
     gameId: string,
     playerId: string,
     approvingPlayerId: string,

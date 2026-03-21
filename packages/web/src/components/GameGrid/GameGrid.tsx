@@ -685,7 +685,7 @@ class GameGrid extends React.Component<IProps, IState> {
                   justifyContent: "center",
                 }}
               >
-                <Button as="div" labelPosition="left" disabled={true}>
+                <Button as="div" labelPosition="left" disabled>
                   <Label
                     as="a"
                     basic={true}
@@ -695,15 +695,15 @@ class GameGrid extends React.Component<IProps, IState> {
                   >
                     {firstPlayer}'s Team
                   </Label>
-                  <Button color="red" disabled={true}>
+                  <Button color="red" disabled>
                     {teamAScore !== undefined
                       ? teamAScore
                       : 10 - Number(gameScore)}
                   </Button>
                 </Button>
                 <Button.Or text="VS" />
-                <Button as="div" labelPosition="right" disabled={true}>
-                  <Button color="red" disabled={true}>
+                <Button as="div" labelPosition="right" disabled>
+                  <Button color="red">
                     {teamBScore !== undefined
                       ? teamBScore
                       : 10 - Number(gameScore)}
@@ -797,13 +797,12 @@ class GameGrid extends React.Component<IProps, IState> {
         const entry = bidHistory[i] as any;
         if (entry.action === "bid") {
           lastBid = `${entry.playerId} ➡ ${entry.bidValue} ${entry.suit || ""}`;
-          if (bidDouble) lastBid += " (Doubled)";
-          if (bidReDouble) lastBid += " (Re-Doubled)";
+          if (bidDouble) lastBid += " (Double)";
+          if (bidReDouble) lastBid += " (Re-Double)";
           break;
         }
       }
     }
-
     return (
       <div
         style={{
@@ -837,7 +836,7 @@ class GameGrid extends React.Component<IProps, IState> {
     p3: string,
     p4: string,
     p5: string,
-    mPlayerId: string,
+    myPlayerId: string,
   ) {
     const {
       isBiddingPhase,
@@ -846,17 +845,17 @@ class GameGrid extends React.Component<IProps, IState> {
       teamBPositionSwitchUsed,
     } = this.store.game;
 
-    // Only show before any bids are made
+    // Only show before any bid is made
     const noBidsMade = !bidHistory || bidHistory.length === 0;
     if (!isBiddingPhase || !noBidsMade) {
       return null;
     }
 
-    // Determine my team (Team A: includes p0, p2, p4; Team B: includes p1, p3, p5)
+    // Determine my team (Team A: includes 0, 2, 4; Team B: includes 1, 3, 5)
     const teamAPlayers = [p0, p2, p4].filter(Boolean);
     const teamBPlayers = [p1, p3, p5].filter(Boolean);
-    const isTeamA = teamAPlayers.includes(mPlayerId);
-    const isTeamB = teamBPlayers.includes(mPlayerId);
+    const isTeamA = teamAPlayers.includes(myPlayerId);
+    const isTeamB = teamBPlayers.includes(myPlayerId);
 
     if (!isTeamA && !isTeamB) {
       return null; // Player not in either team (shouldn't happen), don't show buttons
@@ -870,7 +869,7 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button
                 color="olive"
                 size="small"
-                onClick={() => this.handleSwitchPositions(this, "A")}
+                onClick={this.handleSwitchPositions.bind(this, "A")}
                 style={{ margin: "4px" }}
                 disabled={this.state.isProcessingAction}
                 title="Ask your team to randomly shuffle Team A seating positions (one-time only)"
@@ -882,7 +881,7 @@ class GameGrid extends React.Component<IProps, IState> {
               <Button
                 color="olive"
                 size="small"
-                onClick={() => this.handleSwitchPositions(this, "B")}
+                onClick={this.handleSwitchPositions.bind(this, "B")}
                 style={{ margin: "4px" }}
                 disabled={this.state.isProcessingAction}
                 title="Ask your team to randomly shuffle Team B seating positions (one-time only)"

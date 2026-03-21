@@ -105,7 +105,7 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
               onClick={() => setSelectedMode("watch")}
               style={{ width: "100%" }}
             >
-              Watch Game
+              Watch a Game
             </Button>
           </div>
         ) : selectedMode === "join" ? (
@@ -198,13 +198,12 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
         ) : (
           /* Watch mode */
           <div style={{ marginTop: "20px" }}>
-            <h3>Watch Game</h3>
+            <h3>Watch a Game</h3>
             <p
               style={{ color: "#666", marginBottom: "15px", fontSize: "14px" }}
             >
               Enter a Game ID to watch an ongoing game. You will be able to see
-              the table, bids, scores and cards played, but not the players'
-              hands.
+              the table, bids, scores and cards played, but not players' hands.
             </p>
             <div>
               <label
@@ -217,7 +216,7 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
               >
                 Game ID
               </label>
-              <Input
+              <input
                 id="watchGameIdInput"
                 name="watchGameId"
                 type="text"

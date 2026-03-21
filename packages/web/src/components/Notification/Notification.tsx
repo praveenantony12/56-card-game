@@ -67,7 +67,7 @@ class Notification extends React.Component<IProps, {}> {
       return this.renderGameForfeited(notification.data);
     }
 
-    // Handle position switch report notifications
+    // Handle position switch request notifications
     if (
       notification &&
       typeof notification === "object" &&

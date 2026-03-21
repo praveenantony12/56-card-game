@@ -135,7 +135,7 @@ class PlayersList extends React.Component<IProps, {}> {
             style={{
               background: "linear-gradient(90deg, #00b5ad, #0e6e6a)",
               color: "white",
-              padding: "8px 10px",
+              padding: "8px 16px",
               fontWeight: "bold",
               fontSize: "14px",
               letterSpacing: "1px",
@@ -144,7 +144,7 @@ class PlayersList extends React.Component<IProps, {}> {
               textAlign: "center",
             }}
           >
-            👀 Spectator Mode - you are watching this game
+            👁️ Spectator Mode - you are watching this game
           </div>
         )}
         <Grid className="playersGrid" columns="equal">

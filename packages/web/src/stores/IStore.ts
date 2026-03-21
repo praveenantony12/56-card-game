@@ -74,7 +74,7 @@ export interface IStore {
 
   requestPositionSwitch(team: "A" | "B"): Promise<void>;
 
-  approvePositionSwitch(approve: boolean): Promise<void>;
+  approvePositionSwitch(approved: boolean): Promise<void>;
 
   setGameModeView(gameId: string): void;
 }
