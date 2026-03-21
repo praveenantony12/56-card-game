@@ -1189,7 +1189,8 @@ class Store implements IStore {
    */
   public async approvePositionSwitch(approved: boolean): Promise<void> {
     const { gameId, playerId } = this.userInfo;
-    this.clearNotifications();
+    // Read requestedBy BEFORE clearing notifications,
+    // since the approval/denial action shares the same notification object
     const notification = this.gameInfo.notification;
     const requestedBy =
       notification &&
@@ -1197,6 +1198,7 @@ class Store implements IStore {
       notification.action === "POSITION_SWITCH_REQUEST"
         ? notification.data?.requestedBy
         : "";
+    this.clearNotifications();
 
     try {
       await this.gameService.approvePositionSwitch(

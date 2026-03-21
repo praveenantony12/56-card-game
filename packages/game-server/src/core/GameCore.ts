@@ -4257,8 +4257,8 @@ export class GameCore {
    */
   public onSwitchTeamPositions(req: any, cb: Function): void {
     const { gameId, playerId, team } = req;
-    const game = this.inMemoryStore.fetchGame(gameId);
 
+    const game = this.inMemoryStore.fetchGame(gameId);
     if (!game) {
       cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found"));
       return;
