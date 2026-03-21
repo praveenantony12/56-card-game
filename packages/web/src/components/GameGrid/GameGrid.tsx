@@ -1540,7 +1540,6 @@ class GameGrid extends React.Component<IProps, IState> {
 
     this.setState({
       currentBiddingValue: bidValue,
-      currentBiddingsuit: this.state.currentBiddingsuit || "N",
       bidSelectionType: "direct",
       bidModifier: 0,
       clickOrder,
@@ -1584,7 +1583,6 @@ class GameGrid extends React.Component<IProps, IState> {
 
     this.setState({
       currentBiddingValue: newValue,
-      currentBiddingsuit: this.state.currentBiddingsuit || "N",
       bidSelectionType: "modifier",
       bidModifier: modifier,
       clickOrder,

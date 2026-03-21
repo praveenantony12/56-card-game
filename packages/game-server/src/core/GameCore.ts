@@ -2406,18 +2406,18 @@ export class GameCore {
 
     // Determine score change based on bid range
     let winPoints, losePoints;
-    if (finalBid >= 28 && finalBid <= 39) {
+    if (finalBid === 56) {
+      winPoints = 4;
+      losePoints = -5;
+    } else if (finalBid >= 28 && finalBid <= 39) {
       winPoints = 1;
       losePoints = -2;
     } else if (finalBid >= 40 && finalBid <= 47) {
       winPoints = 2;
       losePoints = -3;
-    } else if (finalBid >= 48 && finalBid <= 57) {
+    } else if (finalBid >= 48 && finalBid <= 55) {
       winPoints = 3;
       losePoints = -4;
-    } else if (finalBid === 56) {
-      winPoints = 4;
-      losePoints = -5;
     } else {
       // Default fallback for any unexpected bid values
       winPoints = 1;
