@@ -3,4 +3,5 @@ export interface IUser {
   token?: string;
   playerId?: string;
   gameId?: string;
+  isSpectator?: boolean;
 }

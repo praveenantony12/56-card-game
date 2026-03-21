@@ -187,6 +187,16 @@ export class SocketServer {
         this.gameCore.onBiddingAction(biddingActionRequest, cb);
         break;
 
+      case MESSAGES.switchTeamPositions:
+        const switchRequest = payload as any;
+        this.gameCore.onSwitchTeamPositions(switchRequest, cb);
+        break;
+
+      case MESSAGES.switchTeamPositionsApprove:
+        const switchApproveRequest = payload as any;
+        this.gameCore.onApprovePositionSwitch(switchApproveRequest, cb);
+        break;
+
       default:
         break;
     }

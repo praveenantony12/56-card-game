@@ -68,6 +68,18 @@ export interface ICardGame {
   forfeitApprovals?: { [playerId: string]: boolean };
   forfeitInProgress?: boolean;
 
+  // Spectators (viewers who watch without playing)
+  spectators?: IPlayer[];
+
+  // Position switch state (one-time per team per game)
+  teamAPositionSwitchUsed?: boolean;
+  teamBPositionSwitchUsed?: boolean;
+  pendingPositionSwitch?: {
+    requestedBy: string;
+    team: "A" | "B";
+    approvals: string[]; // playerIds who approved
+  };
+
   // This is to store the card details by userId/token.
   [token: string]: any;
 }

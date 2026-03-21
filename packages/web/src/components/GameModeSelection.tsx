@@ -12,15 +12,17 @@ import gameStore from "../stores/store";
 interface GameModeSelectionProps {
   onCreateGame: () => void;
   onJoinGame: (gameId: string) => void;
+  onWatchGame: (gameId: string) => void;
 }
 
 const GameModeSelection: React.FC<GameModeSelectionProps> = ({
   onCreateGame,
   onJoinGame,
+  onWatchGame,
 }) => {
-  const [selectedMode, setSelectedMode] = useState<"create" | "join" | null>(
-    null,
-  );
+  const [selectedMode, setSelectedMode] = useState<
+    "create" | "join" | "watch" | null
+  >(null);
   const [gameId, setGameId] = useState("");
   const [error, setError] = useState("");
 
@@ -44,6 +46,15 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
     }
     setError("");
     onJoinGame(gameId.trim());
+  };
+
+  const handleWatchGame = () => {
+    if (!gameId.trim()) {
+      setError("Please enter a valid Game ID");
+      return;
+    }
+    setError("");
+    onWatchGame(gameId.trim());
   };
 
   const handleGameIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,12 +95,20 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
               size="large"
               color="blue"
               onClick={() => setSelectedMode("join")}
-              style={{ width: "100%" }}
+              style={{ width: "100%", marginBottom: "20px" }}
             >
               Join Existing Game
             </Button>
+            <Button
+              size="large"
+              color="teal"
+              onClick={() => setSelectedMode("watch")}
+              style={{ width: "100%" }}
+            >
+              Watch Game
+            </Button>
           </div>
-        ) : (
+        ) : selectedMode === "join" ? (
           <div style={{ marginTop: "20px" }}>
             <h3>Join Existing Game</h3>
             <div>
@@ -166,6 +185,100 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
                   backgroundColor: "transparent",
                   color: "#2185d0",
                   border: "1px solid #2185d0",
+                  padding: "12px 24px",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                }}
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Watch mode */
+          <div style={{ marginTop: "20px" }}>
+            <h3>Watch Game</h3>
+            <p
+              style={{ color: "#666", marginBottom: "15px", fontSize: "14px" }}
+            >
+              Enter a Game ID to watch an ongoing game. You will be able to see
+              the table, bids, scores and cards played, but not the players'
+              hands.
+            </p>
+            <div>
+              <label
+                htmlFor="watchGameIdInput"
+                style={{
+                  display: "block",
+                  marginBottom: "5px",
+                  fontWeight: "bold",
+                }}
+              >
+                Game ID
+              </label>
+              <Input
+                id="watchGameIdInput"
+                name="watchGameId"
+                type="text"
+                placeholder="Enter the Game ID to watch"
+                value={gameId}
+                onChange={handleGameIdChange}
+                style={{
+                  width: "90%",
+                  height: "40px",
+                  padding: "12px",
+                  border: "2px solid #00b5ad",
+                  borderRadius: "4px",
+                  fontSize: "16px",
+                  display: "block",
+                  visibility: "visible",
+                  opacity: "1",
+                  backgroundColor: "#ffffff",
+                  color: "#333333",
+                  boxSizing: "border-box",
+                  marginBottom: "10px",
+                }}
+              />
+              {error && (
+                <div
+                  style={{
+                    color: "#e74c3c",
+                    backgroundColor: "#fdf2f2",
+                    border: "1px solid #e74c3c",
+                    borderRadius: "4px",
+                    padding: "10px",
+                    marginTop: "10px",
+                  }}
+                >
+                  {error}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: "4rem" }}>
+              <button
+                onClick={handleWatchGame}
+                disabled={!gameId.trim()}
+                style={{
+                  backgroundColor: !gameId.trim() ? "#cccccc" : "#00b5ad",
+                  color: "white",
+                  border: "none",
+                  padding: "12px 24px",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  cursor: !gameId.trim() ? "not-allowed" : "pointer",
+                  marginRight: "10px",
+                }}
+              >
+                Watch Game
+              </button>
+              <button
+                onClick={() => setSelectedMode(null)}
+                style={{
+                  backgroundColor: "transparent",
+                  color: "#00b5ad",
+                  border: "1px solid #00b5ad",
                   padding: "12px 24px",
                   borderRadius: "4px",
                   fontSize: "14px",

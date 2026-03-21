@@ -126,10 +126,31 @@ class PlayersList extends React.Component<IProps, {}> {
       );
     });
 
+    const isSpectator = this.store.user.isSpectator;
+
     return (
-      <Grid className="playersGrid" columns="equal">
-        <Grid.Row>{rows}</Grid.Row>
-      </Grid>
+      <>
+        {isSpectator && (
+          <div
+            style={{
+              background: "linear-gradient(90deg, #00b5ad, #0e6e6a)",
+              color: "white",
+              padding: "8px 10px",
+              fontWeight: "bold",
+              fontSize: "14px",
+              letterSpacing: "1px",
+              borderRadius: "4px",
+              marginBottom: "8px",
+              textAlign: "center",
+            }}
+          >
+            👀 Spectator Mode - you are watching this game
+          </div>
+        )}
+        <Grid className="playersGrid" columns="equal">
+          <Grid.Row>{rows}</Grid.Row>
+        </Grid>
+      </>
     );
   }
 }

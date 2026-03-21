@@ -116,14 +116,59 @@ class Store implements IStore {
 
     try {
       // For joining existing games, pass the game ID to the player
+      // Spectator mode uses the same login flow but with a different game mode
       const gameIdParam =
-        this.gameInfo.gameMode === "join"
+        this.gameInfo.gameMode === "join" || this.gameInfo.gameMode === "view"
           ? this.gameInfo.gameIdToJoin
           : undefined;
       const userInfo = await this.gameService.signIn(userId, gameIdParam);
 
       this.userInfo = userInfo;
       this.userInfo.isSignedIn = true;
+
+      // Handle spectator (viewer) login - server returns isSpectator: true
+      if (userInfo.isSpectator) {
+        this.userInfo.isSpectator = true;
+        this.userInfo.gameId = userInfo.gameId;
+        this.userInfo.playerId = userInfo.playerId;
+
+        // Populate game state from spectator game state payload
+        if (userInfo.gameState) {
+          const gs = userInfo.gameState;
+          this.gameInfo = {
+            ...this.gameInfo,
+            players: gs.players || [],
+            currentPlayerId: gs.currentPlayerId,
+            startingPlayerId: gs.startingPlayerId,
+            droppedCards: gs.droppedCards || [],
+            dropCardPlayer: gs.dropCardPlayer || [],
+            teamACards: gs.teamACards || [],
+            teamBCards: gs.teamBCards || [],
+            currentBet: gs.currentBet,
+            trumpSuit: gs.trumpSuit,
+            finalBid: gs.finalBid,
+            biddingTeam: gs.biddingTeam,
+            biddingPlayer: gs.biddingPlayer,
+            isGameComplete: gs.isGameComplete,
+            teamAScore: gs.teamAScore,
+            teamBScore: gs.teamBScore,
+            isBiddingPhase: gs.isBiddingPhase,
+            currentBiddingPlayerId: gs.currentBiddingPlayerId,
+            bidHistory: gs.bidHistory || [],
+            bidPassCount: gs.bidPassCount || 0,
+            bidDouble: gs.bidDouble || false,
+            bidReDouble: gs.bidReDouble || false,
+            bidRaisePhase: gs.bidRaisePhase || false,
+            bidRaiseOfferedTo: gs.bidRaiseOfferedTo,
+            postRaiseDoubleRound: gs.postRaiseDoubleRound || false,
+            teamAPositionSwitchUsed: gs.teamAPositionSwitchUsed || false,
+            teamBPositionSwitchUsed: gs.teamBPositionSwitchUsed || false,
+            canStartGame: true,
+            showBotSelection: false,
+          };
+        }
+        return;
+      }
 
       // Handle game creator status and shared game ID from the direct response
       if (userInfo.isGameCreator !== undefined) {
@@ -1025,6 +1070,37 @@ class Store implements IStore {
         };
         break;
 
+      case "POSITION_SWITCH_REQUEST":
+        // Handle position switch request notification
+        this.gameInfo.notification = {
+          action: "POSITION_SWITCH_REQUEST",
+          data: data,
+        };
+        break;
+
+      case "POSITION_SWITCH_COMPLETED":
+        // Handle position switch completed notification
+        const switchData = data as any;
+        this.gameInfo.teamAPositionSwitchUsed =
+          switchData.teamAPositionSwitchUsed;
+        this.gameInfo.teamBPositionSwitchUsed =
+          switchData.teamBPositionSwitchUsed;
+        this.gameInfo.notification = switchData.message;
+        break;
+
+      case "POSITION_SWITCH_DENIED":
+        // Handle position switch denied notification
+        const switchDeniedData = data as any;
+        this.gameInfo.notification = switchDeniedData.message;
+        break;
+
+      case "SPECTATOR_JOINED":
+        // Handle spectator joined notification
+        const spectatorJoinedData = data as any;
+        this.gameInfo.notification =
+          spectatorJoinedData.message || "A spectator has joined the game";
+        break;
+
       default:
         console.log(
           "Default case. Shouldn't hit this. Action:",
@@ -1074,6 +1150,69 @@ class Store implements IStore {
     const baseUrl = window.location.origin;
     return `${baseUrl}/?gameId=${encodeURIComponent(gameId)}`;
   };
+
+  /**
+   * Set game mode to spectator/viewer for an existing game
+   */
+  public setGameModeView = (gameId: string) => {
+    this.gameInfo.gameMode = "view" as any;
+    this.gameInfo.gameIdToJoin = gameId;
+    this.gameInfo.isGameCreator = false;
+    this.gameInfo.showGameModeSelection = false;
+  };
+
+  /**
+   * Request a team position switch for the current player's team
+   */
+  public async requestPositionSwitch(team: "A" | "B"): Promise<void> {
+    const { gameId, playerId } = this.userInfo;
+    this.clearNotifications();
+
+    try {
+      await this.gameService.switchTeamPositions(
+        gameId as string,
+        playerId as string,
+        team,
+      );
+    } catch (error) {
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : (error as any)?.message || "Failed to request position switch";
+      this.gameInfo.error = errorMessage;
+    }
+  }
+
+  /**
+   * Approve or deny a pending position switch request for the current player's team
+   */
+  public async approvePositionSwitch(approved: boolean): Promise<void> {
+    const { gameId, playerId } = this.userInfo;
+    this.clearNotifications();
+    const notification = this.gameInfo.notification;
+    const requestedBy =
+      notification &&
+      typeof notification === "object" &&
+      notification.action === "POSITION_SWITCH_REQUEST"
+        ? notification.data?.requestedBy
+        : "";
+
+    try {
+      await this.gameService.approvePositionSwitch(
+        gameId as string,
+        requestedBy,
+        playerId as string,
+        approved,
+      );
+    } catch (error) {
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : (error as any)?.message ||
+            "Failed to respond to position switch request";
+      this.gameInfo.error = errorMessage;
+    }
+  }
 }
 
 const store = new Store();

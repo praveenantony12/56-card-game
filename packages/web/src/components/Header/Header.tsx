@@ -31,6 +31,7 @@ class Header extends React.Component<IProps, {}> {
         <GameModeSelection
           onCreateGame={this.onCreateGame}
           onJoinGame={this.onJoinGame}
+          onWatchGame={this.onWatchGame}
         />
       );
     }
@@ -66,6 +67,10 @@ class Header extends React.Component<IProps, {}> {
 
   private onJoinGame = (gameId: string) => {
     this.store.setGameModeJoin(gameId);
+  };
+
+  private onWatchGame = (gameId: string) => {
+    this.store.setGameModeView(gameId);
   };
 
   private onLeaveGame = () => {

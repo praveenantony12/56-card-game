@@ -67,6 +67,15 @@ class Notification extends React.Component<IProps, {}> {
       return this.renderGameForfeited(notification.data);
     }
 
+    // Handle position switch report notifications
+    if (
+      notification &&
+      typeof notification === "object" &&
+      notification.action === "POSITION_SWITCH_REQUEST"
+    ) {
+      return this.renderPositionSwitchRequest(notification.data);
+    }
+
     // Handle regular notifications
     const message =
       error ||
@@ -163,7 +172,7 @@ class Notification extends React.Component<IProps, {}> {
 
   private handleReconnectionApproval = async (
     playerId: string,
-    approve: boolean
+    approve: boolean,
   ) => {
     try {
       if (approve) {
@@ -185,6 +194,38 @@ class Notification extends React.Component<IProps, {}> {
       }
     } catch (error) {
       console.error("Error handling forfeit approval: ", error);
+    }
+  };
+
+  private renderPositionSwitchRequest(data: any) {
+    return (
+      <Message info>
+        <Message.Header>Team Seating Shuffle Request</Message.Header>
+        <p>{data.message}</p>
+        <Button.Group>
+          <Button
+            positive
+            onClick={() => this.handlePositionSwitchApproval(true)}
+          >
+            Approve
+          </Button>
+          <Button
+            negative
+            onClick={() => this.handlePositionSwitchApproval(false)}
+          >
+            Deny
+          </Button>
+        </Button.Group>
+      </Message>
+    );
+  }
+
+  private handlePositionSwitchApproval = async (approve: boolean) => {
+    try {
+      await this.store.approvePositionSwitch(approve);
+      this.store.clearNotifications();
+    } catch (error) {
+      console.error("Error handling position switch approval: ", error);
     }
   };
 

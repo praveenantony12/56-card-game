@@ -42,4 +42,6 @@ export const MESSAGES = {
   selectTrumpSuit: "SELECT_TRUMP_SUIT",
   trumpSuitSelected: "TRUMP_SUIT_SELECTED",
   biddingAction: "BIDDING_ACTION",
+  switchTeamPositions: "SWITCH_TEAM_POSITIONS",
+  switchTeamPositionsApprove: "SWITCH_TEAM_POSITIONS_APPROVE",
 };

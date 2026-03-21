@@ -28,6 +28,7 @@ import { InMemoryStore } from "../persistence/InMemoryStore";
 import { Server as IOServer, Socket as IOSocket } from "socket.io";
 import { TeamBotAgent } from "../agents/TeamBotAgent";
 import { MetricsService } from "../services/MetricsService";
+import { emit } from "cluster";
 
 /**
  * Game :- A main class that manages all the game actions/logics.
@@ -125,10 +126,14 @@ export class GameCore {
           );
         }
 
-        // Check if game already started or is full
-        if (existingGame.isGameStarted) {
-          throw new Error(
-            "Game has already started and cannot accept new players.",
+        // If game has already started, allow joining as a spectator
+        if (existingGame.isGameStarted && existingGame.players) {
+          return this.addSpectatorToGame(
+            socket,
+            playerId,
+            gameIdToJoin,
+            existingGame,
+            cb,
           );
         }
 
@@ -1108,6 +1113,11 @@ export class GameCore {
     // Preserve team score before restarting
     const preserveTeamAScore = currentGameObj?.teamAScore ?? 10;
     const preserveTeamBScore = currentGameObj?.teamBScore ?? 10;
+    // Preserve position-switch usage flags (one-time per game session)
+    const preserveTeamAPositionSwitchUsed =
+      currentGameObj?.teamAPositionSwitchUsed || false;
+    const preserveTeamBPositionSwitchUsed =
+      currentGameObj?.teamBPositionSwitchUsed || false;
 
     // Update socket IDs from current game state to handle reconnected players
     const playersForRestart = currentPlayers
@@ -1124,6 +1134,9 @@ export class GameCore {
     const gameObj = this.inMemoryStore.fetchGame(gameId);
     gameObj.teamAScore = preserveTeamAScore;
     gameObj.teamBScore = preserveTeamBScore;
+    // Restore position-switch usage (one-time per entire game session, not per round)
+    gameObj.teamAPositionSwitchUsed = preserveTeamAPositionSwitchUsed;
+    gameObj.teamBPositionSwitchUsed = preserveTeamBPositionSwitchUsed;
 
     // Calculate gameScore for slider compatibility (difference from 10-10 baseline)
     // gameScore represents shifts: positive means Team B is leading, negative means Team A is leading
@@ -2819,6 +2832,20 @@ export class GameCore {
       );
 
       if (playerIndex === -1) {
+        // Check if this is a spectator disconnecting
+        if (game.spectators) {
+          const spectatorIndex = game.spectators.findIndex(
+            (s: IPlayer) => s.playerId === playerId && s.socketId === socketId,
+          );
+          if (spectatorIndex !== -1) {
+            game.spectators.splice(spectatorIndex, 1);
+            this.inMemoryStore.saveGame(gameId, game);
+            console.log(
+              `Spectator ${playerId} disconnected from game ${gameId}. Remaining spectators: ${game.spectators.length}`,
+            );
+            return;
+          }
+        }
         console.log(`Player ${playerId} not found in game ${gameId}`);
         return;
       }
@@ -2888,9 +2915,16 @@ export class GameCore {
       this.setDisconnectTimeout(gameId, playerId);
     } else {
       // Game is still in lobby phase - just remove the player from gamePlayersInfo
-      console.log(
-        `Player ${playerId} disconnected from lobby in game ${gameId}`,
-      );
+      // Also handle spectator disconnection
+      if (game.spectators) {
+        const spectatorIndex = game.spectators.findIndex(
+          (s: IPlayer) => s.playerId === playerId && s.socketId === socketId,
+        );
+        if (spectatorIndex !== -1) {
+          game.spectators.splice(spectatorIndex, 1);
+          console.log(`Spectator ${playerId} disconnected from game ${gameId}`);
+        }
+      }
 
       if (game.gamePlayersInfo) {
         const playerIndex = game.gamePlayersInfo.findIndex(
@@ -4118,5 +4152,425 @@ export class GameCore {
         });
       }, 2000);
     }
+  }
+
+  /**
+   * Add a spectator (viewer) to an already-started game.
+   * The spectator can watch all public game info but cannot play.
+   */
+  public addSpectatorToGame(
+    socket: IOSocket,
+    playerId: string,
+    gameId: string,
+    game: GameModel,
+    cb: Function,
+  ): void {
+    const spectatorPlayer: IPlayer = {
+      socketId: socket.id,
+      playerId,
+      token: getUniqueId(),
+      gameId,
+    };
+
+    // Add to spectators list
+    if (!game.spectators) {
+      game.spectators = [];
+    }
+
+    // Prevent same playerId joining as spectator twice
+    game.spectators = game.spectators.filter((s) => s.playerId !== playerId);
+    game.spectators.push(spectatorPlayer);
+    this.inMemoryStore.saveGame(gameId, game);
+
+    // Join the socket room so spectator receives all broadcasts
+    socket.join(gameId);
+    (socket as any).gameInfo = { ...spectatorPlayer, isSpectator: true };
+
+    // Build a spectator-safe game state (no hand cards)
+    const currentPlayer =
+      game.currentTurn !== undefined ? game.players[game.currentTurn] : null;
+
+    const spectatorGameState = {
+      isSpectator: true,
+      gameId,
+      playerId,
+      gameState: {
+        players: game.players.map((p: IPlayer) => p.playerId),
+        currentPlayerId: currentPlayer ? currentPlayer.playerId : null,
+        droppedCards: game.droppedCards || [],
+        dropCardPlayer: game.dropCardPlayer || [],
+        teamACards: game.teamACards || [],
+        teamBCards: game.teamBCards || [],
+        currentBet: game.currentBet || null,
+        trumpSuit: game.trumpSuit || null,
+        finalBid: game.finalBid || null,
+        biddingTeam: game.biddingTeam || null,
+        biddingPlayer: game.biddingPlayer || null,
+        isGameComplete: game.isGameComplete || false,
+        teamAScore: game.teamAScore || 0,
+        teamBScore: game.teamBScore || 0,
+        isBiddingPhase: game.isBiddingPhase || false,
+        currentBiddingPlayerId: game.currentBiddingPlayerId || null,
+        startingPlayerId: game.startingPlayerId || null,
+        bidHistory: game.bidHistory || [],
+        bidPassCount: game.bidPassCount || 0,
+        bidDouble: game.bidDouble || false,
+        bidReDouble: game.bidReDouble || false,
+        bidRaisePhase: game.bidRaisePhase || false,
+        bidRaiseOfferedTo: game.bidRaiseOfferedTo || null,
+        postRaiseDoubleRound: game.postRaiseDoubleRound || false,
+        teamAPositionSwitchUsed: game.teamAPositionSwitchUsed || false,
+        teamBPositionSwitchUsed: game.teamBPositionSwitchUsed || false,
+      },
+    };
+
+    console.log(
+      `[SPECTATOR JOIN] Player ${playerId} joined game ${gameId} as spectator`,
+    );
+
+    cb(null, successResponse(RESPONSE_CODES.loginSuccess, spectatorGameState));
+
+    // Notify existing players about new spectator
+    const spectatorJoinedPayload: GameActionResponse = {
+      action: "SPECTATOR_JOINED",
+      data: { playerId, message: `${playerId} joined to watch this game.` },
+    };
+
+    const spectatorJoinedResponse = successResponse(
+      RESPONSE_CODES.gameNotification,
+      spectatorJoinedPayload,
+    );
+    (game.players || []).forEach((p: IPlayer) => {
+      if (p && p.socketId && !p.isDisconnected) {
+        this.ioServer.to(p.socketId).emit("data", spectatorJoinedResponse);
+      }
+    });
+  }
+
+  /**
+   *  Handle a team position switch request.
+   *  Only valid before any bid is made in the current round.
+   */
+
+  public onSwitchTeamPositions(req: any, cb: Function): void {
+    const { gameId, playerId, team } = req;
+
+    const game = this.inMemoryStore.fetchGame(gameId);
+
+    if (!game) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found"));
+      return;
+    }
+
+    // Must be in bidding phase and no bids made yet
+    if (
+      !game.isBiddingPhase ||
+      (game.bidHistory && game.bidHistory.length > 0)
+    ) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "Position switch is only allowed before any bid is made.",
+        ),
+      );
+      return;
+    }
+
+    // Check if this team has already used their switch
+
+    if (team === "A" && game.teamAPositionSwitchUsed) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "Team A has already used their position switch.",
+        ),
+      );
+      return;
+    }
+
+    if (team === "B" && game.teamBPositionSwitchUsed) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "Team B has already used their position switch.",
+        ),
+      );
+      return;
+    }
+
+    // Validate the requesting player belongs to the requested team
+
+    const players = game.players || [];
+
+    const playerIndex = players.findIndex(
+      (p: IPlayer) => p.playerId === playerId,
+    );
+
+    if (playerIndex === -1) {
+      cb(
+        null,
+        errorResponse(RESPONSE_CODES.failed, "Player not found in game"),
+      );
+      return;
+    }
+
+    const playerTeam = playerIndex % 2 === 0 ? "A" : "B";
+
+    if (playerTeam !== team) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "You can only request a position switch for your own team.",
+        ),
+      );
+
+      return;
+    }
+
+    // If there's already a pending switch request for this team, ignore
+    if (
+      game.pendingPositionSwitch &&
+      game.pendingPositionSwitch.team === team
+    ) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "A position switch request is already pending for this team.",
+        ),
+      );
+      return;
+    }
+
+    // Store pending request
+    game.pendingPositionSwitch = {
+      requestedBy: playerId,
+      team,
+      approvals: [],
+    };
+
+    this.inMemoryStore.saveGame(gameId, game);
+
+    // Find other human team members to ask for approval
+    const teamIndices = team == "A" ? [0, 2, 4] : [1, 3, 5];
+
+    const otherTeamMembers = teamIndices
+      .filter((i) => i < players.length)
+      .map((i) => players[i] as IPlayer)
+      .filter(
+        (p) => p.playerId !== playerId && !p.isBotAgent && !p.isDisconnected,
+      );
+
+    if (otherTeamMembers.length === 0) {
+      // No other human team members auto-approve
+      this.executePositionSwitch(gameId, game, team);
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, {
+          message:
+            "Position switch executed (auto-approved, no teammates online)",
+        }),
+      );
+      return;
+    }
+
+    // Notify other team members for approval
+    const switchRequestPayload = {
+      action: "POSITION_SWITCH_REQUEST",
+      data: {
+        requestedBy: playerId,
+        team,
+        gameId,
+        message: `${playerId} from Team ${team} wants to shuffle the team's seating positions. Do you approve?`,
+      },
+    };
+
+    const switchResponse = successResponse(
+      RESPONSE_CODES.gameNotification,
+      switchRequestPayload,
+    );
+
+    otherTeamMembers.forEach((member: IPlayer) => {
+      this.ioServer.to(member.socketId).emit("data", switchResponse);
+    });
+
+    cb(
+      null,
+      successResponse(RESPONSE_CODES.success, {
+        message: "Position switch request sent to teammates for approval.",
+      }),
+    );
+  }
+
+  /**
+   * Handle approval or denial of a position switch request.
+   */
+  public onApprovePositionSwitch(req: any, cb: Function): void {
+    const { gameId, playerId, approvingPlayerId, approved } = req;
+
+    const game = this.inMemoryStore.fetchGame(gameId);
+
+    if (!game || !game.pendingPositionSwitch) {
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "No pending position switch request found",
+        ),
+      );
+      return;
+    }
+
+    if (!approved) {
+      // Switch denied clear pending request and notify requester
+      const requesterId = game.pendingPositionSwitch.requestedBy;
+      const team = game.pendingPositionSwitch.team;
+      delete game.pendingPositionSwitch;
+      this.inMemoryStore.saveGame(gameId, game);
+
+      // Notify the requester
+      const requesterPlayer = (game.players || []).find(
+        (p: IPlayer) => p.playerId === requesterId,
+      );
+
+      if (requesterPlayer) {
+        const denyPayload = {
+          action: "POSITION_SWITCH_DENIED",
+
+          data: {
+            team,
+            deniedBy: approvingPlayerId,
+            message: `Position switch for Team ${team} was denied by ${approvingPlayerId}.`,
+          },
+        };
+        this.ioServer
+          .to(requesterPlayer.socketId)
+          .emit(
+            "data",
+            successResponse(RESPONSE_CODES.gameNotification, denyPayload),
+          );
+      }
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, {
+          message: "Position switch denied.",
+        }),
+      );
+      return;
+    }
+
+    // Add approval - only 1 approval needed
+    const { team } = game.pendingPositionSwitch;
+    this.executePositionSwitch(gameId, game, team);
+
+    cb(
+      null,
+      successResponse(RESPONSE_CODES.success, {
+        message: "Position switch approved and executed.",
+      }),
+    );
+  }
+
+  /**
+   * Execute the position shuffle for the specified team.
+   * Only the seats (array indices) for that team are shuffled.
+   * The gameStartIndex seat doesn't change value, so whoever ends up in that
+   * seat becomes the new starting/bidding player.
+   */
+
+  private executePositionSwitch(
+    gameId: string,
+    game: GameModel,
+    team: "A" | "B",
+  ): void {
+    const players = game.players as IPlayer[];
+    const teamIndices = team === "A" ? [0, 2, 4] : [1, 3, 5];
+
+    // Collect players at team positions
+    const teamPlayers = teamIndices
+      .filter((i) => i < players.length)
+      .map((i) => players[i]);
+
+    // Shuffle (Fisher-Yates)
+    for (let i = teamPlayers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [teamPlayers[i], teamPlayers[j]] = [teamPlayers[j], teamPlayers[i]];
+    }
+
+    // Place back, updating gameId on each
+
+    teamIndices
+
+      .filter((i) => i < players.length)
+      .forEach((idx, arrayPos) => {
+        (game.players as any)[idx] = teamPlayers[arrayPos];
+      });
+
+    // Update current BiddingPlayerId to reflect who is now in the starting seat
+    game.currentBiddingPlayerId =
+      players[this.gameStartIndex].playerId || game.currentBiddingPlayerId;
+
+    // The "Start" label tracks the seat, not the player keep startingPlayerId in sync
+    game.startingPlayerId = game.currentBiddingPlayerId;
+
+    // Mark this team's switch as used
+    if (team === "A") {
+      game.teamAPositionSwitchUsed = true;
+    } else {
+      game.teamBPositionSwitchUsed = true;
+    }
+
+    // Clear the pending request
+
+    delete game.pendingPositionSwitch;
+
+    this.inMemoryStore.saveGame(gameId, game);
+
+    // Broadcast updated player list and bidding start notification
+    const playerIds = players.map((p: IPlayer) => p.playerId);
+    this.sendPlayersInfo(gameId, playerIds);
+
+    // Also send a biddingPhaseStart so the frontend resets correctly
+    const biddingStartPayload: GameActionResponse = {
+      action: "biddingPhaseStart",
+      data: {
+        currentBiddingPlayerId: game.currentBiddingPlayerId,
+        startingPlayerId: game.startingPlayerId,
+      },
+    };
+
+    this.ioServer
+      .to(gameId)
+      .emit(
+        "data",
+        successResponse(RESPONSE_CODES.gameNotification, biddingStartPayload),
+      );
+
+    // Broadcast switch-completed notification to all players
+    const switchCompletePayload = {
+      action: "POSITION_SWITCH_COMPLETED",
+
+      data: {
+        team,
+        message: `Team ${team} has shuffled their seating positions!`,
+        teamAPositionSwitchUsed: game.teamAPositionSwitchUsed || false,
+        teamBPositionSwitchUsed: game.teamBPositionSwitchUsed || false,
+      },
+    };
+
+    this.ioServer
+      .to(gameId)
+      .emit(
+        "data",
+        successResponse(RESPONSE_CODES.gameNotification, switchCompletePayload),
+      );
+
+    console.log(
+      `[POSITION SWITCH] Team ${team} positions shuffled in game ${gameId}. New bidding player: ${game.currentBiddingPlayerId}`,
+    );
   }
 }

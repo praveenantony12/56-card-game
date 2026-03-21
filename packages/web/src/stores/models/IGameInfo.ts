@@ -70,7 +70,7 @@ export interface IGame {
     teamBScore: number;
     scoreResetOccurred: boolean;
   };
-  gameMode?: "create" | "join" | null;
+  gameMode?: "create" | "join" | "view" | null;
   gameIdToJoin?: string;
   isGameCreator?: boolean;
   sharedGameId?: string;
@@ -85,4 +85,7 @@ export interface IGame {
     gameMode: string;
     ts: number;
   };
+  // Team position switch state (one-time per team per game session)
+  teamAPositionSwitchUsed?: boolean;
+  teamBPositionSwitchUsed?: boolean;
 }

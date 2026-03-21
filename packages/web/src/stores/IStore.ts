@@ -71,4 +71,10 @@ export interface IStore {
   forfeitGame(gameId: string): Promise<void>;
 
   getShareableGameUrl(gameId: string): string;
+
+  requestPositionSwitch(team: "A" | "B"): Promise<void>;
+
+  approvePositionSwitch(approve: boolean): Promise<void>;
+
+  setGameModeView(gameId: string): void;
 }

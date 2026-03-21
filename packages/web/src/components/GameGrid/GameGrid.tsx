@@ -6,6 +6,7 @@ import Card from "../Card/Card";
 // import POINTS from "../../constants/Points";
 
 import "./game-grid.css";
+import { set } from "mobx";
 
 interface IProps {
   store?: IStore;
@@ -173,7 +174,7 @@ class GameGrid extends React.Component<IProps, IState> {
       teamBScore,
     } = this.store.game;
 
-    const { gameId, playerId } = this.store.user;
+    const { gameId, playerId, isSpectator } = this.store.user;
     const firstPlayer = players && players.length > 0 ? players[0] : "";
     const secondPlayer = players && players.length > 1 ? players[1] : "";
     const thirdPlayer = players && players.length > 2 ? players[2] : "";
@@ -208,6 +209,32 @@ class GameGrid extends React.Component<IProps, IState> {
 
     const isYourBiddingTurn =
       isBiddingPhase && currentBiddingPlayerId === playerId;
+
+    // Spectator mode: render the read-only view
+    if (isSpectator) {
+      return this.renderSpectatorView({
+        gameScore,
+        firstPlayer,
+        secondPlayer,
+        thirdPlayer,
+        fourthPlayer,
+        fifthPlayer,
+        lastPlayer,
+        droppedCards,
+        teamACards,
+        teamBCards,
+        dropCardPlayer,
+        isGameComplete,
+        winnerMessage,
+        gameCompleteData,
+        finalBid,
+        biddingTeam,
+        teamAScore,
+        teamBScore,
+        isBiddingPhase,
+        gameStarted: gameStarted!,
+      });
+    }
 
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
@@ -491,12 +518,392 @@ class GameGrid extends React.Component<IProps, IState> {
             </Button.Group>
           </Grid.Row>
         </Grid>
+
+        {/* Spectator mode: show game ID and option to watch another game */}
+        {this.renderPositionSwitchButtons(
+          firstPlayer,
+          secondPlayer,
+          thirdPlayer,
+          fourthPlayer,
+          fifthPlayer,
+          lastPlayer,
+          playerId as string,
+        )}
       </Dimmer.Dimmable>
     );
   }
 
   private updateScore = (event: any) => {
     this.store.updateGameScore(event.target.value);
+  };
+
+  /**
+   * Render a read-only spectator view: table scores, team card piles, bid info.
+   * Players' hand cards and action buttons are hidden.
+   */
+  private renderSpectatorView(props: {
+    gameScore: string;
+    firstPlayer: string;
+    secondPlayer: string;
+    thirdPlayer: string;
+    fourthPlayer: string;
+    fifthPlayer: string;
+    lastPlayer: string;
+    droppedCards: string[] | undefined;
+    teamACards: string[] | undefined;
+    teamBCards: string[] | undefined;
+    dropCardPlayer: string[] | undefined;
+    isGameComplete: boolean | undefined;
+    winnerMessage: string | undefined;
+    gameCompleteData: any;
+    finalBid: number | undefined;
+    biddingTeam: string | undefined;
+    teamAScore: number | undefined;
+    teamBScore: number | undefined;
+    isBiddingPhase: boolean | undefined;
+    gameStarted: boolean;
+  }) {
+    const {
+      gameScore,
+      firstPlayer,
+      secondPlayer,
+      thirdPlayer,
+      fourthPlayer,
+      fifthPlayer,
+      lastPlayer,
+      droppedCards,
+      teamACards,
+      teamBCards,
+      dropCardPlayer,
+      isGameComplete,
+      winnerMessage,
+      gameCompleteData,
+      finalBid,
+      biddingTeam,
+      teamAScore,
+      teamBScore,
+      isBiddingPhase,
+      gameStarted,
+    } = props;
+
+    return (
+      <div>
+        {/* Cards on table */}
+
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={1}>
+            <Grid.Column className="cardHeight cardTable">
+              <div className="cardOnTable">
+                {this.renderCards(droppedCards, false, false, dropCardPlayer)}
+                {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
+                  <div className="round-timer">
+                    {" "}
+                    {this.state.timerRemaining}{" "}
+                  </div>
+                )}
+
+                {isGameComplete && winnerMessage && (
+                  <div
+                    className="game-winner-message"
+                    style={{
+                      position: "absolute",
+                      left: "50%",
+                      top: "12rem",
+                      transform: "translate(-50%, -50%)",
+                      backgroundColor: "rgb(0,0,0,0.8)",
+                      color: "white",
+                      padding: "20px",
+                      borderRadius: "10px",
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      zIndex: 1000,
+                      maxWidth: "400px",
+                    }}
+                  >
+                    <div>{winnerMessage}</div>
+                    {gameCompleteData && (
+                      <div
+                        style={{
+                          marginTop: "10px",
+                          fontSize: "14px",
+                          fontWeight: "normal",
+                        }}
+                      >
+                        <div>Final Bid: {finalBid}</div>
+                        <div>Team A Points: {gameCompleteData.teamAPoints}</div>
+                        <div>Team B Points: {gameCompleteData.teamBPoints}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
+
+        {/* Bid info - above the score, centered, matching regular game layout */}
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={1}>
+            <Grid.Column
+              textAlign="center"
+              mobile={16}
+              tablet={16}
+              computer={16}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexDirection: "column",
+              }}
+            >
+              {isBiddingPhase
+                ? this.renderSpectatorBiddingInfo()
+                : this.renderNormalGameUI()}
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
+
+        {/* Score display */}
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={1}>
+            <Grid.Column
+              textAlign="center"
+              mobile={16}
+              tablet={16}
+              computer={16}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexDirection: "column",
+              }}
+            >
+              <Button.Group
+                fluid={true}
+                style={{
+                  width: "25%",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <Button as="div" labelPosition="left" disabled={true}>
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="red"
+                    pointing="right"
+                    style={{ width: "90%", justifyContent: "center" }}
+                  >
+                    {firstPlayer}'s Team
+                  </Label>
+                  <Button color="red" disabled={true}>
+                    {teamAScore !== undefined
+                      ? teamAScore
+                      : 10 - Number(gameScore)}
+                  </Button>
+                </Button>
+                <Button.Or text="VS" />
+                <Button as="div" labelPosition="right" disabled={true}>
+                  <Button color="red" disabled={true}>
+                    {teamBScore !== undefined
+                      ? teamBScore
+                      : 10 - Number(gameScore)}
+                  </Button>
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="red"
+                    pointing="left"
+                    style={{ width: "90%", justifyContent: "center" }}
+                  >
+                    {lastPlayer}'s Team
+                  </Label>
+                </Button>
+              </Button.Group>
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
+
+        {/* Team card piles */}
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={2}>
+            <Grid.Column textAlign="center">
+              <Button.Group className="teamAButtonGroup">
+                <Button as="div" labelPosition="left">
+                  <Label as="a" basic={true} color="black" pointing="right">
+                    Team A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
+                  </Label>
+                  <Button
+                    color={
+                      isGameComplete && biddingTeam === "A"
+                        ? gameCompleteData?.biddingTeamAchievedBid
+                          ? "green"
+                          : "red"
+                        : "black"
+                    }
+                    className="teamAPoints"
+                  >
+                    {gameCompleteData ? gameCompleteData.teamAPoints : 0}
+                  </Button>
+                </Button>
+              </Button.Group>
+              <div className="teamCards teamACards">
+                {this.renderCards(teamACards, false, true)}
+              </div>
+            </Grid.Column>
+            <Grid.Column textAlign="center">
+              <Button.Group className="teamBButtonGroup">
+                <Button as="div" labelPosition="left">
+                  <Label as="a" basic={true} color="black" pointing="right">
+                    Team B [{secondPlayer} {fourthPlayer} {lastPlayer}]
+                  </Label>
+                  <Button
+                    color={
+                      isGameComplete && biddingTeam === "B"
+                        ? gameCompleteData?.biddingTeamAchievedBid
+                          ? "green"
+                          : "red"
+                        : "black"
+                    }
+                    className="teamBPoints"
+                  >
+                    {gameCompleteData ? gameCompleteData.teamBPoints : 0}
+                  </Button>
+                </Button>
+              </Button.Group>
+              <div className="teamCards teamBCards">
+                {this.renderCards(teamBCards, false, true)}
+              </div>
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
+      </div>
+    );
+  }
+
+  /**
+   * Render bid info panel for spectators during the bidding phase.
+   */
+  private renderSpectatorBiddingInfo() {
+    const {
+      bidHistory,
+      currentBet,
+      currentBiddingPlayerId,
+      bidDouble,
+      bidReDouble,
+    } = this.store.game;
+    let lastBid = "No bids yet";
+    if (bidHistory && bidHistory.length > 0) {
+      for (let i = bidHistory.length - 1; i >= 0; i--) {
+        const entry = bidHistory[i] as any;
+        if (entry.action === "bid") {
+          lastBid = `${entry.playerId} ➡ ${entry.bidValue} ${entry.suit || ""}`;
+          if (bidDouble) lastBid += " (Doubled)";
+          if (bidReDouble) lastBid += " (Re-Doubled)";
+          break;
+        }
+      }
+    }
+
+    return (
+      <div
+        style={{
+          textAlign: "center",
+          backgroundColor: "rgba(0,0,0,0.6)",
+          color: "white",
+          padding: "10px",
+          marginTop: "8px",
+          borderRadius: "6px",
+        }}
+      >
+        <strong>Bidding in progress</strong>
+        <div style={{ marginTop: "4px" }}>
+          Current turn: <em>{currentBiddingPlayerId}</em>
+        </div>
+        <div style={{ marginTop: "4px" }}>
+          Last bid: <em>{lastBid}</em>
+        </div>
+      </div>
+    );
+  }
+
+  /**
+   * Render team-specific one-time position switch buttons
+   * Visible only during bidding phase, before any bid us made, and if the team hasn't used it.
+   */
+  private renderPositionSwitchButtons(
+    p0: string,
+    p1: string,
+    p2: string,
+    p3: string,
+    p4: string,
+    p5: string,
+    mPlayerId: string,
+  ) {
+    const {
+      isBiddingPhase,
+      bidHistory,
+      teamAPositionSwitchUsed,
+      teamBPositionSwitchUsed,
+    } = this.store.game;
+
+    // Only show before any bids are made
+    const noBidsMade = !bidHistory || bidHistory.length === 0;
+    if (!isBiddingPhase || !noBidsMade) {
+      return null;
+    }
+
+    // Determine my team (Team A: includes p0, p2, p4; Team B: includes p1, p3, p5)
+    const teamAPlayers = [p0, p2, p4].filter(Boolean);
+    const teamBPlayers = [p1, p3, p5].filter(Boolean);
+    const isTeamA = teamAPlayers.includes(mPlayerId);
+    const isTeamB = teamBPlayers.includes(mPlayerId);
+
+    if (!isTeamA && !isTeamB) {
+      return null; // Player not in either team (shouldn't happen), don't show buttons
+    }
+
+    return (
+      <Grid centered={true} style={{ marginTop: "4px" }}>
+        <Grid.Row centered={true} columns={1}>
+          <Grid.Column textAlign="center">
+            {isTeamA && !teamAPositionSwitchUsed && (
+              <Button
+                color="olive"
+                size="small"
+                onClick={() => this.handleSwitchPositions(this, "A")}
+                style={{ margin: "4px" }}
+                disabled={this.state.isProcessingAction}
+                title="Ask your team to randomly shuffle Team A seating positions (one-time only)"
+              >
+                🔀 Shuffle Team A Seats
+              </Button>
+            )}
+            {isTeamB && !teamBPositionSwitchUsed && (
+              <Button
+                color="olive"
+                size="small"
+                onClick={() => this.handleSwitchPositions(this, "B")}
+                style={{ margin: "4px" }}
+                disabled={this.state.isProcessingAction}
+                title="Ask your team to randomly shuffle Team B seating positions (one-time only)"
+              >
+                🔀 Shuffle Team B Seats
+              </Button>
+            )}
+          </Grid.Column>
+        </Grid.Row>
+      </Grid>
+    );
+  }
+
+  private handleSwitchPositions = async (team: "A" | "B") => {
+    if (this.state.isProcessingAction) return;
+    this.setState({ isProcessingAction: true });
+    try {
+      await this.store.requestPositionSwitch(team);
+    } finally {
+      setTimeout(() => this.setState({ isProcessingAction: false }), 2000);
+    }
   };
 
   private hasSuitInHand = (suit: string): boolean => {

@@ -18,6 +18,8 @@ import {
   MESSAGES,
   SuccessResponse,
   updateGameScorePayload,
+  switchTeamPositionsPayload,
+  switchTeamPositionsApprovePayload,
 } from "@rcg/common";
 
 import * as io from "socket.io-client";
@@ -294,6 +296,43 @@ class GameService {
    */
   public leaveGame() {
     ioClient.disconnect();
+  }
+
+  /**
+   * Switch team positions. It will randomly shuffle the seating positions of the player's team.
+   * @param gameId The game id.
+   * @param playerId The player id.
+   * @param team The team to switch positions for ("A" or "B")
+   */
+  public async switchTeamPositions(
+    gameId: string,
+    playerId: string,
+    team: "A" | "B",
+  ): Promise<any> {
+    return this.sendRequest(switchTeamPositionsPayload(gameId, playerId, team));
+  }
+
+  /**
+   * Approves or denies a team position switch request.
+   * @param gameId The game id.
+   * @param playerId The player id requesting the switch.
+   * @param approvingPlayerId The player id of the player giving approval.
+   * @param approved Whether the switch is approved or denied.
+   */
+  public async approvePositionSwitch(
+    gameId: string,
+    playerId: string,
+    approvingPlayerId: string,
+    approved: boolean,
+  ): Promise<any> {
+    return this.sendRequest(
+      switchTeamPositionsApprovePayload(
+        gameId,
+        playerId,
+        approvingPlayerId,
+        approved,
+      ),
+    );
   }
 
   /**

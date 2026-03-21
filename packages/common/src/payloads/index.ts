@@ -7,7 +7,7 @@ export const loginPayload = (userId: string, gameId?: string) => {
 export const reconnectPayload = (
   playerId: string,
   token?: string,
-  gameId?: string
+  gameId?: string,
 ) => {
   return {
     operation: MESSAGES.reconnect,
@@ -18,7 +18,7 @@ export const reconnectPayload = (
 export const reconnectApprovePayload = (
   gameId: string,
   playerId: string,
-  approvingPlayerId: string
+  approvingPlayerId: string,
 ) => {
   return {
     operation: MESSAGES.reconnectApprove,
@@ -29,7 +29,7 @@ export const reconnectApprovePayload = (
 export const reconnectDenyPayload = (
   gameId: string,
   playerId: string,
-  denyingPlayerId: string
+  denyingPlayerId: string,
 ) => {
   return {
     operation: MESSAGES.reconnectDeny,
@@ -45,7 +45,7 @@ export const dropCardPayload = (
   card: string,
   gameId: string,
   token: string,
-  playerId: string
+  playerId: string,
 ) => {
   return {
     operation: MESSAGES.dropCard,
@@ -56,7 +56,7 @@ export const dropCardPayload = (
 export const incrementBetByPlayerPayload = (
   playerBet: string,
   gameId: string,
-  token: string
+  token: string,
 ) => {
   return {
     operation: MESSAGES.incrementBetByPlayer,
@@ -67,7 +67,7 @@ export const incrementBetByPlayerPayload = (
 export const updateGameScorePayload = (
   gameScore: string,
   gameId: string,
-  token: string
+  token: string,
 ) => {
   return {
     operation: MESSAGES.updateGameScore,
@@ -105,7 +105,7 @@ export const forfeitGamePayload = (gameId: string, playerId: string) => {
 export const selectPlayerPayload = (
   currentPlayerId: string,
   gameId: string,
-  token: string
+  token: string,
 ) => {
   return {
     operation: MESSAGES.selectPlayer,
@@ -117,7 +117,7 @@ export const selectTrumpSuitPayload = (
   trumpSuit: string,
   gameId: string,
   token: string,
-  playerId: string
+  playerId: string,
 ) => {
   return {
     operation: MESSAGES.selectTrumpSuit,
@@ -128,10 +128,33 @@ export const selectTrumpSuitPayload = (
 export const addBotsPayload = (
   botCount: number,
   gameId: string,
-  startImmediately?: boolean
+  startImmediately?: boolean,
 ) => {
   return {
     operation: MESSAGES.addBots,
     payload: { botCount, gameId, startImmediately },
+  };
+};
+
+export const switchTeamPositionsPayload = (
+  gameId: string,
+  playerId: string,
+  team: "A" | "B",
+) => {
+  return {
+    operation: MESSAGES.switchTeamPositions,
+    payload: { gameId, playerId, team },
+  };
+};
+
+export const switchTeamPositionsApprovePayload = (
+  gameId: string,
+  playerId: string,
+  approvingPlayerId: string,
+  approved: boolean,
+) => {
+  return {
+    operation: MESSAGES.switchTeamPositionsApprove,
+    payload: { gameId, playerId, approvingPlayerId, approved },
   };
 };
