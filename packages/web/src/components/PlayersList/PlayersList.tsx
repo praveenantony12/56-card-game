@@ -53,14 +53,11 @@ class PlayersList extends React.Component<IProps, {}> {
     } = this.gameInfo;
     const { droppedCards } = this.store.game;
 
-    const canSelectPlayer =
-      typeof droppedCards === "undefined" || droppedCards.length === 0;
-
     if (!players) {
       return null;
     }
 
-    const hasGameStarted = droppedCards && droppedCards.length > 0;
+    const hasGameStarted = !!(droppedCards && droppedCards.length > 0);
     const showStartLabel = isBiddingPhase && !hasGameStarted;
 
     const rows = players.map((player) => {
@@ -74,6 +71,20 @@ class PlayersList extends React.Component<IProps, {}> {
           : playerTeam === "B"
             ? "teamBSeat"
             : "";
+
+      // Determine if this player should be the active (clickable) one
+      let isActivePlayer: boolean;
+      if (isBiddingPhase) {
+        // During bidding, only the current bidding player is active
+        isActivePlayer = !!isCurrentBiddingPlayer;
+      } else if (hasGameStarted) {
+        // During gameplay, only the current player is active
+        isActivePlayer = !!(currentPlayerId && player === currentPlayerId);
+      } else {
+        // Bidding complete but game not started yet - only starting player is active
+        isActivePlayer = !!isStartingPlayer;
+      }
+
       const status = isBiddingPhase
         ? isCurrentBiddingPlayer
           ? "Bid"
@@ -88,23 +99,11 @@ class PlayersList extends React.Component<IProps, {}> {
             as="div"
             labelPosition="right"
             className={`playerSeat ${teamClassName}`}
-            disabled={
-              isBiddingPhase
-                ? isCurrentBiddingPlayer
-                  ? false
-                  : true
-                : canSelectPlayer || player === currentPlayerId
-                  ? false
-                  : true
-            }
+            disabled={!isActivePlayer}
             onClick={
-              isBiddingPhase
-                ? isCurrentBiddingPlayer
-                  ? this.handlePlayerSelectClick.bind(this, player)
-                  : false
-                : canSelectPlayer
-                  ? this.handlePlayerSelectClick.bind(this, player)
-                  : false
+              isActivePlayer
+                ? this.handlePlayerSelectClick.bind(this, player)
+                : false
             }
           >
             <Button

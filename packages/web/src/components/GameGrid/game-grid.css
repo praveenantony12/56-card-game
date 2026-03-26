@@ -235,7 +235,7 @@
   @media screen and (max-width: 1024px) {
     background-size: 56rem;
   }
-  
+
   /* Standard Tablets (Portrait, 600px to 768px) */
   @media screen and (max-width: 768px) {
     background-size: 42rem;
@@ -249,7 +249,7 @@
   }
 
   /* Mobile only (0 to 480px) */
-  @media screen and (max-width: 480px) { 
+  @media screen and (max-width: 480px) {
     background-size: 30rem;
     height: 15rem;
   }
@@ -271,12 +271,12 @@
   }
 
   /* Small Tablets / Large Phones (481px to 599px) */
-  @media screen  and (max-width: 599px) {
+  @media screen and (max-width: 599px) {
     padding-top: 4.5rem;
   }
 
   /* Mobile only (0 to 480px) */
-  @media screen and (max-width: 480px) { 
+  @media screen and (max-width: 480px) {
     padding-top: 4.75rem;
   }
 }
@@ -314,81 +314,105 @@
 
 .teamCards .card {
   margin-bottom: .25rem !important;
-  @media screen and (max-width: 1376px) { 
+
+  @media screen and (max-width: 1376px) {
     font-size: 18pt;
   }
-  @media screen and (max-width: 1308px) { 
+
+  @media screen and (max-width: 1308px) {
     font-size: 17pt;
   }
-  @media screen and (max-width: 1240px) { 
+
+  @media screen and (max-width: 1240px) {
     font-size: 16pt;
   }
-  @media screen and (max-width: 1172px) { 
+
+  @media screen and (max-width: 1172px) {
     font-size: 14pt;
   }
-  @media screen and (max-width: 1036px) { 
+
+  @media screen and (max-width: 1036px) {
     font-size: 12pt;
   }
-  @media screen and (max-width: 900px) { 
+
+  @media screen and (max-width: 900px) {
     font-size: 11pt;
   }
-  @media screen and (max-width: 832px) { 
+
+  @media screen and (max-width: 832px) {
     font-size: 10pt;
   }
-  @media screen and (max-width: 764px) { 
+
+  @media screen and (max-width: 764px) {
     font-size: 9pt;
   }
-  @media screen and (max-width: 696px) { 
+
+  @media screen and (max-width: 696px) {
     font-size: 8pt;
   }
-  @media screen and (max-width: 696px) { 
+
+  @media screen and (max-width: 696px) {
     font-size: 7pt;
   }
-  @media screen and (max-width: 560px) { 
+
+  @media screen and (max-width: 560px) {
     font-size: 6.5pt;
   }
-  @media screen and (max-width: 560px) { 
+
+  @media screen and (max-width: 560px) {
     font-size: 6.5pt;
   }
-  @media screen and (max-width: 526px) { 
+
+  @media screen and (max-width: 526px) {
     font-size: 6pt;
   }
-  @media screen and (max-width: 492px) { 
+
+  @media screen and (max-width: 492px) {
     font-size: 5.75pt;
   }
-  @media screen and (max-width: 474px) { 
+
+  @media screen and (max-width: 474px) {
     font-size: 5.5pt;
   }
-  @media screen and (max-width: 458px) { 
+
+  @media screen and (max-width: 458px) {
     font-size: 5.25pt;
   }
-  @media screen and (max-width: 440px) { 
+
+  @media screen and (max-width: 440px) {
     font-size: 5pt;
   }
-  @media screen and (max-width: 424px) { 
+
+  @media screen and (max-width: 424px) {
     font-size: 4.75pt;
   }
-  @media screen and (max-width: 406px) { 
+
+  @media screen and (max-width: 406px) {
     font-size: 4.5pt;
   }
-  @media screen and (max-width: 390px) { 
+
+  @media screen and (max-width: 390px) {
     font-size: 4.25pt;
   }
-  @media screen and (max-width: 372px) { 
+
+  @media screen and (max-width: 372px) {
     font-size: 4pt;
   }
-  @media screen and (max-width: 356px) { 
+
+  @media screen and (max-width: 356px) {
     font-size: 3.75pt;
   }
-  @media screen and (max-width: 338px) { 
+
+  @media screen and (max-width: 338px) {
     font-size: 3.5pt;
   }
 }
-  
+
 .teamAButtonGroup {
   padding-left: 1rem !important;
+
   /* Mobile only (0 to 480px) */
-  @media screen and (max-width: 480px) { 
+  @media screen and (max-width: 480px) {
     display: inline-block !important;
     padding-left: .25rem !important;
     font-size: 0.75rem !important;
@@ -397,8 +421,9 @@
 
 .teamBButtonGroup {
   padding-right: 1rem !important;
+
   /* Mobile only (0 to 480px) */
-  @media screen and (max-width: 480px) { 
+  @media screen and (max-width: 480px) {
     display: inline-block !important;
     padding-right: .25rem !important;
     font-size: 0.75rem !important;
@@ -406,17 +431,23 @@
 }
 
 .handleBiddingPass {
-  padding-top: 2.5rem;
+  padding-top: 3rem;
+
+  @media screen and (max-width: 768px) {
+    padding-top: 2.5rem;
+  }
+
   /* Mobile only (0 to 480px) */
-  @media screen and (max-width: 480px) { 
+  @media screen and (max-width: 480px) {
     padding-top: 1.5rem;
   }
 }
 
 .handleBiddingPassPostRaise {
   padding-top: 2.5rem;
+
   /* Mobile only (0 to 480px) */
-  @media screen and (max-width: 480px) { 
+  @media screen and (max-width: 480px) {
     padding-top: 1.5rem;
     padding: 10px;
     border-radius: 5px;
@@ -430,24 +461,28 @@
   transform: translate(-50%, -170%);
   background-color: rgba(0, 0, 0, 0.85);
   color: white;
-  padding: 16px; 
+  padding: 16px;
   border-radius: 15px;
   text-align: center;
   z-index: 1000;
   min-width: 400px;
-  @media screen and (max-width: 906px) { 
+
+  @media screen and (max-width: 906px) {
     transform: translate(-50%, -230%);
   }
-  @media screen and (max-width: 856px) { 
+
+  @media screen and (max-width: 856px) {
     min-width: 500px;
   }
-  @media screen and (max-width: 840px) { 
+
+  @media screen and (max-width: 840px) {
     transform: translate(-50%, -230%);
     padding: 12px;
     border-radius: 10px;
     min-width: 440px;
   }
-  @media screen and (max-width: 768px) { 
+
+  @media screen and (max-width: 768px) {
     transform: translate(-50%, -110%);
     padding: 12px;
     border-radius: 10px;
@@ -493,7 +528,7 @@
   }
 
   /* Mobile only (0 to 480px) */
-  @media screen and (max-width: 480px) { 
+  @media screen and (max-width: 480px) {
     top: 20%;
     font-size: 1.25rem;
     padding: 0.35rem;
@@ -530,8 +565,8 @@
   border-color: #ca0a0a !important;
   transition: all 0.3s ease;
   cursor: pointer
-  /* border-radius: 8px; */
-  /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); */
+    /* border-radius: 8px; */
+    /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); */
 }
 
 .pass-button:hover {
@@ -546,6 +581,7 @@
 }
 
 .game-winner-message {
+
   /* Small Tablets / Large Phones (481px to 599px) */
   @media screen and (max-width: 599px) {
     top: 10%;

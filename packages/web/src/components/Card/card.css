@@ -6,37 +6,36 @@
 
 /* === TEAM COLOR THEME: Player labels on dropped cards === */
 .playerLabel-team-a {
-  background: rgba(33, 133, 208, 0.88) !important;
-  color: white !important;
-  border-radius: 6px;
-  padding: 1px 10px;
+  background: transparent !important;
+  color: #34a7ff !important;
+  font-weight: 900;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  box-shadow: 0 2px 8px rgba(33, 133, 208, 0.5);
 }
 
 .playerLabel-team-b {
-  background: rgba(39, 174, 96, 0.88) !important;
-  color: white !important;
-  border-radius: 6px;
-  padding: 1px 10px;
+  background: transparent !important;
+  color: #20ba45 !important;
+  font-weight: 900;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  box-shadow: 0 2px 8px rgba(39, 174, 96, 0.5);
 }
 
 .normal_face {
   background: initial;
   color: initial;
 }
+
 .flip_image {
   z-index: -1;
 }
+
 .normal_image {
   z-index: 1;
 }
+
 .playerLabel {
   margin-top: 10rem;
   text-align: center;
-  font-size: large;
+  font-size: x-large;
   padding-bottom: 0.25rem;
   font-family: monospace;
   font-variant-caps: all-petite-caps;
@@ -46,6 +45,7 @@
   /* Standard Tablets (Portrait, 600px to 768px) */
   @media screen and (max-width: 768px) {
     margin-top: 6.5rem;
+    font-size: large;
   }
 
   /* Small Tablets / Large Phones (481px to 599px) */
@@ -57,7 +57,7 @@
   }
 
   /* Mobile only (0 to 480px) */
-  @media screen and (max-width: 480px) { 
+  @media screen and (max-width: 480px) {
     margin-top: 5.5rem;
     color: whitesmoke;
     font-size: medium;
@@ -66,21 +66,25 @@
   }
 }
 
-@media screen and (max-width: 480px) { 
+@media screen and (max-width: 480px) {
   .index {
     left: 0.2em;
     top: -0.35em;
   }
+
   .spotA1 {
     top: 0.35em;
   }
+
   .spotA5 {
     top: 3.25em;
     left: .8em;
   }
+
   .spotC1 {
     top: 0.35em;
   }
+
   .spotC5 {
     top: 3.25em;
     left: 2.35em;
@@ -91,16 +95,20 @@
   .teamCards .ace {
     top: .5em;
   }
+
   .teamCards .spotA1 {
     top: 0.5em;
   }
+
   .teamCards .spotC1 {
     top: 0.5em;
   }
+
   .teamCards .spotA5 {
     left: .75em;
     top: 3.5em;
   }
+
   .teamCards .spotC5 {
     left: 2.35em;
     top: 3.5em;
@@ -112,13 +120,16 @@
   .teamCards .spotA1 {
     top: 0.35em;
   }
+
   .teamCards .spotC1 {
     top: 0.35em;
   }
+
   .teamCards .spotA5 {
     left: .75em;
     top: 3.25em;
   }
+
   .teamCards .spotC5 {
     left: 2.35em;
     top: 3.25em;
@@ -130,31 +141,40 @@
   .teamCards .index {
     top: -.5em;
   }
+
   .teamCards .spotA1 {
     top: .1em;
   }
+
   .teamCards .spotA2 {
     top: .85em;
   }
+
   .teamCards .spotA4 {
     top: 1.75em;
   }
+
   .teamCards .spotA5 {
     top: 3.25em;
     left: .8em;
   }
+
   .teamCards .spotB4 {
     top: 2em;
   }
+
   .teamCards .spotC1 {
     top: .1em;
   }
+
   .teamCards .spotC2 {
     top: .85em;
   }
+
   .teamCards .spotC4 {
     top: 1.75em;
   }
+
   .teamCards .spotC5 {
     top: 3.25em;
     left: 2.35em;
@@ -166,34 +186,44 @@
   .teamCards .ace {
     top: .3em;
   }
+
   .teamCards .index {
     top: -.8em;
   }
+
   .teamCards .spotA1 {
     top: .1em;
   }
+
   .teamCards .spotA2 {
     top: .85em;
   }
+
   .teamCards .spotA4 {
     top: 1.75em;
   }
+
   .teamCards .spotA5 {
     top: 3em;
     left: .8em;
   }
+
   .teamCards .spotB4 {
     top: 2em;
   }
+
   .teamCards .spotC1 {
     top: .1em;
   }
+
   .teamCards .spotC2 {
     top: .85em;
   }
+
   .teamCards .spotC4 {
     top: 1.75em;
   }
+
   .teamCards .spotC5 {
     top: 3em;
     left: 2.35em;
@@ -205,34 +235,44 @@
   .teamCards .ace {
     top: .3em;
   }
+
   .teamCards .index {
     top: -1em;
   }
+
   .teamCards .spotA1 {
     top: -.1em;
   }
+
   .teamCards .spotA2 {
     top: .85em;
   }
+
   .teamCards .spotA4 {
     top: 1.75em;
   }
+
   .teamCards .spotA5 {
     top: 2.75em;
     left: .8em;
   }
+
   .teamCards .spotB4 {
     top: 2em;
   }
+
   .teamCards .spotC1 {
     top: -.1em;
   }
+
   .teamCards .spotC2 {
     top: .85em;
   }
+
   .teamCards .spotC4 {
     top: 1.75em;
   }
+
   .teamCards .spotC5 {
     top: 2.75em;
     left: 2.35em;
@@ -244,74 +284,94 @@
   .teamCards .ace {
     top: .3em;
   }
+
   .teamCards .index {
     top: -.25rem;
     left: 0.15em;
   }
+
   .teamCards .spotA1 {
     top: 0;
   }
+
   .teamCards .spotA2 {
     top: .85em;
   }
+
   .teamCards .spotA4 {
     top: 1.75em;
   }
+
   .teamCards .spotA5 {
     top: 2.75em;
     left: .8em;
   }
+
   .teamCards .spotB4 {
     top: 2em;
   }
+
   .teamCards .spotC1 {
     top: 0;
   }
+
   .teamCards .spotC2 {
     top: .85em;
   }
+
   .teamCards .spotC4 {
     top: 1.75em;
   }
+
   .teamCards .spotC5 {
     top: 2.75em;
     left: 2.35em;
   }
 }
 
-@media screen and (max-width: 480px) { 
+@media screen and (max-width: 480px) {
   .teamCards .ace {
     top: .3em;
   }
+
   .teamCards .index {
     left: 0.2em;
     top: -1.65em;
   }
+
   .teamCards .spotA1 {
     top: -0.35em;
   }
+
   .teamCards .spotA2 {
     top: .5em;
   }
+
   .teamCards .spotA4 {
     top: 1.5em;
   }
+
   .teamCards .spotA5 {
     top: 2.35em;
     left: .8em;
   }
+
   .teamCards .spotB4 {
     top: 2em;
   }
+
   .teamCards .spotC1 {
     top: -0.35em;
   }
+
   .teamCards .spotC2 {
     top: .5em;
   }
+
   .teamCards .spotC4 {
     top: 1.5em;
   }
+
   .teamCards .spotC5 {
     top: 2.35em;
     left: 2.35em;

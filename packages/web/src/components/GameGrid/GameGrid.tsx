@@ -245,10 +245,10 @@ class GameGrid extends React.Component<IProps, IState> {
                 style={{
                   display:
                     this.state.currentBiddingsuit !== "" ||
-                    gameStarted ||
-                    !isYourBiddingTurn ||
-                    this.store.game.postRaiseDoubleRound ||
-                    this.store.game.bidRaisePhase
+                      gameStarted ||
+                      !isYourBiddingTurn ||
+                      this.store.game.postRaiseDoubleRound ||
+                      this.store.game.bidRaisePhase
                       ? "none"
                       : "block",
                 }}
@@ -379,8 +379,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     style={{
                       width: "90%",
                       justifyContent: "center",
-                      borderColor: "#2185d0",
-                      color: "#2185d0",
+                      borderColor: "rgb(36 136 211)",
+                      color: "rgb(36 136 211)",
                       fontWeight: "bold",
                     }}
                   >
@@ -407,8 +407,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     style={{
                       width: "90%",
                       justifyContent: "center",
-                      borderColor: "#27ae60",
-                      color: "#27ae60",
+                      borderColor: "rgb(32 186 69)",
+                      color: "rgb(32 186 69)",
                       fontWeight: "bold",
                     }}
                   >
@@ -447,8 +447,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     pointing="right"
                     style={{
                       background: "rgba(33, 133, 208, 0.16)",
-                      borderColor: "#2185d0",
-                      color: "#2185d0",
+                      borderColor: "rgb(36 136 211)",
+                      color: "rgb(36 136 211)",
                       boxShadow: "0 0 10px rgba(33, 133, 208, 0.35)",
                       fontWeight: "bold",
                     }}
@@ -483,8 +483,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     pointing="right"
                     style={{
                       background: "rgba(39, 174, 96, 0.08)",
-                      borderColor: "#27ae60",
-                      color: "#27ae60",
+                      borderColor: "rgb(32 186 69)",
+                      color: "rgb(32 186 69)",
                       boxShadow: "0 0 10px rgba(39, 174, 96, 0.3)",
                       fontWeight: "bold",
                     }}
@@ -727,8 +727,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     style={{
                       width: "90%",
                       justifyContent: "center",
-                      borderColor: "#2185d0",
-                      color: "#2185d0",
+                      borderColor: "rgb(36 136 211)",
+                      color: "rgb(36 136 211)",
                       fontWeight: "bold",
                     }}
                   >
@@ -755,8 +755,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     style={{
                       width: "90%",
                       justifyContent: "center",
-                      borderColor: "#27ae60",
-                      color: "#27ae60",
+                      borderColor: "rgb(32 186 69)",
+                      color: "rgb(32 186 69)",
                       fontWeight: "bold",
                     }}
                   >
@@ -781,8 +781,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     pointing="right"
                     style={{
                       background: "rgba(33, 133, 208, 0.16)",
-                      borderColor: "#2185d0",
-                      color: "#2185d0",
+                      borderColor: "rgb(36 136 211)",
+                      color: "rgb(36 136 211)",
                       boxShadow: "0 0 10px rgba(33, 133, 208, 0.35)",
                       fontWeight: "bold",
                     }}
@@ -817,8 +817,8 @@ class GameGrid extends React.Component<IProps, IState> {
                     pointing="right"
                     style={{
                       background: "rgba(39, 174, 96, 0.08)",
-                      borderColor: "#27ae60",
-                      color: "#27ae60",
+                      borderColor: "rgb(32 186 69)",
+                      color: "rgb(32 186 69)",
                       boxShadow: "0 0 10px rgba(39, 174, 96, 0.3)",
                       fontWeight: "bold",
                     }}
@@ -1174,18 +1174,12 @@ class GameGrid extends React.Component<IProps, IState> {
     const myTeam = this.getPlayerTeam(this.store.user.playerId as string);
     const lastBidStyle = {
       justifyContent: "center" as const,
-      color:
-        lastBidTeam === "A"
-          ? "#9bd4ff"
-          : lastBidTeam === "B"
-            ? "#7ee89e"
-            : "orange",
-      border: `1px solid ${lastBidTeam === "A" ? "rgba(33, 133, 208, 0.8)" : lastBidTeam === "B" ? "rgba(39, 174, 96, 0.8)" : "orange"}`,
+      color: "white",
       background:
         lastBidTeam === "A"
-          ? "rgba(33, 133, 208, 0.16)"
+          ? "rgb(36 136 211)"
           : lastBidTeam === "B"
-            ? "rgba(39, 174, 96, 0.14)"
+            ? "rgb(32 186 69)"
             : "transparent",
     };
     const myBidStyle = {
@@ -1210,15 +1204,15 @@ class GameGrid extends React.Component<IProps, IState> {
           <Button color="black" style={lastBidStyle}>
             {hasActualBid
               ? `${lastBiddingPlayer} bids → ${this.formatBidDisplay(
-                  lastBidValue,
-                  lastBidsuit,
-                  lastBidValue,
-                  lastSuitInfo,
-                  lastBidSelectionType,
-                  lastBidModifier,
-                  lastBidClickOrder,
-                  lastNoTrumpType,
-                )}`
+                lastBidValue,
+                lastBidsuit,
+                lastBidValue,
+                lastSuitInfo,
+                lastBidSelectionType,
+                lastBidModifier,
+                lastBidClickOrder,
+                lastNoTrumpType,
+              )}`
               : "No Bids Yet"}
             {bidDouble && " (Double)"}
             {bidReDouble && " (Re-Double)"}
@@ -1227,15 +1221,15 @@ class GameGrid extends React.Component<IProps, IState> {
             Your Bid:{" "}
             {hasPlayerMadeSelections
               ? this.formatBidDisplay(
-                  currentBiddingValue,
-                  currentBiddingsuit,
-                  lastBidValue,
-                  displayedSuitInfo,
-                  undefined,
-                  undefined,
-                  undefined,
-                  noTrumpType,
-                )
+                currentBiddingValue,
+                currentBiddingsuit,
+                lastBidValue,
+                displayedSuitInfo,
+                undefined,
+                undefined,
+                undefined,
+                noTrumpType,
+              )
               : "Not selected"}
           </Button>
         </Button.Group>
@@ -1609,25 +1603,18 @@ class GameGrid extends React.Component<IProps, IState> {
 
     const label =
       (hasCurrentBid || hasFinalBid) && playerName
-        ? `${playerName}'s bid → ${suitDisplay} [${bidValue}]${
-            bidDouble ? " (Double)" : ""
-          }${bidReDouble ? " (Re-Double)" : ""}`
+        ? `${playerName}'s bid → ${suitDisplay} [${bidValue}]${bidDouble ? " (Double)" : ""
+        }${bidReDouble ? " (Re-Double)" : ""}`
         : "Game Starting...";
 
     const bidTeamStyle = {
       justifyContent: "center" as const,
-      color:
-        biddingTeam === "A"
-          ? "#9bd4ff"
-          : biddingTeam === "B"
-            ? "#7ee89e"
-            : "white",
-      border: `1px solid ${biddingTeam === "A" ? "rgba(33, 133, 208, 0.8)" : biddingTeam === "B" ? "rgba(39, 174, 96, 0.8)" : "#2185d0"}`,
+      color: "white",
       background:
         biddingTeam === "A"
-          ? "rgba(33, 133, 208, 0.16)"
+          ? "rgb(36 136 211)"
           : biddingTeam === "B"
-            ? "rgba(39, 174, 96, 0.14)"
+            ? "rgb(32 186 69)"
             : "transparent",
     };
 
@@ -2080,25 +2067,13 @@ class GameGrid extends React.Component<IProps, IState> {
     const raisedBidTeam = this.getPlayerTeam(lastBiddingPlayer);
     const raisedBidStyle = {
       justifyContent: "center" as const,
-      color:
-        raisedBidTeam === "A"
-          ? "#9bd4ff"
-          : raisedBidTeam === "B"
-            ? "#7ee89e"
-            : "orange",
-      border: `1px solid ${
-        raisedBidTeam === "A"
-          ? "rgba(33, 133, 208, 0.8)"
-          : raisedBidTeam === "B"
-            ? "rgba(39, 174, 96, 0.8)"
-            : "orange"
-      }`,
+      color: "white",
       background:
         raisedBidTeam === "A"
-          ? "rgba(33, 133, 208, 0.16)"
+          ? "rgb(36 136 211)"
           : raisedBidTeam === "B"
-            ? "rgba(39, 174, 96, 0.14)"
-            : "transparent",
+            ? "rgb(32 186 69)"
+            : "#ff8c00",
     };
 
     return (
@@ -2165,18 +2140,18 @@ class GameGrid extends React.Component<IProps, IState> {
     const postRaiseTheme =
       lastBiddingTeam === "A"
         ? {
-            backgroundColor: "rgba(33, 133, 208, 0.92)",
-            boxShadow: "0 10px 30px rgba(33, 133, 208, 0.4)",
-          }
+          backgroundColor: "rgba(33, 133, 208, 0.92)",
+          boxShadow: "0 10px 30px rgba(33, 133, 208, 0.4)",
+        }
         : lastBiddingTeam === "B"
           ? {
-              backgroundColor: "rgba(39, 174, 96, 0.95)",
-              boxShadow: "0 10px 30px rgba(39, 174, 96, 0.4)",
-            }
+            backgroundColor: "rgba(39, 174, 96, 0.95)",
+            boxShadow: "0 10px 30px rgba(39, 174, 96, 0.4)",
+          }
           : {
-              backgroundColor: "rgba(255, 165, 0, 0.95)",
-              boxShadow: "0 10px 30px rgba(255, 165, 0, 0.35)",
-            };
+            backgroundColor: "rgba(255, 165, 0, 0.95)",
+            boxShadow: "0 10px 30px rgba(255, 165, 0, 0.35)",
+          };
 
     // Determine available actions based on team
     const isOpponentTeam =
