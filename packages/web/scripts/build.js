@@ -14,6 +14,19 @@ process.on('unhandledRejection', err => {
 // Ensure environment variables are read.
 require('../config/env');
 
+const crypto = require('crypto');
+const originalCreateHash = crypto.createHash;
+try {
+  originalCreateHash.call(crypto, 'md4');
+} catch (error) {
+  crypto.createHash = (algorithm, options) =>
+    originalCreateHash.call(
+      crypto,
+      algorithm === 'md4' ? 'sha256' : algorithm,
+      options
+    );
+}
+
 const path = require('path');
 const chalk = require('chalk');
 const fs = require('fs-extra');
