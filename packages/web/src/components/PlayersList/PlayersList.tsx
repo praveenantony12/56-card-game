@@ -1,6 +1,6 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
-import { Button, Grid, Icon, Label } from "semantic-ui-react";
+import { Button, Grid, Label } from "semantic-ui-react";
 import { IStore } from "../../stores/IStore";
 import { IGame } from "../../stores/models/IGameInfo";
 
@@ -15,6 +15,20 @@ interface IProps {
 class PlayersList extends React.Component<IProps, {}> {
   private get store(): IStore {
     return this.props.store as IStore;
+  }
+
+  private getPlayerTeam(playerId: string): "A" | "B" | null {
+    const { players } = this.gameInfo;
+    if (!players) {
+      return null;
+    }
+
+    const index = players.findIndex((player) => player === playerId);
+    if (index === -1) {
+      return null;
+    }
+
+    return index % 2 === 0 ? "A" : "B";
   }
 
   private get gameInfo(): IGame {
@@ -53,6 +67,13 @@ class PlayersList extends React.Component<IProps, {}> {
       const isCurrentBiddingPlayer =
         isBiddingPhase && player === currentBiddingPlayerId;
       const isStartingPlayer = player === startingPlayerId;
+      const playerTeam = this.getPlayerTeam(player);
+      const teamClassName =
+        playerTeam === "A"
+          ? "teamASeat"
+          : playerTeam === "B"
+            ? "teamBSeat"
+            : "";
       const status = isBiddingPhase
         ? isCurrentBiddingPlayer
           ? "Bid"
@@ -66,6 +87,7 @@ class PlayersList extends React.Component<IProps, {}> {
           <Button
             as="div"
             labelPosition="right"
+            className={`playerSeat ${teamClassName}`}
             disabled={
               isBiddingPhase
                 ? isCurrentBiddingPlayer
@@ -89,35 +111,32 @@ class PlayersList extends React.Component<IProps, {}> {
               color={
                 isBiddingPhase
                   ? isCurrentBiddingPlayer
-                    ? "yellow"
+                    ? playerTeam === "A"
+                      ? "blue"
+                      : "green"
                     : "grey"
                   : player === currentPlayerId
-                    ? "green"
-                    : "white"
+                    ? playerTeam === "A"
+                      ? "blue"
+                      : "green"
+                    : undefined
               }
+              className={`playerSeatButton ${teamClassName}`}
             >
               <span className="playerName">{player}</span>
             </Button>
             <Label
               as="a"
-              color={
-                isBiddingPhase
-                  ? isCurrentBiddingPlayer
-                    ? "green"
-                    : "black"
-                  : player === currentPlayerId
-                    ? "red"
-                    : "black"
-              }
+              color={playerTeam === "A" ? "blue" : "green"}
               pointing="left"
-              className="hiddenOnMobile"
+              className={`hiddenOnMobile playerStatus ${teamClassName}`}
             >
               {status}
             </Label>
           </Button>
           {showStartLabel && isStartingPlayer && (
             <div className="startLabelContainer">
-              <Label color="blue" className="startLabel">
+              <Label color="red" className="startLabel">
                 Start
               </Label>
             </div>
@@ -133,7 +152,7 @@ class PlayersList extends React.Component<IProps, {}> {
         {isSpectator && (
           <div
             style={{
-              background: "linear-gradient(90deg, #00b5ad, #0e6e6a)",
+              background: "linear-gradient(90deg, #151c22, #0d1218)",
               color: "white",
               padding: "8px 16px",
               fontWeight: "bold",
@@ -142,6 +161,8 @@ class PlayersList extends React.Component<IProps, {}> {
               borderRadius: "4px",
               marginBottom: "8px",
               textAlign: "center",
+              border: "1px solid rgba(33, 133, 208, 0.35)",
+              boxShadow: "0 6px 18px rgba(0, 0, 0, 0.35)",
             }}
           >
             👁️ Spectator Mode - you are watching this game

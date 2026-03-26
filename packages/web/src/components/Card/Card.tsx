@@ -12,6 +12,7 @@ interface IProps {
   disabled: boolean;
   flipOver: boolean;
   playerName: string;
+  playerTeamClass?: string;
 }
 
 const Rules: React.SFC<IProps> = ({
@@ -22,6 +23,7 @@ const Rules: React.SFC<IProps> = ({
   disabled,
   flipOver,
   playerName,
+  playerTeamClass,
 }) => {
   if (!card) {
     return (
@@ -130,7 +132,15 @@ const Rules: React.SFC<IProps> = ({
           {addIfKQJ()}
           {getSymbols()}
         </div>
-        {playerName && <div className="playerLabel">{playerName}</div>}
+        {playerName && (
+          <div
+            className={
+              playerTeamClass ? `playerLabel ${playerTeamClass}` : "playerLabel"
+            }
+          >
+            {playerName}
+          </div>
+        )}
       </div>
     );
   };
