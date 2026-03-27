@@ -103,6 +103,12 @@ class Store implements IStore {
   public async signIn(userId: string) {
     this.clearNotifications();
 
+    // If lobby mode, route to lobby join instead of normal sign-in
+    if (this.gameInfo.gameMode === "lobby") {
+      await this.joinLobby(userId);
+      return;
+    }
+
     // Check if we have existing session data and should reconnect instead
     if (this.userInfo.token && this.userInfo.gameId && this.userInfo.playerId) {
       try {
@@ -642,6 +648,51 @@ class Store implements IStore {
     this.initializeStore();
   }
 
+  public async joinLobby(playerId: string): Promise<any> {
+    this.clearNotifications();
+    try {
+      const response = await this.gameService.joinLobby(playerId);
+      // At this point response is the raw payload (sendRequest resolves payload)
+      this.userInfo.playerId = playerId;
+      this.userInfo.isSignedIn = true;
+      this.gameInfo.isInLobby = true;
+      this.gameInfo.showBotSelection = false;
+      this.gameInfo.lobbyPlayers = response.lobbyPlayers || [];
+      this.gameInfo.lobbyCount = response.lobbyCount || 1;
+    } catch (error) {
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : (error as any)?.message || "Failed to join lobby";
+      this.gameInfo.error = errorMessage;
+    }
+  }
+
+  public async leaveLobby(): Promise<any> {
+    this.clearNotifications();
+    const playerId = this.userInfo.playerId;
+    if (playerId) {
+      try {
+        await this.gameService.leaveLobby(playerId);
+      } catch (_) {
+        /* ignore errors when leaving */
+      }
+    }
+    this.initializeStore();
+  }
+
+  public async voteBotSubstitution(vote: boolean): Promise<any> {
+    const playerId = this.userInfo.playerId;
+    if (!playerId) return;
+    // Optimistically clear the vote modal so the player can't double-vote
+    this.gameInfo.lobbyBotVoteActive = false;
+    try {
+      await this.gameService.voteBotSubstitution(playerId, vote);
+    } catch (error) {
+      // If the vote failed, just ignore — the server will clean up via timeout
+    }
+  }
+
   public clearNotifications() {
     this.gameInfo.error = "";
     this.gameInfo.notification = "";
@@ -674,6 +725,12 @@ class Store implements IStore {
       isGameCreator: false,
       sharedGameId: undefined,
       showGameModeSelection: true,
+      isInLobby: false,
+      lobbyPlayers: [],
+      lobbyCount: 0,
+      lobbyBotVoteActive: false,
+      lobbyBotVoteDeadlineTs: undefined,
+      lobbyBotVoteOptions: undefined,
     };
     this.userInfo = {};
     this.userInfo.isSignedIn = false;
@@ -1101,6 +1158,64 @@ class Store implements IStore {
           spectatorJoinedData.message || "A spectator joined the game";
         break;
 
+      case "LOBBY_UPDATE":
+        this.gameInfo.lobbyPlayers = (data as any).players || [];
+        this.gameInfo.lobbyCount = (data as any).count || 0;
+        break;
+
+      case "LOBBY_GAME_STARTING": {
+        const lobbyGameData = data as any;
+        this.gameInfo.isInLobby = false;
+        // Store game credentials for reconnection
+        this.userInfo.gameId = lobbyGameData.gameId;
+        this.userInfo.token = lobbyGameData.token;
+        if (lobbyGameData.playerId) {
+          this.userInfo.playerId = lobbyGameData.playerId;
+        }
+        // Update the browser URL so the player can refresh to reconnect
+        try {
+          window.history.pushState(
+            {},
+            "",
+            `/?gameId=${encodeURIComponent(lobbyGameData.gameId)}`,
+          );
+        } catch (_) {
+          /* SSR safety */
+        }
+        this.gameInfo.notification =
+          lobbyGameData.message || "Match found! Game is starting…";
+        break;
+      }
+
+      case "LOBBY_TIMEOUT": {
+        const timeoutData = data as any;
+        this.gameInfo.isInLobby = false;
+        this.initializeStore();
+        this.gameInfo.notification =
+          timeoutData.message ||
+          "No match found within 15 minutes. Please try again.";
+        break;
+      }
+
+      case "LOBBY_BOT_VOTE_REQUEST": {
+        const voteData = data as any;
+        this.gameInfo.lobbyBotVoteActive = true;
+        this.gameInfo.lobbyBotVoteDeadlineTs = voteData.deadlineTs;
+        this.gameInfo.lobbyBotVoteOptions = {
+          voteYes: voteData.voteYes ?? 0,
+          voteTotal: voteData.voteTotal ?? 1,
+        };
+        break;
+      }
+
+      case "LOBBY_CLEARED": {
+        const clearedData = data as any;
+        this.initializeStore();
+        this.gameInfo.notification =
+          clearedData.message || "The lobby was closed.";
+        break;
+      }
+
       default:
         console.log(
           "Default case. Shouldn't hit this. Action:",
@@ -1122,6 +1237,12 @@ class Store implements IStore {
   public setGameModeJoin = (gameId: string) => {
     this.gameInfo.gameMode = "join";
     this.gameInfo.gameIdToJoin = gameId;
+    this.gameInfo.isGameCreator = false;
+    this.gameInfo.showGameModeSelection = false;
+  };
+
+  public setGameModeLobby = () => {
+    this.gameInfo.gameMode = "lobby";
     this.gameInfo.isGameCreator = false;
     this.gameInfo.showGameModeSelection = false;
   };

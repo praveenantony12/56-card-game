@@ -197,6 +197,26 @@ export class SocketServer {
         this.gameCore.onApprovePositionSwitch(switchApproveRequest, cb);
         break;
 
+      case MESSAGES.joinLobby:
+        const joinLobbyRequest = payload as any;
+        await this.gameCore.joinLobby(socket, joinLobbyRequest.playerId, cb);
+        break;
+
+      case MESSAGES.leaveLobby:
+        const leaveLobbyRequest = payload as any;
+        this.gameCore.leaveLobby(socket, leaveLobbyRequest.playerId, cb);
+        break;
+
+      case MESSAGES.lobbyBotVote:
+        const lobbyBotVoteRequest = payload as any;
+        this.gameCore.voteBotSubstitution(
+          socket,
+          lobbyBotVoteRequest.playerId,
+          !!lobbyBotVoteRequest.vote,
+          cb,
+        );
+        break;
+
       default:
         break;
     }
@@ -220,7 +240,7 @@ export class SocketServer {
     MetricsService.decrementConnection();
     LoggerService.log("Disconnected", `Socket disconnected - ${socket.id}`);
 
-    const { gameInfo } = socket as any;
+    const { gameInfo, lobbyInfo } = socket as any;
 
     if (gameInfo && gameInfo.gameId && gameInfo.playerId) {
       LoggerService.log("Disconnected", `Player ID - ${gameInfo.playerId}`);
@@ -231,8 +251,17 @@ export class SocketServer {
         gameInfo.playerId,
         socket.id,
       );
+    } else if (lobbyInfo && lobbyInfo.playerId) {
+      LoggerService.log(
+        "Disconnected",
+        `Lobby player disconnected - ${lobbyInfo.playerId}`,
+      );
+      this.gameCore.removeLobbyPlayerBySocket(socket.id);
     } else {
-      LoggerService.log("Disconnected", "Player was not in active game");
+      LoggerService.log(
+        "Disconnected",
+        "Player was not in active game or lobby",
+      );
     }
   }
 }

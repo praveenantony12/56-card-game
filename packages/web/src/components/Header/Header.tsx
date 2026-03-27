@@ -32,6 +32,7 @@ class Header extends React.Component<IProps, {}> {
           onCreateGame={this.onCreateGame}
           onJoinGame={this.onJoinGame}
           onWatchGame={this.onWatchGame}
+          onFindMatch={this.onFindMatch}
         />
       );
     }
@@ -73,8 +74,16 @@ class Header extends React.Component<IProps, {}> {
     this.store.setGameModeView(gameId);
   };
 
+  private onFindMatch = () => {
+    this.store.setGameModeLobby();
+  };
+
   private onLeaveGame = () => {
-    this.store.leaveGame();
+    if (this.store.game.isInLobby) {
+      this.store.leaveLobby();
+    } else {
+      this.store.leaveGame();
+    }
   };
 
   private onTextRef = (ref: any) => {
@@ -108,7 +117,7 @@ class Header extends React.Component<IProps, {}> {
         <Input action={true} placeholder="Player name">
           <input type="text" ref={this.onTextRef} />
           <Button type="submit" color="green" onClick={this.onSignIn}>
-            Sign In
+            {this.store.game.gameMode === "lobby" ? "Find Match" : "Sign In"}
           </Button>
         </Input>
       </Form>
@@ -118,7 +127,7 @@ class Header extends React.Component<IProps, {}> {
   private leaveGameButton = () => (
     <Menu.Item>
       <Button color="blue" onClick={this.onLeaveGame}>
-        Leave game
+        {this.store.game.isInLobby ? "Leave Queue" : "Leave game"}
       </Button>
     </Menu.Item>
   );

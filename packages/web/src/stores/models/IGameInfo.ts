@@ -70,11 +70,19 @@ export interface IGame {
     teamBScore: number;
     scoreResetOccurred: boolean;
   };
-  gameMode?: "create" | "join" | "view" | null;
+  gameMode?: "create" | "join" | "view" | "lobby" | null;
   gameIdToJoin?: string;
   isGameCreator?: boolean;
   sharedGameId?: string;
   showGameModeSelection?: boolean;
+  // Lobby (matchmaking) state
+  isInLobby?: boolean;
+  lobbyPlayers?: Array<{ playerId: string; joinedAt: string }>;
+  lobbyCount?: number;
+  // Bot-substitution vote state (set when server initiates a vote)
+  lobbyBotVoteActive?: boolean;
+  lobbyBotVoteDeadlineTs?: number;
+  lobbyBotVoteOptions?: { voteYes: number; voteTotal: number };
   /** Latest bot reasoning snapshot — updated on every bot card/bid action */
   botReasoning?: {
     botId: string;

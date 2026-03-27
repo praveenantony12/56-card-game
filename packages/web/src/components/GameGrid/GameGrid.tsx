@@ -245,10 +245,10 @@ class GameGrid extends React.Component<IProps, IState> {
                 style={{
                   display:
                     this.state.currentBiddingsuit !== "" ||
-                      gameStarted ||
-                      !isYourBiddingTurn ||
-                      this.store.game.postRaiseDoubleRound ||
-                      this.store.game.bidRaisePhase
+                    gameStarted ||
+                    !isYourBiddingTurn ||
+                    this.store.game.postRaiseDoubleRound ||
+                    this.store.game.bidRaisePhase
                       ? "none"
                       : "block",
                 }}
@@ -954,26 +954,26 @@ class GameGrid extends React.Component<IProps, IState> {
           <Grid.Column textAlign="center">
             {isTeamA && !teamAPositionSwitchUsed && (
               <Button
-                color="blue"
+                color="red"
                 size="small"
                 onClick={this.handleSwitchPositions.bind(this, "A")}
                 style={{ margin: "4px" }}
                 disabled={this.state.isProcessingAction}
                 title="Ask your team to randomly shuffle Team A seating positions (one-time only)"
               >
-                🔀 Shuffle Team A Seats
+                Shuffle Team A Seats
               </Button>
             )}
             {isTeamB && !teamBPositionSwitchUsed && (
               <Button
-                color="green"
+                color="red"
                 size="small"
                 onClick={this.handleSwitchPositions.bind(this, "B")}
                 style={{ margin: "4px" }}
                 disabled={this.state.isProcessingAction}
                 title="Ask your team to randomly shuffle Team B seating positions (one-time only)"
               >
-                🔀 Shuffle Team B Seats
+                Shuffle Team B Seats
               </Button>
             )}
           </Grid.Column>
@@ -1204,15 +1204,15 @@ class GameGrid extends React.Component<IProps, IState> {
           <Button color="black" style={lastBidStyle}>
             {hasActualBid
               ? `${lastBiddingPlayer} bids → ${this.formatBidDisplay(
-                lastBidValue,
-                lastBidsuit,
-                lastBidValue,
-                lastSuitInfo,
-                lastBidSelectionType,
-                lastBidModifier,
-                lastBidClickOrder,
-                lastNoTrumpType,
-              )}`
+                  lastBidValue,
+                  lastBidsuit,
+                  lastBidValue,
+                  lastSuitInfo,
+                  lastBidSelectionType,
+                  lastBidModifier,
+                  lastBidClickOrder,
+                  lastNoTrumpType,
+                )}`
               : "No Bids Yet"}
             {bidDouble && " (Double)"}
             {bidReDouble && " (Re-Double)"}
@@ -1221,15 +1221,15 @@ class GameGrid extends React.Component<IProps, IState> {
             Your Bid:{" "}
             {hasPlayerMadeSelections
               ? this.formatBidDisplay(
-                currentBiddingValue,
-                currentBiddingsuit,
-                lastBidValue,
-                displayedSuitInfo,
-                undefined,
-                undefined,
-                undefined,
-                noTrumpType,
-              )
+                  currentBiddingValue,
+                  currentBiddingsuit,
+                  lastBidValue,
+                  displayedSuitInfo,
+                  undefined,
+                  undefined,
+                  undefined,
+                  noTrumpType,
+                )
               : "Not selected"}
           </Button>
         </Button.Group>
@@ -1603,8 +1603,9 @@ class GameGrid extends React.Component<IProps, IState> {
 
     const label =
       (hasCurrentBid || hasFinalBid) && playerName
-        ? `${playerName}'s bid → ${suitDisplay} [${bidValue}]${bidDouble ? " (Double)" : ""
-        }${bidReDouble ? " (Re-Double)" : ""}`
+        ? `${playerName}'s bid → ${suitDisplay} [${bidValue}]${
+            bidDouble ? " (Double)" : ""
+          }${bidReDouble ? " (Re-Double)" : ""}`
         : "Game Starting...";
 
     const bidTeamStyle = {
@@ -2140,18 +2141,18 @@ class GameGrid extends React.Component<IProps, IState> {
     const postRaiseTheme =
       lastBiddingTeam === "A"
         ? {
-          backgroundColor: "rgba(33, 133, 208, 0.92)",
-          boxShadow: "0 10px 30px rgba(33, 133, 208, 0.4)",
-        }
+            backgroundColor: "rgba(33, 133, 208, 0.92)",
+            boxShadow: "0 10px 30px rgba(33, 133, 208, 0.4)",
+          }
         : lastBiddingTeam === "B"
           ? {
-            backgroundColor: "rgba(39, 174, 96, 0.95)",
-            boxShadow: "0 10px 30px rgba(39, 174, 96, 0.4)",
-          }
+              backgroundColor: "rgba(39, 174, 96, 0.95)",
+              boxShadow: "0 10px 30px rgba(39, 174, 96, 0.4)",
+            }
           : {
-            backgroundColor: "rgba(255, 165, 0, 0.95)",
-            boxShadow: "0 10px 30px rgba(255, 165, 0, 0.35)",
-          };
+              backgroundColor: "rgba(255, 165, 0, 0.95)",
+              boxShadow: "0 10px 30px rgba(255, 165, 0, 0.35)",
+            };
 
     // Determine available actions based on team
     const isOpponentTeam =

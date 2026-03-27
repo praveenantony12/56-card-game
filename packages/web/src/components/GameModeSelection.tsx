@@ -13,12 +13,14 @@ interface GameModeSelectionProps {
   onCreateGame: () => void;
   onJoinGame: (gameId: string) => void;
   onWatchGame: (gameId: string) => void;
+  onFindMatch: () => void;
 }
 
 const GameModeSelection: React.FC<GameModeSelectionProps> = ({
   onCreateGame,
   onJoinGame,
   onWatchGame,
+  onFindMatch,
 }) => {
   const [selectedMode, setSelectedMode] = useState<
     "create" | "join" | "watch" | null
@@ -37,6 +39,10 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
   const handleCreateGame = () => {
     setSelectedMode("create");
     onCreateGame();
+  };
+
+  const handleFindMatch = () => {
+    onFindMatch();
   };
 
   const handleJoinGame = () => {
@@ -103,10 +109,39 @@ const GameModeSelection: React.FC<GameModeSelectionProps> = ({
               size="large"
               color="teal"
               onClick={() => setSelectedMode("watch")}
-              style={{ width: "100%" }}
+              style={{ width: "100%", marginBottom: "20px" }}
             >
               Watch a Game
             </Button>
+
+            {/* ── Join a Table (lobby) ── */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, #1a1a2e, #0f3460)",
+                borderRadius: "10px",
+                padding: "18px 16px",
+                marginTop: "4px",
+              }}
+            >
+              <p
+                style={{
+                  color: "#90caf9",
+                  fontSize: "13px",
+                  margin: "0 0 10px",
+                }}
+              >
+                Step into the lobby and start playing with 5 other players. The
+                game begins automatically when the table is full.
+              </p>
+              <Button
+                size="large"
+                color="violet"
+                onClick={handleFindMatch}
+                style={{ width: "100%" }}
+              >
+                🔍&nbsp; Join a Table
+              </Button>
+            </div>
           </div>
         ) : selectedMode === "join" ? (
           <div style={{ marginTop: "20px" }}>

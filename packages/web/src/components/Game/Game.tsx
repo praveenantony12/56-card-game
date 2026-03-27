@@ -2,6 +2,7 @@ import * as React from "react";
 
 import BotReasoningPanel from "../../components/BotReasoningPanel/BotReasoningPanel";
 import BotSelection from "../../components/BotSelection/BotSelection";
+import Lobby from "../../components/Lobby/Lobby";
 import PlayersList from "../../components/PlayersList/PlayersList";
 import WaitMesssage from "../../components/WaitMessage/WaitMesssage";
 import GameGrid from "../GameGrid/GameGrid";
@@ -12,6 +13,7 @@ class Game extends React.Component<{}, {}> {
     return (
       <React.Fragment>
         <BotSelection />
+        <Lobby />
         <WaitMesssage />
         <Notification />
         <PlayersList />

@@ -44,4 +44,12 @@ export const MESSAGES = {
   biddingAction: "BIDDING_ACTION",
   switchTeamPositions: "SWITCH_TEAM_POSITIONS",
   switchTeamPositionsApprove: "SWITCH_TEAM_POSITIONS_APPROVE",
+  joinLobby: "JOIN_LOBBY",
+  leaveLobby: "LEAVE_LOBBY",
+  lobbyUpdate: "LOBBY_UPDATE",
+  lobbyGameStarting: "LOBBY_GAME_STARTING",
+  lobbyTimeout: "LOBBY_TIMEOUT",
+  lobbyBotVoteRequest: "LOBBY_BOT_VOTE_REQUEST",
+  lobbyBotVote: "LOBBY_BOT_VOTE",
+  lobbyCleared: "LOBBY_CLEARED",
 };

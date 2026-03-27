@@ -11,4 +11,5 @@ export const RESPONSE_CODES = {
   reconnectDenied: "RECONNECT_DENIED",
   gameNotification: "GAME_NOTIFICATION",
   gameRefresh: "GAME_REFRESH",
+  lobbyJoined: "LOBBY_JOINED",
 };

@@ -158,3 +158,15 @@ export const switchTeamPositionsApprovePayload = (
     payload: { gameId, playerId, approvingPlayerId, approved },
   };
 };
+
+export const joinLobbyPayload = (playerId: string) => {
+  return { operation: MESSAGES.joinLobby, payload: { playerId } };
+};
+
+export const leaveLobbyPayload = (playerId: string) => {
+  return { operation: MESSAGES.leaveLobby, payload: { playerId } };
+};
+
+export const lobbyBotVotePayload = (playerId: string, vote: boolean) => {
+  return { operation: MESSAGES.lobbyBotVote, payload: { playerId, vote } };
+};

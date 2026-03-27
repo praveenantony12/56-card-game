@@ -53,6 +53,24 @@ export class GameCore {
   private readonly DISCONNECT_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes - increased from 5 minute to allow longer breaks
   private readonly GAME_ABANDON_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
+  // Lobby (matchmaking) system
+  private lobbyPlayers: Array<{
+    socketId: string;
+    playerId: string;
+    socket: IOSocket;
+    joinedAt: Date;
+  }> = [];
+  private readonly LOBBY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly LOBBY_BOT_VOTE_MS = 60 * 1000; // 60-second voting window
+  private readonly LOBBY_ROOM = "LOBBY_WAITING_ROOM";
+  private lobbySharedTimeoutHandle: NodeJS.Timeout | null = null;
+  private lobbyBotVote: {
+    votes: Map<string, boolean>;
+    timerHandle: NodeJS.Timeout;
+    playerSocketIds: Set<string>;
+    deadlineTs: number;
+  } | null = null;
+
   /**
    * Initializes a new instance of the class Game.
    * @param ioServer The ioServer instance.
@@ -4560,5 +4578,553 @@ export class GameCore {
     console.log(
       `[POSITION SWITCH] Team ${team} positions shuffled in game ${gameId}. New bidding player: ${game.currentBiddingPlayerId}`,
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Lobby (Matchmaking) Methods
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Adds a player to the matchmaking lobby.
+   * When the lobby reaches MAX_PLAYERS, a game is automatically created and started
+   * for those players. Each player gets a 15-minute timeout before being removed.
+   */
+  public async joinLobby(
+    socket: IOSocket,
+    playerId: string,
+    cb: Function,
+  ): Promise<void> {
+    try {
+      if (!playerId || playerId.length === 0) {
+        cb(null, errorResponse(RESPONSE_CODES.failed, "Player ID is required"));
+        return;
+      }
+      if (playerId.length > 10) {
+        cb(
+          null,
+          errorResponse(
+            RESPONSE_CODES.failed,
+            "Player name must be 10 characters or fewer",
+          ),
+        );
+        return;
+      }
+
+      // Prevent duplicate entries for the same socket
+      const existing = this.lobbyPlayers.find(
+        (p) => p.socketId === socket.id || p.playerId === playerId,
+      );
+      if (existing) {
+        cb(
+          null,
+          errorResponse(RESPONSE_CODES.failed, "You are already in the lobby"),
+        );
+        return;
+      }
+
+      const isFirstPlayer = this.lobbyPlayers.length === 0;
+
+      this.lobbyPlayers.push({
+        socketId: socket.id,
+        playerId,
+        socket,
+        joinedAt: new Date(),
+      });
+
+      // Start the shared 15-min lobby timer when the FIRST player joins
+      if (isFirstPlayer) {
+        this.lobbySharedTimeoutHandle = setTimeout(() => {
+          this.handleSharedLobbyTimeout();
+        }, this.LOBBY_TIMEOUT_MS);
+      }
+
+      socket.join(this.LOBBY_ROOM);
+      (socket as any).lobbyInfo = { playerId };
+
+      console.log(
+        `[LOBBY] ${playerId} joined the lobby. Total: ${this.lobbyPlayers.length}/${MAX_PLAYERS}`,
+      );
+
+      // Acknowledge the join with current lobby state
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.lobbyJoined, {
+          playerId,
+          lobbyCount: this.lobbyPlayers.length,
+          lobbyPlayers: this.getLobbyPlayersInfo(),
+        }),
+      );
+
+      // Broadcast updated lobby to all waiting players
+      this.broadcastLobbyUpdate();
+
+      // If we have enough players, start a game
+      if (this.lobbyPlayers.length >= MAX_PLAYERS) {
+        await this.startLobbyGame();
+      }
+    } catch (error) {
+      console.error("[LOBBY] Error joining lobby:", error);
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          (error as Error).message || "Failed to join lobby",
+        ),
+      );
+    }
+  }
+
+  /**
+   * Removes a player from the matchmaking lobby (explicit leave).
+   */
+  public leaveLobby(socket: IOSocket, playerId: string, cb?: Function): void {
+    this.removeLobbyPlayer(socket.id);
+    if (cb) {
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, { message: "Left the lobby" }),
+      );
+    }
+  }
+
+  /**
+   * Removes a player from the lobby using their socket ID (used on disconnect).
+   */
+  public removeLobbyPlayerBySocket(socketId: string): void {
+    this.removeLobbyPlayer(socketId);
+  }
+
+  /** Internal helper to remove a player by socket ID and clean up. */
+  private removeLobbyPlayer(socketId: string): void {
+    const index = this.lobbyPlayers.findIndex((p) => p.socketId === socketId);
+    if (index === -1) return;
+
+    const player = this.lobbyPlayers[index];
+    this.lobbyPlayers.splice(index, 1);
+
+    try {
+      player.socket.leave(this.LOBBY_ROOM);
+    } catch (_) {
+      /* socket may already be gone */
+    }
+    delete (player.socket as any).lobbyInfo;
+
+    // If a bot vote was in progress and this player was a voter, treat as "No"
+    if (this.lobbyBotVote && this.lobbyBotVote.playerSocketIds.has(socketId)) {
+      this.lobbyBotVote.playerSocketIds.delete(socketId);
+      this.lobbyBotVote.votes.set(socketId, false);
+      this.checkBotVoteResult();
+    }
+
+    // Cancel shared timer if lobby is now empty and no vote in progress
+    if (this.lobbyPlayers.length === 0 && !this.lobbyBotVote) {
+      if (this.lobbySharedTimeoutHandle) {
+        clearTimeout(this.lobbySharedTimeoutHandle);
+        this.lobbySharedTimeoutHandle = null;
+      }
+    }
+
+    console.log(
+      `[LOBBY] ${player.playerId} left the lobby. Remaining: ${this.lobbyPlayers.length}`,
+    );
+    this.broadcastLobbyUpdate();
+  }
+
+  /** Called when the shared 15-minute lobby timer fires. */
+  private handleSharedLobbyTimeout(): void {
+    this.lobbySharedTimeoutHandle = null;
+    const remaining = this.lobbyPlayers.length;
+    console.log(`[LOBBY] Shared timeout. Remaining players: ${remaining}`);
+
+    if (remaining === 0) return;
+
+    if (remaining < 2) {
+      // Only 1 player — not enough for a vote, just clear them out
+      const player = this.lobbyPlayers[0];
+      this.lobbyPlayers = [];
+      try {
+        player.socket.leave(this.LOBBY_ROOM);
+        delete (player.socket as any).lobbyInfo;
+        player.socket.emit(
+          "data",
+          successResponse(RESPONSE_CODES.gameNotification, {
+            action: "LOBBY_TIMEOUT",
+            data: {
+              message:
+                "No match found within 15 minutes. Please try again later.",
+            },
+          }),
+        );
+      } catch (_) {
+        /* socket may be gone */
+      }
+      return;
+    }
+
+    // 2–5 players: offer bot substitution vote
+    const deadlineTs = Date.now() + this.LOBBY_BOT_VOTE_MS;
+    const playerSocketIds = new Set(this.lobbyPlayers.map((p) => p.socketId));
+
+    const timerHandle = setTimeout(() => {
+      // Time expired — treat no-response as a "No" vote → clear lobby
+      console.log("[LOBBY] Bot vote timed out — clearing lobby");
+      this.clearLobbyWithVote("Vote timed out. Lobby cleared.");
+    }, this.LOBBY_BOT_VOTE_MS);
+
+    this.lobbyBotVote = {
+      votes: new Map(),
+      timerHandle,
+      playerSocketIds,
+      deadlineTs,
+    };
+
+    // Notify all remaining players
+    this.ioServer.to(this.LOBBY_ROOM).emit(
+      "data",
+      successResponse(RESPONSE_CODES.gameNotification, {
+        action: "LOBBY_BOT_VOTE_REQUEST",
+        data: {
+          emptySlots: 6 - remaining,
+          voteTotal: remaining,
+          voteYes: 0,
+          deadlineTs,
+        },
+      }),
+    );
+
+    console.log(
+      `[LOBBY] Bot vote started for ${remaining} players. Deadline: ${new Date(deadlineTs).toISOString()}`,
+    );
+  }
+
+  /**
+   * Records a player's vote on bot substitution.
+   */
+  public voteBotSubstitution(
+    socket: IOSocket,
+    playerId: string,
+    vote: boolean,
+    cb: Function,
+  ): void {
+    if (!this.lobbyBotVote) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "No active bot vote"));
+      return;
+    }
+    const player = this.lobbyPlayers.find((p) => p.socketId === socket.id);
+    if (!player) {
+      cb(
+        null,
+        errorResponse(RESPONSE_CODES.failed, "You are not in the lobby"),
+      );
+      return;
+    }
+    if (this.lobbyBotVote.votes.has(socket.id)) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "You have already voted"));
+      return;
+    }
+
+    this.lobbyBotVote.votes.set(socket.id, vote);
+    console.log(
+      `[LOBBY] ${playerId} voted ${vote ? "yes" : "no"} for bot substitution`,
+    );
+
+    cb(null, successResponse(RESPONSE_CODES.success, { vote }));
+    this.checkBotVoteResult();
+  }
+
+  /** Check whether the bot vote is complete and act accordingly. */
+  private checkBotVoteResult(): void {
+    if (!this.lobbyBotVote) return;
+    const { votes, playerSocketIds, timerHandle } = this.lobbyBotVote;
+
+    // Count current yes votes and check for any "No"
+    let yesCount = 0;
+    let noCount = 0;
+    votes.forEach((v) => (v ? yesCount++ : noCount++));
+
+    // Broadcast live vote counts
+    const voteTotal = playerSocketIds.size + votes.size - playerSocketIds.size;
+    // voteTotal = original participant count (stored separately):
+    const total = this.lobbyPlayers.length; // remaining humans
+    this.ioServer.to(this.LOBBY_ROOM).emit(
+      "data",
+      successResponse(RESPONSE_CODES.gameNotification, {
+        action: "LOBBY_BOT_VOTE_REQUEST",
+        data: {
+          emptySlots: 6 - total,
+          voteTotal: total,
+          voteYes: yesCount,
+          deadlineTs: this.lobbyBotVote.deadlineTs,
+        },
+      }),
+    );
+
+    if (noCount > 0) {
+      clearTimeout(timerHandle);
+      this.lobbyBotVote = null;
+      this.clearLobbyWithVote(
+        "A player declined bot substitution. Lobby cleared.",
+      );
+      return;
+    }
+
+    if (yesCount >= total) {
+      // All voted yes — start game with bots!
+      clearTimeout(timerHandle);
+      this.lobbyBotVote = null;
+      console.log("[LOBBY] All players voted yes — starting game with bots");
+      this.startLobbyGameWithBots().catch((err) =>
+        console.error("[LOBBY] Error starting bot game:", err),
+      );
+    }
+  }
+
+  /** Clear the lobby after a failed vote (or vote timeout) and notify all remaining players. */
+  private clearLobbyWithVote(message: string): void {
+    const players = [...this.lobbyPlayers];
+    this.lobbyPlayers = [];
+    if (this.lobbySharedTimeoutHandle) {
+      clearTimeout(this.lobbySharedTimeoutHandle);
+      this.lobbySharedTimeoutHandle = null;
+    }
+    players.forEach((p) => {
+      try {
+        p.socket.leave(this.LOBBY_ROOM);
+        delete (p.socket as any).lobbyInfo;
+        p.socket.emit(
+          "data",
+          successResponse(RESPONSE_CODES.gameNotification, {
+            action: "LOBBY_CLEARED",
+            data: { message },
+          }),
+        );
+      } catch (_) {
+        /* socket may be gone */
+      }
+    });
+    console.log(`[LOBBY] Lobby cleared: ${message}`);
+  }
+
+  /**
+   * Starts a lobby game filling any empty slots with bot players.
+   */
+  private async startLobbyGameWithBots(): Promise<void> {
+    const humanPlayers = [...this.lobbyPlayers];
+    const humanCount = humanPlayers.length;
+    if (humanCount < 2) return; // safety check
+
+    // Clear lobby player array (they are now starting a game)
+    this.lobbyPlayers = [];
+    if (this.lobbySharedTimeoutHandle) {
+      clearTimeout(this.lobbySharedTimeoutHandle);
+      this.lobbySharedTimeoutHandle = null;
+    }
+
+    const gameId = getUniqueId();
+    const humanGamePlayers: IPlayer[] = humanPlayers.map((p) => ({
+      socketId: p.socketId,
+      playerId: p.playerId,
+      token: getUniqueId(),
+      gameId,
+    }));
+
+    // Generate bot players for the empty slots
+    const botCount = MAX_PLAYERS - humanCount;
+    const botPlayers: IPlayer[] = [];
+    for (let i = 0; i < botCount; i++) {
+      botPlayers.push({
+        socketId: `bot-socket-${getUniqueId()}`,
+        playerId: `Bot_${i + 1}`,
+        token: getUniqueId(),
+        gameId,
+        isBotAgent: true,
+      });
+    }
+
+    const allPlayers = [...humanGamePlayers, ...botPlayers];
+
+    const newGame: any = {
+      gameId,
+      gamePlayersInfo: humanGamePlayers.map((p) => ({
+        playerId: p.playerId,
+        token: p.token,
+        socketId: p.socketId,
+      })),
+      botPlayersInfo: botPlayers.map((b) => ({
+        playerId: b.playerId,
+        token: b.token,
+        socketId: b.socketId,
+        isBotAgent: true,
+      })),
+      botCount,
+      isGameStarted: false,
+      gameStartTime: new Date(),
+      disconnectedPlayers: {},
+    };
+    this.inMemoryStore.saveGame(gameId, newGame);
+
+    // Move human sockets from lobby room to game room
+    for (const pp of humanPlayers) {
+      try {
+        pp.socket.leave(this.LOBBY_ROOM);
+        pp.socket.join(gameId);
+      } catch (_) {
+        /* ignore */
+      }
+      delete (pp.socket as any).lobbyInfo;
+      const playerInfo = humanGamePlayers.find(
+        (gp) => gp.socketId === pp.socketId,
+      )!;
+      (pp.socket as any).gameInfo = playerInfo;
+    }
+
+    this.broadcastLobbyUpdate();
+
+    // Notify each human player with their personal token and game ID
+    for (const pp of humanPlayers) {
+      const playerInfo = humanGamePlayers.find(
+        (gp) => gp.socketId === pp.socketId,
+      )!;
+      try {
+        pp.socket.emit(
+          "data",
+          successResponse(RESPONSE_CODES.gameNotification, {
+            action: "LOBBY_GAME_STARTING",
+            data: {
+              gameId,
+              playerId: playerInfo.playerId,
+              token: playerInfo.token,
+              message: `Match found! ${botCount} bot${botCount > 1 ? "s" : ""} will fill the remaining seat${botCount > 1 ? "s" : ""}. Your game is starting…`,
+              withBots: true,
+            },
+          }),
+        );
+      } catch (_) {
+        /* socket may have dropped */
+      }
+    }
+
+    console.log(
+      `[LOBBY] Starting bot-filled game ${gameId}. Humans: ${humanPlayers.map((p) => p.playerId).join(", ")}. Bots: ${botCount}`,
+    );
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 800));
+    this.gameStartIndex = 0;
+    this.startGame(gameId, allPlayers);
+  }
+
+  /** Broadcasts the current lobby player list to everyone in the lobby room. */
+  private broadcastLobbyUpdate(): void {
+    this.ioServer.to(this.LOBBY_ROOM).emit(
+      "data",
+      successResponse(RESPONSE_CODES.gameNotification, {
+        action: "LOBBY_UPDATE",
+        data: {
+          players: this.getLobbyPlayersInfo(),
+          count: this.lobbyPlayers.length,
+        },
+      }),
+    );
+  }
+
+  /** Returns a serialisable snapshot of the current lobby players. */
+  private getLobbyPlayersInfo(): Array<{
+    playerId: string;
+    joinedAt: string;
+  }> {
+    return this.lobbyPlayers.map((p) => ({
+      playerId: p.playerId,
+      joinedAt: p.joinedAt.toISOString(),
+    }));
+  }
+
+  /**
+   * Takes the first MAX_PLAYERS players from the lobby, creates a game for
+   * them, assigns tokens, and then starts the game via the normal startGame path.
+   */
+  private async startLobbyGame(): Promise<void> {
+    if (this.lobbyPlayers.length < MAX_PLAYERS) return;
+
+    // Claim exactly MAX_PLAYERS players from the front of the queue
+    const participants = this.lobbyPlayers.splice(0, MAX_PLAYERS);
+
+    // Cancel shared lobby timer — a full match was found
+    if (this.lobbySharedTimeoutHandle) {
+      clearTimeout(this.lobbySharedTimeoutHandle);
+      this.lobbySharedTimeoutHandle = null;
+    }
+
+    const gameId = getUniqueId();
+
+    const gamePlayers: IPlayer[] = participants.map((p) => ({
+      socketId: p.socketId,
+      playerId: p.playerId,
+      token: getUniqueId(),
+      gameId,
+    }));
+
+    // Persist a skeleton game record (startGame will overwrite it fully)
+    const newGame: any = {
+      gameId,
+      gamePlayersInfo: gamePlayers.map((p) => ({
+        playerId: p.playerId,
+        token: p.token,
+        socketId: p.socketId,
+      })),
+      botPlayersInfo: [],
+      botCount: 0,
+      isGameStarted: false,
+      gameStartTime: new Date(),
+      disconnectedPlayers: {},
+    };
+    this.inMemoryStore.saveGame(gameId, newGame);
+
+    // Move each socket from the lobby room to the game room
+    for (const pp of participants) {
+      try {
+        pp.socket.leave(this.LOBBY_ROOM);
+        pp.socket.join(gameId);
+      } catch (_) {
+        /* ignore if socket dropped */
+      }
+      delete (pp.socket as any).lobbyInfo;
+      const playerInfo = gamePlayers.find((gp) => gp.socketId === pp.socketId)!;
+      (pp.socket as any).gameInfo = playerInfo;
+    }
+
+    // Broadcast updated lobby to still-waiting players
+    this.broadcastLobbyUpdate();
+
+    // Notify each participant individually with their personal token and game ID
+    // (they need the token for later reconnection)
+    for (const pp of participants) {
+      const playerInfo = gamePlayers.find((gp) => gp.socketId === pp.socketId)!;
+      try {
+        pp.socket.emit(
+          "data",
+          successResponse(RESPONSE_CODES.gameNotification, {
+            action: "LOBBY_GAME_STARTING",
+            data: {
+              gameId,
+              playerId: playerInfo.playerId,
+              token: playerInfo.token,
+              message: "All 6 players found! Your game is starting now…",
+            },
+          }),
+        );
+      } catch (_) {
+        /* socket may have dropped between lobby join and now */
+      }
+    }
+
+    console.log(
+      `[LOBBY] Starting game ${gameId} with players: ${participants.map((p) => p.playerId).join(", ")}`,
+    );
+
+    // Brief delay to let clients process the LOBBY_GAME_STARTING notification
+    await new Promise<void>((resolve) => setTimeout(resolve, 800));
+
+    this.gameStartIndex = 0;
+    this.startGame(gameId, gamePlayers);
   }
 }

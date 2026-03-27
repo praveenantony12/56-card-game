@@ -20,6 +20,9 @@ import {
   updateGameScorePayload,
   switchTeamPositionsPayload,
   switchTeamPositionsApprovePayload,
+  joinLobbyPayload,
+  leaveLobbyPayload,
+  lobbyBotVotePayload,
 } from "@rcg/common";
 
 import * as io from "socket.io-client";
@@ -336,6 +339,31 @@ class GameService {
   }
 
   /**
+   * Join the matchmaking lobby to find other players automatically.
+   * @param playerId The player's display name.
+   */
+  public joinLobby(playerId: string): Promise<any> {
+    return this.sendRequest(joinLobbyPayload(playerId));
+  }
+
+  /**
+   * Leave the matchmaking lobby.
+   * @param playerId The player's display name.
+   */
+  public leaveLobby(playerId: string): Promise<any> {
+    return this.sendRequest(leaveLobbyPayload(playerId));
+  }
+
+  /**
+   * Cast a vote for bot substitution during a lobby timeout.
+   * @param playerId The player's display name.
+   * @param vote     True = fill empty seats with bots; false = cancel.
+   */
+  public voteBotSubstitution(playerId: string, vote: boolean): Promise<any> {
+    return this.sendRequest(lobbyBotVotePayload(playerId, vote));
+  }
+
+  /**
    * Checks the connection is alive or not.
    */
   public ping(): Promise<boolean> {
@@ -369,9 +397,10 @@ class GameService {
         if (
           result.code === "RECONNECT_PENDING_APPROVAL" ||
           result.code === "RECONNECT_APPROVED" ||
-          result.code === "RECONNECT_DENIED"
+          result.code === "RECONNECT_DENIED" ||
+          result.code === "LOBBY_JOINED"
         ) {
-          resolve(result);
+          resolve(result.payload || result);
           return;
         }
 

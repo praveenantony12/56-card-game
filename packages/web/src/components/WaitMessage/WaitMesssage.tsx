@@ -133,7 +133,8 @@ class WaitMesssage extends React.Component<IProps, {}> {
     return (
       this.userInfo.isSignedIn &&
       !this.gameInfo.canStartGame &&
-      !this.gameInfo.showBotSelection
+      !this.gameInfo.showBotSelection &&
+      !this.gameInfo.isInLobby
     );
   }
 

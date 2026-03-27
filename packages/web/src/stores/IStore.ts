@@ -77,4 +77,8 @@ export interface IStore {
   approvePositionSwitch(approved: boolean): Promise<void>;
 
   setGameModeView(gameId: string): void;
+  setGameModeLobby(): void;
+  joinLobby(playerId: string): Promise<any>;
+  leaveLobby(): Promise<any>;
+  voteBotSubstitution(vote: boolean): Promise<any>;
 }
