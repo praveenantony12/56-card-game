@@ -111,12 +111,21 @@ class Store implements IStore {
 
     // Check if we have existing session data and should reconnect instead
     if (this.userInfo.token && this.userInfo.gameId && this.userInfo.playerId) {
+      // Save intended game mode before potentially clearing state
+      const savedGameMode = this.gameInfo.gameMode;
+      const savedGameIdToJoin = this.gameInfo.gameIdToJoin;
       try {
         await this.reconnect();
         return; // Successfully reconnected
       } catch (error) {
         // Clear existing session data and proceed with fresh login
         this.initializeStore();
+        // Restore the intended game mode so sign-in uses the correct game ID
+        if (savedGameMode) {
+          this.gameInfo.gameMode = savedGameMode;
+          this.gameInfo.gameIdToJoin = savedGameIdToJoin;
+          this.gameInfo.showGameModeSelection = false;
+        }
       }
     }
 

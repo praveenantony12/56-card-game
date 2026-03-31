@@ -131,13 +131,17 @@ export class GameCore {
       let isGameCreator = false;
 
       if (gameIdToJoin) {
+        // Normalize the game ID to lowercase to avoid case-sensitivity mismatches
+        // (UUIDs are stored lowercase; user input may be uppercase from copy-paste)
+        const normalizedGameId = gameIdToJoin.trim().toLowerCase();
+
         // Player wants to join an existing game
         console.log(
-          `[GAME CORE] ${playerId} attempting to join game: ${gameIdToJoin}`,
+          `[GAME CORE] ${playerId} attempting to join game: ${normalizedGameId}`,
         );
 
         // Check if the game exists and has space for more players
-        const existingGame = this.inMemoryStore.fetchGame(gameIdToJoin);
+        const existingGame = this.inMemoryStore.fetchGame(normalizedGameId);
         if (!existingGame) {
           throw new Error(
             "Game not found. Please check the Game ID and try again.",
@@ -149,7 +153,7 @@ export class GameCore {
           return this.addSpectatorToGame(
             socket,
             playerId,
-            gameIdToJoin,
+            normalizedGameId,
             existingGame,
             cb,
           );
@@ -185,9 +189,9 @@ export class GameCore {
           throw new Error("Game is already full (6/6 players).");
         }
 
-        targetGameId = gameIdToJoin;
+        targetGameId = normalizedGameId;
         console.log(
-          `[GAME CORE) ${playerId} successfully joining game: ${targetGameId}`,
+          `[GAME CORE] ${playerId} successfully joining game: ${targetGameId}`,
         );
       } else {
         // Player is creating a new game

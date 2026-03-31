@@ -6,11 +6,15 @@
   right: 1%;
   font-size: x-small;
   color: whitesmoke;
+  pointer-events: none;
+  z-index: 0;
 }
 
 @media only screen and (max-width: 480px) {
   .footer {
-    left: 25%;
-    right: 25%;
+    left: auto;
+    right: 4px;
+    bottom: 4px;
+    text-align: right;
   }
 }

@@ -77,6 +77,8 @@ export interface IStore {
   approvePositionSwitch(approved: boolean): Promise<void>;
 
   setGameModeView(gameId: string): void;
+  setGameModeCreate(): void;
+  setGameModeJoin(gameId: string): void;
   setGameModeLobby(): void;
   joinLobby(playerId: string): Promise<any>;
   leaveLobby(): Promise<any>;

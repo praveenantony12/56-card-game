@@ -171,6 +171,9 @@ class GameGrid extends React.Component<IProps, IState> {
       biddingTeam,
       teamAScore,
       teamBScore,
+      bidHistory,
+      teamAPositionSwitchUsed,
+      teamBPositionSwitchUsed,
     } = this.store.game;
 
     const { gameId, playerId, isSpectator } = this.store.user;
@@ -201,6 +204,26 @@ class GameGrid extends React.Component<IProps, IState> {
 
     const isYourBiddingTurn =
       isBiddingPhase && currentBiddingPlayerId === playerId;
+
+    const noBidsMade = !bidHistory || bidHistory.length === 0;
+    const teamAPlayersList = [firstPlayer, thirdPlayer, fifthPlayer].filter(
+      Boolean,
+    );
+    const teamBPlayersList = [secondPlayer, fourthPlayer, lastPlayer].filter(
+      Boolean,
+    );
+    const showShuffleA = !!(
+      isBiddingPhase &&
+      noBidsMade &&
+      teamAPlayersList.includes(playerId as string) &&
+      !teamAPositionSwitchUsed
+    );
+    const showShuffleB = !!(
+      isBiddingPhase &&
+      noBidsMade &&
+      teamBPlayersList.includes(playerId as string) &&
+      !teamBPositionSwitchUsed
+    );
 
     // Spectator mode: render the read-only view
     if (isSpectator) {
@@ -546,20 +569,31 @@ class GameGrid extends React.Component<IProps, IState> {
               >
                 View All Cards
               </Button>
+              {showShuffleA && <Button.Or />}
+              {showShuffleA && (
+                <Button
+                  color="red"
+                  onClick={this.handleSwitchPositions.bind(this, "A")}
+                  disabled={this.state.isProcessingAction}
+                  title="Ask your team to randomly shuffle Team A seating positions (one-time only)"
+                >
+                  Shuffle Team A Seats
+                </Button>
+              )}
+              {showShuffleB && <Button.Or />}
+              {showShuffleB && (
+                <Button
+                  color="red"
+                  onClick={this.handleSwitchPositions.bind(this, "B")}
+                  disabled={this.state.isProcessingAction}
+                  title="Ask your team to randomly shuffle Team B seating positions (one-time only)"
+                >
+                  Shuffle Team B Seats
+                </Button>
+              )}
             </Button.Group>
           </Grid.Row>
         </Grid>
-
-        {/* Spectator mode: show game ID and option to watch another game */}
-        {this.renderPositionSwitchButtons(
-          firstPlayer,
-          secondPlayer,
-          thirdPlayer,
-          fourthPlayer,
-          fifthPlayer,
-          lastPlayer,
-          playerId as string,
-        )}
       </Dimmer.Dimmable>
     );
   }
@@ -909,76 +943,6 @@ class GameGrid extends React.Component<IProps, IState> {
           Last bid: <em style={{ color: lastBidColor }}>{lastBid}</em>
         </div>
       </div>
-    );
-  }
-
-  /**
-   * Render team-specific one-time position switch buttons
-   * Visible only during bidding phase, before any bid us made, and if the team hasn't used it.
-   */
-  private renderPositionSwitchButtons(
-    p0: string,
-    p1: string,
-    p2: string,
-    p3: string,
-    p4: string,
-    p5: string,
-    myPlayerId: string,
-  ) {
-    const {
-      isBiddingPhase,
-      bidHistory,
-      teamAPositionSwitchUsed,
-      teamBPositionSwitchUsed,
-    } = this.store.game;
-
-    // Only show before any bid is made
-    const noBidsMade = !bidHistory || bidHistory.length === 0;
-    if (!isBiddingPhase || !noBidsMade) {
-      return null;
-    }
-
-    // Determine my team (Team A: includes 0, 2, 4; Team B: includes 1, 3, 5)
-    const teamAPlayers = [p0, p2, p4].filter(Boolean);
-    const teamBPlayers = [p1, p3, p5].filter(Boolean);
-    const isTeamA = teamAPlayers.includes(myPlayerId);
-    const isTeamB = teamBPlayers.includes(myPlayerId);
-
-    if (!isTeamA && !isTeamB) {
-      return null; // Player not in either team (shouldn't happen), don't show buttons
-    }
-
-    return (
-      <Grid centered={true} style={{ marginTop: "4px" }}>
-        <Grid.Row centered={true} columns={1}>
-          <Grid.Column textAlign="center">
-            {isTeamA && !teamAPositionSwitchUsed && (
-              <Button
-                color="red"
-                size="small"
-                onClick={this.handleSwitchPositions.bind(this, "A")}
-                style={{ margin: "4px" }}
-                disabled={this.state.isProcessingAction}
-                title="Ask your team to randomly shuffle Team A seating positions (one-time only)"
-              >
-                Shuffle Team A Seats
-              </Button>
-            )}
-            {isTeamB && !teamBPositionSwitchUsed && (
-              <Button
-                color="red"
-                size="small"
-                onClick={this.handleSwitchPositions.bind(this, "B")}
-                style={{ margin: "4px" }}
-                disabled={this.state.isProcessingAction}
-                title="Ask your team to randomly shuffle Team B seating positions (one-time only)"
-              >
-                Shuffle Team B Seats
-              </Button>
-            )}
-          </Grid.Column>
-        </Grid.Row>
-      </Grid>
     );
   }
 
