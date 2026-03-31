@@ -78,20 +78,27 @@ class PlayersList extends React.Component<IProps, {}> {
         // During bidding, only the current bidding player is active
         isActivePlayer = !!isCurrentBiddingPlayer;
       } else if (hasGameStarted) {
-        // During gameplay, only the current player is active
-        isActivePlayer = !!(currentPlayerId && player === currentPlayerId);
+        // During gameplay, seats are not clickable — players drop cards directly
+        isActivePlayer = false;
       } else {
         // Bidding complete but game not started yet - only starting player is active
         isActivePlayer = !!isStartingPlayer;
       }
 
+      // Visual highlight for current turn (non-clickable indicator)
+      const isCurrentTurn =
+        hasGameStarted && !!(currentPlayerId && player === currentPlayerId);
+
       const status = isBiddingPhase
         ? isCurrentBiddingPlayer
           ? "Bid"
           : "Wait"
-        : player === currentPlayerId
+        : isCurrentTurn || player === currentPlayerId
           ? "Play"
           : "Wait";
+
+      // During gameplay, show current turn as visually highlighted but not clickable
+      const showHighlighted = isActivePlayer || isCurrentTurn;
 
       return (
         <Grid.Column textAlign="center" key={player}>
@@ -99,7 +106,7 @@ class PlayersList extends React.Component<IProps, {}> {
             as="div"
             labelPosition="right"
             className={`playerSeat ${teamClassName}`}
-            disabled={!isActivePlayer}
+            disabled={!showHighlighted}
             onClick={
               isActivePlayer
                 ? this.handlePlayerSelectClick.bind(this, player)
@@ -114,7 +121,7 @@ class PlayersList extends React.Component<IProps, {}> {
                       ? "blue"
                       : "green"
                     : "grey"
-                  : player === currentPlayerId
+                  : isCurrentTurn
                     ? playerTeam === "A"
                       ? "blue"
                       : "green"

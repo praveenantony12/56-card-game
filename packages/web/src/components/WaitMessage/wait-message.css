@@ -1,0 +1,259 @@
+/* ═══════════════════════════════════════════════════════════════
+   WaitMessage — Premium Dark Theme
+   ═══════════════════════════════════════════════════════════════ */
+
+.wait-card {
+  background: rgba(10, 14, 20, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 28px 32px;
+  max-width: 540px;
+  margin: 24px auto;
+  color: #c8d1dc;
+  font-family: 'Inter', 'Montserrat', sans-serif;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Back button ─────────────────────────────────────────────── */
+.wait-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 0 14px 0;
+  transition: color 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.wait-back-btn:hover {
+  color: #93c5fd;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.wait-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.wait-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(59, 130, 246, 0.2);
+  border-top-color: #60a5fa;
+  border-radius: 50%;
+  animation: wait-spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes wait-spin {
+  to { transform: rotate(360deg); }
+}
+
+.wait-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #f0f4f8;
+  letter-spacing: 0.01em;
+}
+
+.wait-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* ── Share Section ─────────────────────────────────────────────── */
+.wait-section {
+  margin-bottom: 18px;
+}
+
+.wait-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+/* ── Copy Row ──────────────────────────────────────────────────── */
+.wait-copy-row {
+  display: flex;
+  background: rgba(5, 8, 14, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.wait-copy-text {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-family: 'Menlo', 'Consolas', monospace;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: default;
+  user-select: all;
+}
+
+.wait-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: rgba(59, 130, 246, 0.18);
+  border: none;
+  border-left: 1px solid rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.wait-copy-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.wait-copy-btn.copied {
+  background: rgba(34, 197, 94, 0.2);
+  border-left-color: rgba(34, 197, 94, 0.25);
+  color: #4ade80;
+}
+
+/* ── Share Buttons ─────────────────────────────────────────────── */
+.wait-share-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.wait-share-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+  text-decoration: none;
+}
+
+.wait-share-btn:active { transform: scale(0.96); }
+
+.wait-share-btn.whatsapp {
+  background: rgba(37, 211, 102, 0.15);
+  border-color: rgba(37, 211, 102, 0.3);
+  color: #25d366;
+}
+.wait-share-btn.whatsapp:hover { background: rgba(37, 211, 102, 0.26); }
+
+.wait-share-btn.gmail {
+  background: rgba(234, 67, 53, 0.12);
+  border-color: rgba(234, 67, 53, 0.28);
+  color: #ea4335;
+}
+.wait-share-btn.gmail:hover { background: rgba(234, 67, 53, 0.22); }
+
+.wait-share-btn.native {
+  background: rgba(147, 197, 253, 0.1);
+  border-color: rgba(147, 197, 253, 0.2);
+  color: #93c5fd;
+}
+.wait-share-btn.native:hover { background: rgba(147, 197, 253, 0.2); }
+
+.wait-share-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* ── Divider ───────────────────────────────────────────────────── */
+.wait-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 18px 0;
+}
+
+/* ── Footer note ───────────────────────────────────────────────── */
+.wait-note {
+  font-size: 12px;
+  color: #475569;
+  text-align: center;
+  margin-top: 16px;
+  line-height: 1.6;
+}
+
+.wait-note strong {
+  color: #60a5fa;
+}
+
+/* ── Info state (reconnection/waiting player) ─────────────────── */
+.wait-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: rgba(59, 130, 246, 0.07);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 14px;
+  padding: 18px 20px;
+  max-width: 480px;
+  margin: 24px auto;
+  font-family: 'Inter', 'Montserrat', sans-serif;
+}
+
+.wait-info-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(59, 130, 246, 0.2);
+  border-top-color: #60a5fa;
+  border-radius: 50%;
+  animation: wait-spin 0.9s linear infinite;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.wait-info-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-bottom: 4px;
+}
+
+.wait-info-body {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+@media screen and (max-width: 600px) {
+  .wait-card {
+    padding: 20px 16px;
+    margin: 12px;
+    border-radius: 14px;
+  }
+  .wait-share-row { gap: 6px; }
+  .wait-share-btn { padding: 7px 11px; font-size: 11px; }
+}

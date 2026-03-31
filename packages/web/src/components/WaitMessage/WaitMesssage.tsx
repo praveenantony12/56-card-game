@@ -1,17 +1,25 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
-import { Icon, Message, Input } from "semantic-ui-react";
 import { IStore } from "../../stores/IStore";
 import { IGame } from "../../stores/models/IGameInfo";
 import { IUser } from "../../stores/models/IUserInfo";
+import "./wait-message.css";
 
 interface IProps {
   store?: IStore;
+  onBack?: () => void;
+}
+
+interface IState {
+  gameIdCopied: boolean;
+  linkCopied: boolean;
 }
 
 @inject("store")
 @observer
-class WaitMesssage extends React.Component<IProps, {}> {
+class WaitMesssage extends React.Component<IProps, IState> {
+  public state: IState = { gameIdCopied: false, linkCopied: false };
+
   private get store(): IStore {
     return this.props.store as IStore;
   }
@@ -27,102 +35,123 @@ class WaitMesssage extends React.Component<IProps, {}> {
   public render() {
     if (this.store.isPendingReconnectionApproval) {
       return (
-        <Message icon={true} info>
-          <Icon name="clock outline" />
-          <Message.Content>
-            <Message.Header>Waiting for approval</Message.Header>
-            Your reconnection request has been sent to other players for
-            approval.
-          </Message.Content>
-        </Message>
+        <div className="wait-info">
+          <div className="wait-info-spinner" />
+          <div>
+            <div className="wait-info-title">Waiting for approval</div>
+            <div className="wait-info-body">
+              Your reconnection request has been sent to other players for
+              approval.
+            </div>
+          </div>
+        </div>
       );
     }
 
     if (this.canShowWaitMessage) {
       if (this.gameInfo.isGameCreator) {
-        // Game creator waiting for players after selecting fewer than 5 bots
+        const gameId = this.gameInfo.sharedGameId || "";
+        const shareUrl = this.store.getShareableGameUrl(gameId);
+        const hasNativeShare =
+          typeof navigator !== "undefined" && !!navigator.share;
+
+        const waText = encodeURIComponent(
+          `Join my 56 Card Game! Use Game ID: ${gameId} or click: ${shareUrl}`,
+        );
+        const mailSubject = encodeURIComponent("Join my 56 Card Game!");
+        const mailBody = encodeURIComponent(
+          `Hey! Join my 56 Card Game.\n\nGame ID: ${gameId}\nOr click this link to join directly: ${shareUrl}`,
+        );
+
         return (
-          <Message icon={true} info>
-            <Icon name="circle notched" loading={true} />
-            <Message.Content>
-              <Message.Header>Waiting for other players to join</Message.Header>
-              <div style={{ marginTop: "15px" }}>
-                <p>
-                  <strong>Game ID:</strong> {this.gameInfo.sharedGameId}
-                </p>
-                <Input
-                  fluid
-                  value={this.gameInfo.sharedGameId || ""}
-                  readOnly
-                  action={{
-                    color: "teal",
-                    labelPosition: "right",
-                    icon: "copy",
-                    content: "Copy",
-                    onClick: () => this.copyGameId(),
-                    "data-testid": "wait-copy-button",
-                  }}
-                />
-                <p style={{ marginTop: "10px", marginBottom: "15px" }}>
-                  {" "}
-                  Share this Game ID with friends so they can join your game!
-                </p>
+          <div className="wait-card">
+            {this.props.onBack && (
+              <button className="wait-back-btn" onClick={this.props.onBack}>
+                ← Back
+              </button>
+            )}
 
-                <div
-                  style={{
-                    marginTop: "15px",
-                    paddingTop: "15px",
-                    borderTop: "1px solid #ddd",
-                  }}
-                >
-                  <p style={{ marginBottom: "8px" }}>
-                    <strong>Or share this link:</strong>
-                  </p>
-                  <Input
-                    fluid
-                    value={this.store.getShareableGameUrl(
-                      this.gameInfo.sharedGameId || "",
-                    )}
-                    readOnly
-                    action={{
-                      color: "blue",
-                      labelPosition: "right",
-                      icon: "copy outline",
-                      content: "Copy Link",
-                      onClick: () => this.copyShareableUrl(),
-                      "data-testid": "wait-copy-link-button",
-                    }}
-                  />
-                  <p
-                    style={{
-                      marginTop: "8px",
-                      fontSize: "0.85em",
-                      color: "#666",
-                    }}
-                  >
-                    Friends can click this link to join directly!
-                  </p>
+            <div className="wait-header">
+              <div className="wait-spinner" />
+              <div>
+                <div className="wait-title">Waiting for players to join</div>
+                <div className="wait-subtitle">
+                  Share the invite below — game starts when 6 players are in
                 </div>
-
-                <p style={{ marginTop: "15px", marginBottom: "0" }}>
-                  The game will start automatically once 6 total players have
-                  joined.
-                </p>
               </div>
-            </Message.Content>
-          </Message>
+            </div>
+
+            <div className="wait-section">
+              <div className="wait-label">Game ID</div>
+              <div className="wait-copy-row">
+                <input className="wait-copy-text" readOnly value={gameId} />
+                <button
+                  className={`wait-copy-btn${this.state.gameIdCopied ? " copied" : ""}`}
+                  onClick={this.copyGameId}
+                >
+                  {this.state.gameIdCopied ? "✓ Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+
+            <hr className="wait-divider" />
+
+            <div className="wait-section">
+              <div className="wait-label">Invite Link</div>
+              <div className="wait-copy-row">
+                <input className="wait-copy-text" readOnly value={shareUrl} />
+                <button
+                  className={`wait-copy-btn${this.state.linkCopied ? " copied" : ""}`}
+                  onClick={this.copyShareableUrl}
+                >
+                  {this.state.linkCopied ? "✓ Copied" : "Copy Link"}
+                </button>
+              </div>
+
+              <div className="wait-share-row">
+                <a
+                  className="wait-share-btn whatsapp"
+                  href={`https://api.whatsapp.com/send?text=${waText}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="wait-share-icon">📱</span> WhatsApp
+                </a>
+                <a
+                  className="wait-share-btn gmail"
+                  href={`mailto:?subject=${mailSubject}&body=${mailBody}`}
+                >
+                  <span className="wait-share-icon">✉️</span> Email
+                </a>
+                {hasNativeShare && (
+                  <button
+                    className="wait-share-btn native"
+                    onClick={this.nativeShare}
+                  >
+                    <span className="wait-share-icon">⬆️</span> More
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <p className="wait-note">
+              The game will start automatically once <strong>6 players</strong>{" "}
+              have joined.
+            </p>
+          </div>
         );
       } else {
-        // Regular player waiting for the game to start
         return (
-          <Message icon={true} hidden={!this.canShowWaitMessage}>
-            <Icon name="circle notched" loading={true} />
-            <Message.Content>
-              <Message.Header>Please wait.</Message.Header>
-              The game creator is setting up the game. You'll be connected once
-              the game starts.
-            </Message.Content>
-          </Message>
+          <div className="wait-info">
+            <div className="wait-info-spinner" />
+            <div>
+              <div className="wait-info-title">Please wait</div>
+              <div className="wait-info-body">
+                The game creator is setting up the game. You'll be connected
+                once the game starts.
+              </div>
+            </div>
+          </div>
         );
       }
     }
@@ -139,115 +168,77 @@ class WaitMesssage extends React.Component<IProps, {}> {
   }
 
   private copyGameId = () => {
-    if (this.gameInfo.sharedGameId) {
-      // Check if navigator.clipboard is available (HTTPS or localhost)
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard
-          .writeText(this.gameInfo.sharedGameId)
-          .then(() => {
-            // Temporarily change button text to show success
-            const button = document.querySelector(
-              '[data - testid="wait-copy-button"]',
-            ) as HTMLElement;
-            if (button) {
-              const originalText = button.textContent;
-              button.textContent = "Copied!";
-              setTimeout(() => {
-                button.textContent = originalText;
-              }, 2000);
-            }
-          })
-          .catch(() => {
-            this.fallbackCopyToClipboard();
-          });
-      } else {
-        // Fallback for browsers without clipboard API support
-        this.fallbackCopyToClipboard();
-      }
+    if (!this.gameInfo.sharedGameId) {
+      return;
     }
-  };
-
-  private fallbackCopyToClipboard = () => {
-    const textArea = document.createElement("textarea");
-    textArea.value = this.gameInfo.sharedGameId || "";
-    textArea.style.position = "fixed";
-    textArea.style.left = "-999999px";
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand("copy");
-      // Show success feedback
-      const button = document.querySelector(
-        '[data-testid="wait-copy-button"]',
-      ) as HTMLElement;
-      if (button) {
-        const originalText = button.textContent;
-        button.textContent = "Copied!";
-        setTimeout(() => {
-          button.textContent = originalText;
-        }, 2000);
-      }
-    } catch (err) {
-      console.error("Failed to copy to clipboard:", err);
-    } finally {
-      document.body.removeChild(textArea);
+    const value = this.gameInfo.sharedGameId;
+    const onSuccess = () => {
+      this.setState({ gameIdCopied: true });
+      setTimeout(() => this.setState({ gameIdCopied: false }), 2000);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(value)
+        .then(onSuccess)
+        .catch(() => {
+          this.fallbackCopyToClipboard(value, onSuccess);
+        });
+    } else {
+      this.fallbackCopyToClipboard(value, onSuccess);
     }
   };
 
   private copyShareableUrl = () => {
-    if (this.gameInfo.sharedGameId) {
-      const shareableUrl = this.store.getShareableGameUrl(
-        this.gameInfo.sharedGameId,
-      );
-      // Check if navigator.clipboard is available (HTTPS or localhost)
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard
-          .writeText(shareableUrl)
-          .then(() => {
-            // Temporarily change button text to show success
-            const button = document.querySelector(
-              '[data-testid="wait-copy-link-button"]',
-            ) as HTMLElement;
-            if (button) {
-              const originalText = button.textContent;
-              button.textContent = "Copied!";
-              setTimeout(() => {
-                button.textContent = originalText;
-              }, 2000);
-            }
-          })
-          .catch(() => {
-            this.fallbackCopyUrlToClipboard(shareableUrl);
-          });
-      } else {
-        // Fallback for browsers without clipboard API support
-        this.fallbackCopyUrlToClipboard(shareableUrl);
-      }
+    if (!this.gameInfo.sharedGameId) {
+      return;
+    }
+    const url = this.store.getShareableGameUrl(this.gameInfo.sharedGameId);
+    const onSuccess = () => {
+      this.setState({ linkCopied: true });
+      setTimeout(() => this.setState({ linkCopied: false }), 2000);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(url)
+        .then(onSuccess)
+        .catch(() => {
+          this.fallbackCopyToClipboard(url, onSuccess);
+        });
+    } else {
+      this.fallbackCopyToClipboard(url, onSuccess);
     }
   };
 
-  private fallbackCopyUrlToClipboard = (url: string) => {
+  private nativeShare = () => {
+    if (!this.gameInfo.sharedGameId) {
+      return;
+    }
+    const url = this.store.getShareableGameUrl(this.gameInfo.sharedGameId);
+    navigator
+      .share({
+        title: "Join my 56 Card Game!",
+        text: `Join using Game ID: ${this.gameInfo.sharedGameId}`,
+        url,
+      })
+      .catch(() => {
+        /* user dismissed or unsupported */
+      });
+  };
+
+  private fallbackCopyToClipboard = (text: string, onSuccess?: () => void) => {
     const textArea = document.createElement("textarea");
-    textArea.value = url;
+    textArea.value = text;
     textArea.style.position = "fixed";
     textArea.style.left = "-999999px";
     document.body.appendChild(textArea);
     textArea.select();
     try {
       document.execCommand("copy");
-      // Show success feedback
-      const button = document.querySelector(
-        '[data-testid="wait-copy-link-button"]',
-      ) as HTMLElement;
-      if (button) {
-        const originalText = button.textContent;
-        button.textContent = "Copied!";
-        setTimeout(() => {
-          button.textContent = originalText;
-        }, 2000);
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (err) {
-      console.error("Failed to copy URL to clipboard:", err);
+      console.error("Failed to copy to clipboard:", err);
     } finally {
       document.body.removeChild(textArea);
     }

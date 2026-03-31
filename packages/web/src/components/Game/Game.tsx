@@ -109,6 +109,19 @@ class Game extends React.Component<IProps, IState> {
     this.setState({ flowState: "menu" });
   };
 
+  // Back from WaitMessage — restore the gameId so the player can re-join
+  private handleBackFromWaiting = () => {
+    const savedGameId = this.store.game.sharedGameId || "";
+    this.store.leaveGame();
+    if (savedGameId) {
+      this.store.game.gameMode = "join";
+      this.store.game.gameIdToJoin = savedGameId;
+      this.setState({ flowState: "join" });
+    } else {
+      this.setState({ flowState: "menu" });
+    }
+  };
+
   public render() {
     const { flowState, playerName } = this.state;
     const { canStartGame } = this.gameInfo;
@@ -152,7 +165,7 @@ class Game extends React.Component<IProps, IState> {
         {/* Always render existing game components - they show/hide based on internal logic */}
         <BotSelection onBack={this.handleBackToMenu} />
         <Lobby onBack={this.handleBackToMenu} />
-        <WaitMesssage />
+        <WaitMesssage onBack={this.handleBackFromWaiting} />
         <Notification />
         <PlayersList />
         <GameGrid />
