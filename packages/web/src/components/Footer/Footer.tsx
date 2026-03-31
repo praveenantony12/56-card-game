@@ -1,17 +1,21 @@
-import { MDBContainer, MDBFooter } from "mdbreact";
 import * as React from "react";
-import "./footer.css";
 
-const FooterPage = () => {
+const Footer = () => {
+  const year = new Date().getFullYear();
+
   return (
-    <MDBFooter color="blue" className="font-small pt-4 mt-4">
-      <div className="footer footer-copyright text-center py-3">
-        <MDBContainer fluid={true}>
-          Copyright &copy; 2020 Praveen Antony
-        </MDBContainer>
-      </div>
-    </MDBFooter>
+    <footer
+      style={{
+        textAlign: "center",
+        fontSize: "12px",
+        color: "#9CA3AF",
+        padding: "16px 0",
+        opacity: 0.75,
+      }}
+    >
+      &copy; {year} Praveen Antony
+    </footer>
   );
 };
 
-export default FooterPage;
+export default Footer;

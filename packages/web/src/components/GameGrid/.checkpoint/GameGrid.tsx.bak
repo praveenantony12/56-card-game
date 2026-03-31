@@ -1,6 +1,6 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
-import { Dimmer } from "semantic-ui-react";
+import { Button, Dimmer, Grid, Icon, Label } from "semantic-ui-react";
 import { IStore } from "../../stores/IStore";
 import Card from "../Card/Card";
 // import POINTS from "../../constants/Points";
@@ -252,225 +252,348 @@ class GameGrid extends React.Component<IProps, IState> {
 
     return (
       <Dimmer.Dimmable dimmed={!yourTurn}>
-        {/* ── Hero Table ── */}
-        <div className="cardHeight cardTable">
-          <div className="cardOnTable">
-            {/* Post-raise UI in center */}
-            {(() => {
-              const { postRaiseDoubleRound } = this.store.game;
-              if (postRaiseDoubleRound && isBiddingPhase) {
-                return this.renderPostRaiseButtonsInCenter();
-              }
-              return null;
-            })()}
+        <Grid.Row centered={true} columns={1}>
+          <Grid.Column className="cardHeight cardTable">
+            <div className="cardOnTable">
+              {/* Show post-raise UI in center if in post-raise round */}
+              {(() => {
+                const { postRaiseDoubleRound } = this.store.game;
+                if (postRaiseDoubleRound && isBiddingPhase) {
+                  return this.renderPostRaiseButtonsInCenter();
+                }
+                return null;
+              })()}
+              <Button.Group
+                className="handleBiddingPass"
+                style={{
+                  display:
+                    this.state.currentBiddingsuit !== "" ||
+                    gameStarted ||
+                    !isYourBiddingTurn ||
+                    this.store.game.postRaiseDoubleRound ||
+                    this.store.game.bidRaisePhase
+                      ? "none"
+                      : "block",
+                }}
+                onClick={this.handleBiddingPass.bind(this)}
+              >
+                <Button
+                  as="div"
+                  labelPosition="left"
+                  color="red"
+                  disabled={this.state.isProcessingAction}
+                >
+                  <Label as="a" basic={true} color="black" pointing="right">
+                    Pass
+                  </Label>
+                  <Button color="red" disabled={this.state.isProcessingAction}>
+                    {this.state.isProcessingAction
+                      ? "Processing..."
+                      : "Not Bidding"}
+                  </Button>
+                </Button>
+              </Button.Group>
+              {this.renderCards(droppedCards, false, false, dropCardPlayer)}
+              {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
+                <div className="round-timer">{this.state.timerRemaining}</div>
+              )}
+              {isGameComplete && winnerMessage && (
+                <div
+                  className="game-winner-message"
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    top: "12rem",
+                    transform: "translate(-50%, -50%)",
+                    backgroundColor: "rgb(0,0,0,0.8)",
+                    color: "white",
+                    padding: "20px",
+                    borderRadius: "10px",
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    zIndex: 1000,
+                    maxWidth: "400px",
+                  }}
+                >
+                  <div>{winnerMessage}</div>
+                  {gameCompleteData && (
+                    <div
+                      style={{
+                        marginTop: "10px",
+                        fontSize: "14px",
+                        fontWeight: "normal",
+                      }}
+                    >
+                      <div>Final Bid: {finalBid}</div>
+                      <div style={{ color: "#9bd4ff" }}>
+                        Team A Points: {gameCompleteData.teamAPoints}
+                      </div>
+                      <div style={{ color: "#7ee89e" }}>
+                        Team B Points: {gameCompleteData.teamBPoints}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Grid.Column>
+          <Grid.Column>
+            <div className="myCards">
+              {this.renderCards(
+                cards,
+                true,
+                false,
+                undefined,
+                this.state.isRoundReveal && this.state.timerRemaining > 0,
+              )}
+            </div>
+          </Grid.Column>
+        </Grid.Row>
 
-            {/* Pass / Not Bidding button */}
-            {isYourBiddingTurn &&
-              !gameStarted &&
-              this.state.currentBiddingsuit === "" &&
-              !this.store.game.postRaiseDoubleRound &&
-              !this.store.game.bidRaisePhase && (
-                <div className="pass-button-container">
-                  <button
-                    className="pass-btn"
-                    onClick={this.handleBiddingPass.bind(this)}
-                    disabled={this.state.isProcessingAction}
+        <Grid centered={true}>
+          <Grid.Row
+            centered={true}
+            columns={1}
+            className="biddingGrid"
+            style={{ marginTop: "-3rem" }}
+          >
+            <Grid.Column
+              textAlign="center"
+              mobile={16}
+              tablet={16}
+              computer={16}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexDirection: "column",
+              }}
+            >
+              {(() => {
+                const { isBiddingPhase, currentBiddingPlayerId } =
+                  this.store.game;
+                const { playerId } = this.store.user;
+                const isYourBiddingTurn =
+                  isBiddingPhase && currentBiddingPlayerId === playerId
+                    ? true
+                    : false;
+
+                if (isBiddingPhase) {
+                  return this.renderBiddingUI(isYourBiddingTurn);
+                } else {
+                  return this.renderNormalGameUI();
+                }
+              })()}
+
+              <Button.Group
+                fluid={true}
+                style={{
+                  width: "25%",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <Button as="div" labelPosition="left" disabled={gameStarted}>
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="blue"
+                    pointing="right"
+                    style={{
+                      width: "90%",
+                      justifyContent: "center",
+                      borderColor: "rgb(36 136 211)",
+                      color: "rgb(36 136 211)",
+                      fontWeight: "bold",
+                    }}
                   >
-                    <span className="pass-label">Pass</span>
-                    <span className="pass-action">
-                      {this.state.isProcessingAction
-                        ? "Processing..."
-                        : "Not Bidding"}
-                    </span>
-                  </button>
-                </div>
-              )}
+                    {firstPlayer}'s Team
+                  </Label>
+                  <Button color="blue">
+                    {teamAScore !== undefined
+                      ? teamAScore
+                      : 10 - Number(gameScore)}
+                  </Button>
+                </Button>
+                <Button.Or text="VS" />
+                <Button as="div" labelPosition="right" disabled={gameStarted}>
+                  <Button color="green">
+                    {teamBScore !== undefined
+                      ? teamBScore
+                      : 10 - Number(gameScore)}
+                  </Button>
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="green"
+                    pointing="left"
+                    style={{
+                      width: "90%",
+                      justifyContent: "center",
+                      borderColor: "rgb(32 186 69)",
+                      color: "rgb(32 186 69)",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {lastPlayer}'s Team
+                  </Label>
+                </Button>
+              </Button.Group>
+              <input
+                type="range"
+                min="-10"
+                max="10"
+                step="1"
+                value={gameScore}
+                className={
+                  gameStarted || !isFirstPlayer
+                    ? "scoreSlider hideSlider"
+                    : "scoreSlider showSlider"
+                }
+                id="gameScoreSlider"
+                data-show-value="true"
+                onChange={this.updateScore.bind(this)}
+              />
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
 
-            {/* Dropped cards on table */}
-            {this.renderCards(droppedCards, false, false, dropCardPlayer)}
-          </div>
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={2}>
+            <Grid.Column textAlign="center">
+              <Button.Group className="teamAButtonGroup">
+                <Button as="div" labelPosition="left">
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="blue"
+                    pointing="right"
+                    style={{
+                      background: "rgba(33, 133, 208, 0.16)",
+                      borderColor: "rgb(36 136 211)",
+                      color: "rgb(36 136 211)",
+                      boxShadow: "0 0 10px rgba(33, 133, 208, 0.35)",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Team A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
+                  </Label>
+                  <Button
+                    color={
+                      isGameComplete && biddingTeam === "A"
+                        ? gameCompleteData?.biddingTeamAchievedBid
+                          ? "green"
+                          : "red"
+                        : "blue"
+                    }
+                    className="teamAPoints"
+                  >
+                    {gameCompleteData ? gameCompleteData.teamAPoints : 0}
+                  </Button>
+                </Button>
+              </Button.Group>
+              <div className="teamCards teamACards">
+                {this.renderCards(teamACards, false, true)}
+              </div>
+            </Grid.Column>
+            <Grid.Column textAlign="center">
+              <Button.Group className="teamBButtonGroup">
+                <Button as="div" labelPosition="left">
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="green"
+                    pointing="right"
+                    style={{
+                      background: "rgba(39, 174, 96, 0.08)",
+                      borderColor: "rgb(32 186 69)",
+                      color: "rgb(32 186 69)",
+                      boxShadow: "0 0 10px rgba(39, 174, 96, 0.3)",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Team B [{secondPlayer} {fourthPlayer} {lastPlayer}]
+                  </Label>
+                  <Button
+                    color={
+                      isGameComplete && biddingTeam === "B"
+                        ? gameCompleteData?.biddingTeamAchievedBid
+                          ? "green"
+                          : "red"
+                        : "green"
+                    }
+                    className="teamBPoints"
+                  >
+                    {gameCompleteData ? gameCompleteData.teamBPoints : 0}
+                  </Button>
+                </Button>
+              </Button.Group>
+              <div className="teamCards teamBCards">
+                {this.renderCards(teamBCards, false, true)}
+              </div>
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
 
-          {/* Round timer — positioned relative to cardTable */}
-          {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
-            <div className="round-timer">{this.state.timerRemaining}</div>
-          )}
-
-          {/* Winner message — centered on cardTable */}
-          {isGameComplete && winnerMessage && (
-            <div className="game-winner-overlay">
-              <div className="winner-title">{winnerMessage}</div>
-              {gameCompleteData && (
-                <div className="winner-details">
-                  <div>Final Bid: {finalBid}</div>
-                  <div style={{ color: "#93c5fd" }}>
-                    Team A Points: {gameCompleteData.teamAPoints}
-                  </div>
-                  <div style={{ color: "#86efac" }}>
-                    Team B Points: {gameCompleteData.teamBPoints}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Player's Hand — Fan Layout ── */}
-        <div className="myCards">
-          {this.renderCards(
-            cards,
-            true,
-            false,
-            undefined,
-            this.state.isRoundReveal && this.state.timerRemaining > 0,
-          )}
-        </div>
-
-        {/* ── Bidding / Game Phase UI ── */}
-        <div style={{ padding: "0 8px" }}>
-          {(() => {
-            if (isBiddingPhase) {
-              return this.renderBiddingUI(isYourBiddingTurn);
-            } else {
-              return this.renderNormalGameUI();
-            }
-          })()}
-        </div>
-
-        {/* ── Score HUD ── */}
-        <div className="score-hud">
-          <div className="score-team team-a">
-            <span className="score-label">{firstPlayer}'s Team</span>
-            <span className="score-value">
-              {teamAScore !== undefined ? teamAScore : 10 - Number(gameScore)}
-            </span>
-          </div>
-          <span className="score-vs">VS</span>
-          <div className="score-team team-b">
-            <span className="score-value">
-              {teamBScore !== undefined ? teamBScore : 10 - Number(gameScore)}
-            </span>
-            <span className="score-label">{lastPlayer}'s Team</span>
-          </div>
-        </div>
-        {isFirstPlayer && !gameStarted && (
-          <input
-            type="range"
-            min="-10"
-            max="10"
-            step="1"
-            value={gameScore}
-            className="scoreSlider showSlider"
-            id="gameScoreSlider"
-            onChange={this.updateScore.bind(this)}
-          />
-        )}
-
-        {/* ── Team Card Piles ── */}
-        <div className="team-piles-row">
-          <div className="team-pile" style={{ textAlign: "center" }}>
-            <div className="team-pile-header team-a">
-              Team A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
-              <span
-                className="team-pile-points team-a"
-                style={
-                  isGameComplete && biddingTeam === "A"
-                    ? {
-                        background: gameCompleteData?.biddingTeamAchievedBid
-                          ? "rgba(34, 197, 94, 0.3)"
-                          : "rgba(239, 68, 68, 0.3)",
-                        color: gameCompleteData?.biddingTeamAchievedBid
-                          ? "#86efac"
-                          : "#fca5a5",
-                      }
-                    : {}
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={1}>
+            <Button.Group>
+              <Button
+                color="red"
+                onClick={this.handleRestartGameClick.bind(this, gameId)}
+                disabled={
+                  this.state.isRestarting ||
+                  this.state.restartLockedUntilFirstCard ||
+                  !(
+                    typeof cards === "undefined" ||
+                    cards.length === 0 ||
+                    isFirstPlayer
+                  )
                 }
               >
-                {gameCompleteData ? gameCompleteData.teamAPoints : 0}
-              </span>
-            </div>
-            <div className="teamCards teamACards">
-              {this.renderCards(teamACards, false, true)}
-            </div>
-          </div>
-          <div className="team-pile" style={{ textAlign: "center" }}>
-            <div className="team-pile-header team-b">
-              Team B [{secondPlayer} {fourthPlayer} {lastPlayer}]
-              <span
-                className="team-pile-points team-b"
-                style={
-                  isGameComplete && biddingTeam === "B"
-                    ? {
-                        background: gameCompleteData?.biddingTeamAchievedBid
-                          ? "rgba(34, 197, 94, 0.3)"
-                          : "rgba(239, 68, 68, 0.3)",
-                        color: gameCompleteData?.biddingTeamAchievedBid
-                          ? "#86efac"
-                          : "#fca5a5",
-                      }
-                    : {}
-                }
+                {this.state.isRestarting ? "Restarting..." : "Restart Game"}
+              </Button>
+              <Button.Or />
+              {/* <Button
+                color="orange"
+                onClick={this.handleForfeitGameClick.bind(this, gameId)}
+                disabled={typeof cards === "undefined" || cards.length === 0}
               >
-                {gameCompleteData ? gameCompleteData.teamBPoints : 0}
-              </span>
-            </div>
-            <div className="teamCards teamBCards">
-              {this.renderCards(teamBCards, false, true)}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Game Actions Bar ── */}
-        <div className="game-actions-bar">
-          <button
-            className="game-action-btn"
-            onClick={this.handleRestartGameClick.bind(this, gameId)}
-            disabled={
-              this.state.isRestarting ||
-              this.state.restartLockedUntilFirstCard ||
-              !(
-                typeof cards === "undefined" ||
-                cards.length === 0 ||
-                isFirstPlayer
-              )
-            }
-          >
-            {this.state.isRestarting ? "Restarting..." : "Restart Game"}
-          </button>
-          <span className="game-action-sep">or</span>
-          <button
-            className="game-action-btn"
-            onClick={this.viewAllCards.bind(this, gameId)}
-            disabled={!(typeof cards === "undefined" || cards.length === 0)}
-          >
-            View All Cards
-          </button>
-          {showShuffleA && (
-            <>
-              <span className="game-action-sep">or</span>
-              <button
-                className="game-action-btn primary"
-                onClick={this.handleSwitchPositions.bind(this, "A")}
-                disabled={this.state.isProcessingAction}
-                title="Randomly shuffle Team A seating positions (one-time)"
+                Forfeit Game
+              </Button>
+              <Button.Or /> */}
+              <Button
+                color="red"
+                onClick={this.viewAllCards.bind(this, gameId)}
+                disabled={!(typeof cards === "undefined" || cards.length === 0)}
               >
-                Shuffle Team A Seats
-              </button>
-            </>
-          )}
-          {showShuffleB && (
-            <>
-              <span className="game-action-sep">or</span>
-              <button
-                className="game-action-btn primary"
-                onClick={this.handleSwitchPositions.bind(this, "B")}
-                disabled={this.state.isProcessingAction}
-                title="Randomly shuffle Team B seating positions (one-time)"
-              >
-                Shuffle Team B Seats
-              </button>
-            </>
-          )}
-        </div>
+                View All Cards
+              </Button>
+              {showShuffleA && <Button.Or />}
+              {showShuffleA && (
+                <Button
+                  color="red"
+                  onClick={this.handleSwitchPositions.bind(this, "A")}
+                  disabled={this.state.isProcessingAction}
+                  title="Ask your team to randomly shuffle Team A seating positions (one-time only)"
+                >
+                  Shuffle Team A Seats
+                </Button>
+              )}
+              {showShuffleB && <Button.Or />}
+              {showShuffleB && (
+                <Button
+                  color="red"
+                  onClick={this.handleSwitchPositions.bind(this, "B")}
+                  disabled={this.state.isProcessingAction}
+                  title="Ask your team to randomly shuffle Team B seating positions (one-time only)"
+                >
+                  Shuffle Team B Seats
+                </Button>
+              )}
+            </Button.Group>
+          </Grid.Row>
+        </Grid>
       </Dimmer.Dimmable>
     );
   }
@@ -480,7 +603,8 @@ class GameGrid extends React.Component<IProps, IState> {
   };
 
   /**
-   * Render a read-only spectator view: team roster, table, scores, bid info, card piles.
+   * Render a read-only spectator view: table scores, team card piles, bid info.
+   * Players' hand cards and action buttons are hidden.
    */
   private renderSpectatorView(props: {
     gameScore: string;
@@ -525,125 +649,236 @@ class GameGrid extends React.Component<IProps, IState> {
       isBiddingPhase,
     } = props;
 
-    const teamAPlayers = [firstPlayer, thirdPlayer, fifthPlayer].filter(
-      Boolean,
-    );
-    const teamBPlayers = [secondPlayer, fourthPlayer, lastPlayer].filter(
-      Boolean,
-    );
-
     return (
-      <div className="spectator-wrapper">
-        {/* ── Team Roster Card ── */}
-        <div className="spectator-roster">
-          <div className="spectator-roster-team team-a">
-            <span className="spectator-roster-label">Team A</span>
-            <div className="spectator-roster-players">
-              {teamAPlayers.map((p) => (
-                <span key={p} className="spectator-roster-player team-a">
-                  {p}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="spectator-roster-vs">VS</div>
-          <div className="spectator-roster-team team-b">
-            <span className="spectator-roster-label">Team B</span>
-            <div className="spectator-roster-players">
-              {teamBPlayers.map((p) => (
-                <span key={p} className="spectator-roster-player team-b">
-                  {p}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+      <div>
+        {/* Cards on table */}
 
-        {/* ── Card Table ── */}
-        <div className="cardHeight cardTable">
-          <div className="cardOnTable">
-            {this.renderCards(droppedCards, false, false, dropCardPlayer)}
-          </div>
-
-          {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
-            <div className="round-timer">{this.state.timerRemaining}</div>
-          )}
-
-          {isGameComplete && winnerMessage && (
-            <div className="game-winner-overlay">
-              <div className="winner-title">{winnerMessage}</div>
-              {gameCompleteData && (
-                <div className="winner-details">
-                  <div>Final Bid: {finalBid}</div>
-                  <div style={{ color: "#60a5fa" }}>
-                    Team A: {gameCompleteData.teamAPoints} pts
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={1}>
+            <Grid.Column className="cardHeight cardTable">
+              <div className="cardOnTable">
+                {this.renderCards(droppedCards, false, false, dropCardPlayer)}
+                {this.state.isRoundReveal && this.state.timerRemaining > 0 && (
+                  <div className="round-timer">
+                    {" "}
+                    {this.state.timerRemaining}{" "}
                   </div>
-                  <div style={{ color: "#4ade80" }}>
-                    Team B: {gameCompleteData.teamBPoints} pts
+                )}
+
+                {isGameComplete && winnerMessage && (
+                  <div
+                    className="game-winner-message"
+                    style={{
+                      position: "absolute",
+                      left: "50%",
+                      top: "12rem",
+                      transform: "translate(-50%, -50%)",
+                      backgroundColor: "rgb(0,0,0,0.8)",
+                      color: "white",
+                      padding: "20px",
+                      borderRadius: "10px",
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      zIndex: 1000,
+                      maxWidth: "400px",
+                    }}
+                  >
+                    <div>{winnerMessage}</div>
+                    {gameCompleteData && (
+                      <div
+                        style={{
+                          marginTop: "10px",
+                          fontSize: "14px",
+                          fontWeight: "normal",
+                        }}
+                      >
+                        <div>Final Bid: {finalBid}</div>
+                        <div style={{ color: "#9bd4ff" }}>
+                          Team A Points: {gameCompleteData.teamAPoints}
+                        </div>
+                        <div style={{ color: "#7ee89e" }}>
+                          Team B Points: {gameCompleteData.teamBPoints}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                )}
+              </div>
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
 
-        {/* ── Phase Info (bid status / game status) ── */}
-        <div className="spectator-phase-info">
-          {isBiddingPhase
-            ? this.renderSpectatorBiddingInfo()
-            : this.renderNormalGameUI()}
-        </div>
-
-        {/* ── Score HUD ── */}
-        <div className="score-hud">
-          <div className="score-team team-a">
-            <span className="score-label">{firstPlayer}'s Team</span>
-            <span className="score-value">
-              {teamAScore !== undefined ? teamAScore : 10 - Number(gameScore)}
-            </span>
-          </div>
-          <span className="score-vs">VS</span>
-          <div className="score-team team-b">
-            <span className="score-value">
-              {teamBScore !== undefined ? teamBScore : 10 - Number(gameScore)}
-            </span>
-            <span className="score-label">{lastPlayer}'s Team</span>
-          </div>
-        </div>
-
-        {/* ── Team Card Piles ── */}
-        <div className="team-piles-row">
-          <div className="team-pile">
-            <div
-              className={`team-pile-header team-a${isGameComplete && biddingTeam === "A" ? (gameCompleteData?.biddingTeamAchievedBid ? " result-win" : " result-lose") : ""}`}
+        {/* Bid info - above the score, centered, matching regular game layout */}
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={1}>
+            <Grid.Column
+              textAlign="center"
+              mobile={16}
+              tablet={16}
+              computer={16}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexDirection: "column",
+              }}
             >
-              <span className="team-pile-name">
-                Team A &middot; {teamAPlayers.join(" · ")}
-              </span>
-              <span className="team-pile-points team-a">
-                {gameCompleteData ? gameCompleteData.teamAPoints : 0}
-              </span>
-            </div>
-            <div className="teamCards teamACards">
-              {this.renderCards(teamACards, false, true)}
-            </div>
-          </div>
-          <div className="team-pile">
-            <div
-              className={`team-pile-header team-b${isGameComplete && biddingTeam === "B" ? (gameCompleteData?.biddingTeamAchievedBid ? " result-win" : " result-lose") : ""}`}
+              {isBiddingPhase
+                ? this.renderSpectatorBiddingInfo()
+                : this.renderNormalGameUI()}
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
+
+        {/* Score display */}
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={1}>
+            <Grid.Column
+              textAlign="center"
+              mobile={16}
+              tablet={16}
+              computer={16}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexDirection: "column",
+              }}
             >
-              <span className="team-pile-name">
-                Team B &middot; {teamBPlayers.join(" · ")}
-              </span>
-              <span className="team-pile-points team-b">
-                {gameCompleteData ? gameCompleteData.teamBPoints : 0}
-              </span>
-            </div>
-            <div className="teamCards teamBCards">
-              {this.renderCards(teamBCards, false, true)}
-            </div>
-          </div>
-        </div>
+              <Button.Group
+                fluid={true}
+                style={{
+                  width: "25%",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <Button as="div" labelPosition="left" disabled>
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="blue"
+                    pointing="right"
+                    style={{
+                      width: "90%",
+                      justifyContent: "center",
+                      borderColor: "rgb(36 136 211)",
+                      color: "rgb(36 136 211)",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {firstPlayer}'s Team
+                  </Label>
+                  <Button color="blue" disabled>
+                    {teamAScore !== undefined
+                      ? teamAScore
+                      : 10 - Number(gameScore)}
+                  </Button>
+                </Button>
+                <Button.Or text="VS" />
+                <Button as="div" labelPosition="right" disabled>
+                  <Button color="green">
+                    {teamBScore !== undefined
+                      ? teamBScore
+                      : 10 - Number(gameScore)}
+                  </Button>
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="green"
+                    pointing="left"
+                    style={{
+                      width: "90%",
+                      justifyContent: "center",
+                      borderColor: "rgb(32 186 69)",
+                      color: "rgb(32 186 69)",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {lastPlayer}'s Team
+                  </Label>
+                </Button>
+              </Button.Group>
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
+
+        {/* Team card piles */}
+        <Grid centered={true}>
+          <Grid.Row centered={true} columns={2}>
+            <Grid.Column textAlign="center">
+              <Button.Group className="teamAButtonGroup">
+                <Button as="div" labelPosition="left">
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="blue"
+                    pointing="right"
+                    style={{
+                      background: "rgba(33, 133, 208, 0.16)",
+                      borderColor: "rgb(36 136 211)",
+                      color: "rgb(36 136 211)",
+                      boxShadow: "0 0 10px rgba(33, 133, 208, 0.35)",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Team A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
+                  </Label>
+                  <Button
+                    color={
+                      isGameComplete && biddingTeam === "A"
+                        ? gameCompleteData?.biddingTeamAchievedBid
+                          ? "green"
+                          : "red"
+                        : "blue"
+                    }
+                    className="teamAPoints"
+                  >
+                    {gameCompleteData ? gameCompleteData.teamAPoints : 0}
+                  </Button>
+                </Button>
+              </Button.Group>
+              <div className="teamCards teamACards">
+                {this.renderCards(teamACards, false, true)}
+              </div>
+            </Grid.Column>
+            <Grid.Column textAlign="center">
+              <Button.Group className="teamBButtonGroup">
+                <Button as="div" labelPosition="left">
+                  <Label
+                    as="a"
+                    basic={true}
+                    color="green"
+                    pointing="right"
+                    style={{
+                      background: "rgba(39, 174, 96, 0.08)",
+                      borderColor: "rgb(32 186 69)",
+                      color: "rgb(32 186 69)",
+                      boxShadow: "0 0 10px rgba(39, 174, 96, 0.3)",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Team B [{secondPlayer} {fourthPlayer} {lastPlayer}]
+                  </Label>
+                  <Button
+                    color={
+                      isGameComplete && biddingTeam === "B"
+                        ? gameCompleteData?.biddingTeamAchievedBid
+                          ? "green"
+                          : "red"
+                        : "green"
+                    }
+                    className="teamBPoints"
+                  >
+                    {gameCompleteData ? gameCompleteData.teamBPoints : 0}
+                  </Button>
+                </Button>
+              </Button.Group>
+              <div className="teamCards teamBCards">
+                {this.renderCards(teamBCards, false, true)}
+              </div>
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
       </div>
     );
   }
@@ -654,20 +889,16 @@ class GameGrid extends React.Component<IProps, IState> {
   private renderSpectatorBiddingInfo() {
     const { bidHistory, currentBiddingPlayerId, bidDouble, bidReDouble } =
       this.store.game;
-    let lastBidText = "No bids yet";
+    let lastBid = "No bids yet";
     let lastBidPlayerId = "";
     if (bidHistory && bidHistory.length > 0) {
       for (let i = bidHistory.length - 1; i >= 0; i--) {
         const entry = bidHistory[i] as any;
         if (entry.action === "bid") {
-          lastBidText = `${entry.playerId}  ${entry.bidValue}${entry.suit ? " " + entry.suit : ""}`;
+          lastBid = `${entry.playerId} ➡ ${entry.bidValue} ${entry.suit || ""}`;
           lastBidPlayerId = entry.playerId || "";
-          if (bidDouble) {
-            lastBidText += " · Double";
-          }
-          if (bidReDouble) {
-            lastBidText += " · Re-Double";
-          }
+          if (bidDouble) lastBid += " (Double)";
+          if (bidReDouble) lastBid += " (Re-Double)";
           break;
         }
       }
@@ -678,41 +909,38 @@ class GameGrid extends React.Component<IProps, IState> {
       : null;
     const currentTurnColor =
       currentTurnTeam === "A"
-        ? "#93c5fd"
+        ? "#9bd4ff"
         : currentTurnTeam === "B"
-          ? "#86efac"
-          : "#e2e8f0";
+          ? "#7ee89e"
+          : "white";
     const lastBidColor =
       lastBidTeam === "A"
-        ? "#93c5fd"
+        ? "#9bd4ff"
         : lastBidTeam === "B"
-          ? "#86efac"
-          : "#94a3b8";
-    const teamBadge = currentTurnTeam ? (
-      <span
-        className={`spectator-team-badge team-${currentTurnTeam.toLowerCase()}`}
-      >
-        Team {currentTurnTeam}
-      </span>
-    ) : null;
-
+          ? "#7ee89e"
+          : "white";
+    const teamLabel = currentTurnTeam ? ` (Team ${currentTurnTeam})` : "";
     return (
-      <div className="spectator-bid-card">
-        <div className="spectator-bid-card-title">🎯 Bidding in progress</div>
-        <div className="spectator-bid-row">
-          <span className="spectator-bid-key">Current turn</span>
-          <span
-            className="spectator-bid-val"
-            style={{ color: currentTurnColor }}
-          >
-            {currentBiddingPlayerId} {teamBadge}
-          </span>
+      <div
+        style={{
+          textAlign: "center",
+          backgroundColor: "rgba(0,0,0,0.6)",
+          color: "white",
+          padding: "10px",
+          marginTop: "8px",
+          borderRadius: "6px",
+        }}
+      >
+        <strong>Bidding in progress</strong>
+        <div style={{ marginTop: "4px" }}>
+          Current turn:{" "}
+          <em style={{ color: currentTurnColor }}>
+            {currentBiddingPlayerId}
+            {teamLabel}
+          </em>
         </div>
-        <div className="spectator-bid-row">
-          <span className="spectator-bid-key">Last bid</span>
-          <span className="spectator-bid-val" style={{ color: lastBidColor }}>
-            {lastBidText}
-          </span>
+        <div style={{ marginTop: "4px" }}>
+          Last bid: <em style={{ color: lastBidColor }}>{lastBid}</em>
         </div>
       </div>
     );
@@ -807,11 +1035,12 @@ class GameGrid extends React.Component<IProps, IState> {
             >
               You can raise your bid to a higher level for the same suit
             </p>
-            <div className="bid-actions-row" style={{ marginBottom: "20px" }}>
+            <div style={{ marginBottom: "20px" }}>
               {availableLevels.map((level) => (
-                <button
+                <Button
                   key={level}
-                  className="action-pill bid"
+                  color="green"
+                  size="large"
                   style={{ margin: "5px" }}
                   onClick={() => this.handleRaiseBid(level)}
                   disabled={this.state.isProcessingAction}
@@ -819,18 +1048,19 @@ class GameGrid extends React.Component<IProps, IState> {
                   {this.state.isProcessingAction
                     ? "Processing..."
                     : `Raise to ${level}`}
-                </button>
+                </Button>
               ))}
             </div>
-            <button
-              className="action-pill pass"
+            <Button
+              color="red"
+              size="large"
               onClick={this.handleSkipRaise.bind(this)}
               disabled={this.state.isProcessingAction}
             >
               {this.state.isProcessingAction
                 ? "Processing..."
                 : "Skip - Start Game"}
-            </button>
+            </Button>
           </div>
         </>
       );
@@ -906,24 +1136,38 @@ class GameGrid extends React.Component<IProps, IState> {
       ? this.getPlayerTeam(lastBiddingPlayer)
       : null;
     const myTeam = this.getPlayerTeam(this.store.user.playerId as string);
+    const lastBidStyle = {
+      justifyContent: "center" as const,
+      color: "white",
+      background:
+        lastBidTeam === "A"
+          ? "rgb(36 136 211)"
+          : lastBidTeam === "B"
+            ? "rgb(32 186 69)"
+            : "transparent",
+    };
+    const myBidStyle = {
+      justifyContent: "center" as const,
+      color: myTeam === "A" ? "#c6e6ff" : myTeam === "B" ? "#a0efbf" : "yellow",
+      border: `1px solid ${myTeam === "A" ? "rgba(33, 133, 208, 0.6)" : myTeam === "B" ? "rgba(39, 174, 96, 0.6)" : "orange"}`,
+      background:
+        myTeam === "A"
+          ? "rgba(33, 133, 208, 0.12)"
+          : myTeam === "B"
+            ? "rgba(39, 174, 96, 0.08)"
+            : "transparent",
+    };
 
     return (
       <>
-        {/* Bid status bar */}
-        <div className="bid-status-bar">
-          <div
-            className={`bid-status-chip ${
-              hasActualBid
-                ? lastBidTeam === "A"
-                  ? "team-a"
-                  : lastBidTeam === "B"
-                    ? "team-b"
-                    : ""
-                : ""
-            }`}
-          >
+        {/* Show current bid with player name and any double/re-double status */}
+        <Button.Group
+          fluid={true}
+          style={{ width: "100%", display: "block", marginBottom: "10px" }}
+        >
+          <Button color="black" style={lastBidStyle}>
             {hasActualBid
-              ? `${lastBiddingPlayer} → ${this.formatBidDisplay(
+              ? `${lastBiddingPlayer} bids → ${this.formatBidDisplay(
                   lastBidValue,
                   lastBidsuit,
                   lastBidValue,
@@ -936,147 +1180,249 @@ class GameGrid extends React.Component<IProps, IState> {
               : "No Bids Yet"}
             {bidDouble && " (Double)"}
             {bidReDouble && " (Re-Double)"}
-          </div>
-          {isYourBiddingTurn && (
-            <div
-              className={`bid-status-chip ${
-                myTeam === "A" ? "team-a" : myTeam === "B" ? "team-b" : ""
-              }`}
-            >
-              Your Bid:{" "}
-              {hasPlayerMadeSelections
-                ? this.formatBidDisplay(
-                    currentBiddingValue,
-                    currentBiddingsuit,
-                    lastBidValue,
-                    displayedSuitInfo,
-                    undefined,
-                    undefined,
-                    undefined,
-                    noTrumpType,
-                  )
-                : "Not selected"}
-            </div>
-          )}
-        </div>
+          </Button>
+          <Button color="black" style={myBidStyle}>
+            Your Bid:{" "}
+            {hasPlayerMadeSelections
+              ? this.formatBidDisplay(
+                  currentBiddingValue,
+                  currentBiddingsuit,
+                  lastBidValue,
+                  displayedSuitInfo,
+                  undefined,
+                  undefined,
+                  undefined,
+                  noTrumpType,
+                )
+              : "Not selected"}
+          </Button>
+        </Button.Group>
 
         {isYourBiddingTurn && (
-          <div className="bidding-dashboard">
-            {/* Bid Value Grid (28-56) */}
-            <div className="bid-number-grid">
-              {Array.from({ length: 29 }, (_, i) => 28 + i).map((bidValue) => {
-                const isDisabled = hasActualBid && bidValue <= lastBidValue;
-                const bidMaxedOut = lastBidValue >= 56;
-                return (
-                  <button
-                    key={bidValue}
-                    className={`bid-num-btn ${
-                      currentBiddingValue === bidValue ? "selected" : ""
-                    }`}
-                    disabled={isDisabled || bidMaxedOut}
-                    onClick={() =>
-                      this.handleBidNumberClick(
-                        bidValue,
-                        lastBidValue,
-                        lastBidsuit,
-                      )
-                    }
-                  >
-                    {bidValue}
-                  </button>
-                );
-              })}
-              <button
-                className="bid-num-btn modifier"
-                onClick={() => this.handleModifierClick(0)}
-                disabled={currentBiddingValue > 55 || lastBidValue >= 56}
+          <>
+            {/* Bid Value Buttons (28-56) in 12x3 grid */}
+            <div style={{ marginBottom: "10px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(12, 1fr)",
+                  gap: "5px",
+                }}
               >
-                +
-              </button>
-              {[1, 2, 3, 4, 5].map((mod) => (
-                <button
-                  key={`+${mod}`}
-                  className="bid-num-btn modifier"
-                  onClick={() => this.handleModifierClick(mod)}
-                  disabled={
-                    currentBiddingValue > 56 - mod || lastBidValue >= 56
-                  }
+                {Array.from({ length: 29 }, (_, i) => 28 + i).map(
+                  (bidValue) => {
+                    const isDisabled = hasActualBid && bidValue <= lastBidValue;
+                    const bidMaxedOut = lastBidValue >= 56;
+                    return (
+                      <Button
+                        key={bidValue}
+                        color={
+                          currentBiddingValue === bidValue ? "green" : "grey"
+                        }
+                        disabled={isDisabled || bidMaxedOut}
+                        onClick={() =>
+                          this.handleBidNumberClick(
+                            bidValue,
+                            lastBidValue,
+                            lastBidsuit,
+                          )
+                        }
+                        style={{
+                          padding: "8px 4px",
+                          fontSize: "12px",
+                          opacity: isDisabled && hasActualBid ? 0.5 : 1,
+                        }}
+                      >
+                        {bidValue}
+                      </Button>
+                    );
+                  },
+                )}
+                <Button
+                  key="+"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(0)}
+                  disabled={currentBiddingValue > 55 || lastBidValue >= 56}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
                 >
-                  +{mod}
-                </button>
-              ))}
-              <button
-                className="bid-num-btn reset"
-                onClick={() => this.handleResetBid()}
-              >
-                Reset
-              </button>
+                  +
+                </Button>
+                <Button
+                  key="+1"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(1)}
+                  disabled={currentBiddingValue > 55 || lastBidValue >= 56}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +1
+                </Button>
+                <Button
+                  key="+2"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(2)}
+                  disabled={currentBiddingValue > 54 || lastBidValue >= 56}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +2
+                </Button>
+                <Button
+                  key="+3"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(3)}
+                  disabled={currentBiddingValue > 53 || lastBidValue >= 56}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +3
+                </Button>
+                <Button
+                  key="+4"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(4)}
+                  disabled={currentBiddingValue > 52 || lastBidValue >= 56}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +4
+                </Button>
+                <Button
+                  key="+5"
+                  color={"blue"}
+                  onClick={() => this.handleModifierClick(5)}
+                  disabled={currentBiddingValue > 51 || lastBidValue >= 56}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  +5
+                </Button>
+                <Button
+                  key="resetBid"
+                  color={"red"}
+                  onClick={() => this.handleResetBid()}
+                  style={{
+                    padding: "8px 4px",
+                    fontSize: "12px",
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
             </div>
 
-            {/* Suit Selection Pills */}
-            <div className="suit-selection-row">
-              {suits.map((suit) => {
-                const isSuitAvailable = this.hasSuitInHand(suit.name);
-                const isSelected = currentBiddingsuit === suit.name;
-                const bidMaxedOut = lastBidValue >= 56;
-                const suitColorClass =
-                  suit.name === "H" || suit.name === "D" ? "red" : "silver";
-                return (
-                  <button
-                    key={suit.name}
-                    className={`suit-pill ${suitColorClass} ${
-                      isSelected ? "selected" : ""
-                    }`}
-                    disabled={!isSuitAvailable || bidMaxedOut}
-                    onClick={() => this.handleBiddingSuitClick(suit.name)}
-                    title={suit.label}
-                  >
-                    {suit.label} {suit.symbol}
-                  </button>
-                );
-              })}
+            {/* Suit Selection */}
+            <Button.Group
+              fluid={true}
+              style={{ width: "100%", display: "block", marginBottom: "10px" }}
+            >
+              {/* Regular Suit Selection */}
+              {suits.map((suit) =>
+                (() => {
+                  const isSuitAvailable = this.hasSuitInHand(suit.name);
+                  const isSelected = currentBiddingsuit === suit.name;
+                  const bidMaxedOut = lastBidValue >= 56;
+                  return (
+                    <Label
+                      as="a"
+                      basic={!isSelected}
+                      key={suit.name}
+                      color={
+                        isSelected ? "green" : isSuitAvailable ? "red" : "grey"
+                      }
+                      onClick={() =>
+                        isSuitAvailable &&
+                        !bidMaxedOut &&
+                        this.handleBiddingSuitClick(suit.name)
+                      }
+                      title={suit.label}
+                      style={{
+                        cursor:
+                          isSuitAvailable && !bidMaxedOut
+                            ? "pointer"
+                            : "not-allowed",
+                        padding: "8px 12px",
+                        margin: "2px",
+                        opacity: isSuitAvailable && !bidMaxedOut ? 1 : 0.5,
+                      }}
+                    >
+                      {suit.label} {suit.symbol}
+                    </Label>
+                  );
+                })(),
+              )}
+              {/* No-Trump Type Selection */}
               {noTrumpTypes.map((type) => {
                 const isSelected =
                   currentBiddingsuit === "N" && noTrumpType === type.name;
                 const bidMaxedOut = lastBidValue >= 56;
                 return (
-                  <button
+                  <Label
+                    as="a"
+                    basic={!isSelected}
                     key={type.name}
-                    className={`suit-pill purple ${
-                      isSelected ? "selected" : ""
-                    }`}
-                    disabled={bidMaxedOut}
+                    color={isSelected ? "green" : "purple"}
                     onClick={() =>
+                      !bidMaxedOut &&
                       this.handleNoTrumpTypeClick(
                         type.name as "Noes" | "Pass" | "No-Trump",
                       )
                     }
                     title={type.label}
+                    style={{
+                      cursor: bidMaxedOut ? "not-allowed" : "pointer",
+                      padding: "8px 12px",
+                      margin: "2px",
+                      opacity: bidMaxedOut ? 0.5 : 1,
+                    }}
                   >
                     {type.label}
-                  </button>
+                  </Label>
                 );
               })}
-            </div>
+            </Button.Group>
 
             {/* Action Buttons */}
-            <div className="bid-actions-row">
-              <button
-                className="action-pill bid"
+            <Button.Group
+              fluid={true}
+              style={{ width: "100%", display: "block", marginBottom: "10px" }}
+            >
+              <Button
+                color="red"
                 onClick={this.handleBiddingDone.bind(this)}
                 disabled={
                   !hasPlayerMadeSelections ||
                   lastBidValue >= 56 ||
                   this.state.isProcessingAction
                 }
+                style={{
+                  minWidth: "190px",
+                }}
               >
-                ➜ {this.state.isProcessingAction ? "Processing..." : "BID"}
-              </button>
+                <Icon name="arrow circle right" /> &nbsp;{" "}
+                {this.state.isProcessingAction ? "Processing..." : "BID"}
+              </Button>
               {(() => {
+                // Only show Double/Re-Double buttons if player is on the correct team
                 const currentPlayerTeam = this.getPlayerTeam(
                   this.store.user.playerId as string,
                 );
                 const { lastBiddingTeam } = this.store.game;
+
+                // Double: only show to opponents of the bidding team
                 const canDouble =
                   hasActualBid &&
                   lastBidValue > 0 &&
@@ -1085,6 +1431,8 @@ class GameGrid extends React.Component<IProps, IState> {
                   currentPlayerTeam &&
                   lastBiddingTeam &&
                   currentPlayerTeam !== lastBiddingTeam;
+
+                // Re-Double: only show to members of the bidding team after a double
                 const canReDouble =
                   bidDouble &&
                   !bidReDouble &&
@@ -1095,34 +1443,34 @@ class GameGrid extends React.Component<IProps, IState> {
                 return (
                   <>
                     {canDouble && (
-                      <button
-                        className="action-pill double"
+                      <Button
+                        color="yellow"
                         onClick={this.handleBiddingDouble.bind(this)}
                         disabled={this.state.isProcessingAction}
                       >
-                        ⚡{" "}
+                        <Icon name="bolt" />{" "}
                         {this.state.isProcessingAction
                           ? "Processing..."
                           : "Double"}
-                      </button>
+                      </Button>
                     )}
                     {canReDouble && (
-                      <button
-                        className="action-pill re-double"
+                      <Button
+                        color="violet"
                         onClick={this.handleBiddingReDouble.bind(this)}
                         disabled={this.state.isProcessingAction}
                       >
-                        ♚{" "}
+                        <Icon name="chess king" />{" "}
                         {this.state.isProcessingAction
                           ? "Processing..."
                           : "Re-Double"}
-                      </button>
+                      </Button>
                     )}
                   </>
                 );
               })()}
-            </div>
-          </div>
+            </Button.Group>
+          </>
         )}
       </>
     );
@@ -1224,10 +1572,27 @@ class GameGrid extends React.Component<IProps, IState> {
           }${bidReDouble ? " (Re-Double)" : ""}`
         : "Game Starting...";
 
-    const bidTeamClass =
-      biddingTeam === "A" ? "team-a" : biddingTeam === "B" ? "team-b" : "";
+    const bidTeamStyle = {
+      justifyContent: "center" as const,
+      color: "white",
+      background:
+        biddingTeam === "A"
+          ? "rgb(36 136 211)"
+          : biddingTeam === "B"
+            ? "rgb(32 186 69)"
+            : "transparent",
+    };
 
-    return <div className={`bid-info-bar ${bidTeamClass}`}>{label}</div>;
+    return (
+      <Button.Group
+        fluid={true}
+        style={{ width: "100%", display: "block", marginBottom: "10px" }}
+      >
+        <Button color="black" style={bidTeamStyle}>
+          {label}
+        </Button>
+      </Button.Group>
+    );
   }
 
   private handleBidNumberClick = (
@@ -1665,16 +2030,30 @@ class GameGrid extends React.Component<IProps, IState> {
         : `${suitInfo?.label || ""} ${suitInfo?.symbol || ""}`;
 
     const raisedBidTeam = this.getPlayerTeam(lastBiddingPlayer);
-    const raisedBidTeamClass =
-      raisedBidTeam === "A" ? "team-a" : raisedBidTeam === "B" ? "team-b" : "";
+    const raisedBidStyle = {
+      justifyContent: "center" as const,
+      color: "white",
+      background:
+        raisedBidTeam === "A"
+          ? "rgb(36 136 211)"
+          : raisedBidTeam === "B"
+            ? "rgb(32 186 69)"
+            : "#ff8c00",
+    };
 
     return (
       <>
-        <div className={`bid-info-bar ${raisedBidTeamClass}`}>
-          {`${lastBiddingPlayer} raised bid → ${suitDisplay} [${lastBidValue}]`}
-          {bidDouble && " (Double)"}
-          {bidReDouble && " (Re-Double)"}
-        </div>
+        {/* Show current raised bid */}
+        <Button.Group
+          fluid={true}
+          style={{ width: "100%", display: "block", marginBottom: "10px" }}
+        >
+          <Button color="black" style={raisedBidStyle}>
+            {`${lastBiddingPlayer} raised bid → ${suitDisplay} [${lastBidValue}]`}
+            {bidDouble && " (Double)"}
+            {bidReDouble && " (Re-Double)"}
+          </Button>
+        </Button.Group>
       </>
     );
   }
@@ -1726,17 +2105,17 @@ class GameGrid extends React.Component<IProps, IState> {
     const postRaiseTheme =
       lastBiddingTeam === "A"
         ? {
-            backgroundColor: "rgba(59, 130, 246, 0.88)",
-            boxShadow: "0 10px 30px rgba(59, 130, 246, 0.35)",
+            backgroundColor: "rgba(33, 133, 208, 0.92)",
+            boxShadow: "0 10px 30px rgba(33, 133, 208, 0.4)",
           }
         : lastBiddingTeam === "B"
           ? {
-              backgroundColor: "rgba(34, 197, 94, 0.88)",
-              boxShadow: "0 10px 30px rgba(34, 197, 94, 0.35)",
+              backgroundColor: "rgba(39, 174, 96, 0.95)",
+              boxShadow: "0 10px 30px rgba(39, 174, 96, 0.4)",
             }
           : {
-              backgroundColor: "rgba(245, 158, 11, 0.88)",
-              boxShadow: "0 10px 30px rgba(245, 158, 11, 0.3)",
+              backgroundColor: "rgba(255, 165, 0, 0.95)",
+              boxShadow: "0 10px 30px rgba(255, 165, 0, 0.35)",
             };
 
     // Determine available actions based on team
@@ -1750,80 +2129,104 @@ class GameGrid extends React.Component<IProps, IState> {
       currentPlayerTeam === lastBiddingTeam;
 
     if (!isYourBiddingTurn) {
+      // Show notification for other players
       return (
         <div
-          className="post-raise-center handleBiddingPassPostRaise"
-          style={postRaiseTheme}
+          className="handleBiddingPassPostRaise"
+          style={{
+            ...postRaiseTheme,
+            color: "white",
+            padding: "20px",
+            borderRadius: "10px",
+            textAlign: "center",
+            maxWidth: "400px",
+            margin: "0 auto",
+            zIndex: 1000,
+          }}
         >
-          <strong style={{ fontSize: "15px" }}>Post-Raise Round</strong>
+          <strong style={{ fontSize: "16px" }}>Post-Raise Round</strong>
           <p
-            style={{
-              fontSize: "12px",
-              marginTop: "6px",
-              marginBottom: "4px",
-              opacity: 0.9,
-            }}
+            style={{ fontSize: "13px", marginTop: "8px", marginBottom: "5px" }}
           >
             {lastBiddingPlayer} raised bid → {suitDisplay} [{lastBidValue}]
           </p>
-          <p style={{ fontSize: "11px", marginTop: "4px", opacity: 0.75 }}>
+          <p style={{ fontSize: "12px", marginTop: "5px", opacity: 0.9 }}>
             Waiting for {currentBiddingPlayerId}...
           </p>
         </div>
       );
     }
 
+    // Show action buttons for current player
     return (
       <div
-        className="post-raise-center handleBiddingPassPostRaise"
-        style={postRaiseTheme}
+        className="handleBiddingPassPostRaise"
+        style={{
+          ...postRaiseTheme,
+          color: "white",
+          padding: "20px",
+          borderRadius: "10px",
+          textAlign: "center",
+          maxWidth: "500px",
+          margin: "0 auto",
+          zIndex: 1000,
+        }}
       >
-        <strong style={{ fontSize: "15px" }}>Post-Raise Round</strong>
-        <p
-          style={{
-            fontSize: "12px",
-            marginTop: "6px",
-            marginBottom: "4px",
-            opacity: 0.9,
-          }}
-        >
+        <strong style={{ fontSize: "16px" }}>Post-Raise Round</strong>
+        <p style={{ fontSize: "13px", marginTop: "8px", marginBottom: "5px" }}>
           {lastBiddingPlayer} raised bid → {suitDisplay} [{lastBidValue}]
           {bidDouble && " (Double)"}
           {bidReDouble && " (Re-Double)"}
         </p>
         <p
           style={{
-            fontSize: "11px",
-            marginTop: "4px",
-            marginBottom: "12px",
-            opacity: 0.75,
+            fontSize: "12px",
+            marginTop: "5px",
+            marginBottom: "15px",
+            opacity: 0.9,
           }}
         >
           {isOpponentTeam && !bidDouble && "You can Double or Pass"}
           {isBiddingTeam && bidDouble && "You can Re-Double or Pass"}
         </p>
-        <div className="bid-actions-row">
-          <button
-            className="action-pill pass"
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "10px",
+          }}
+        >
+          {/* Pass button - always available */}
+          <Button
+            color="red"
             onClick={this.handleBiddingPass.bind(this)}
+            size="large"
           >
             Pass
-          </button>
+          </Button>
+
+          {/* Double button - only for opponents if not already doubled */}
           {isOpponentTeam && !bidDouble && !bidReDouble && (
-            <button
-              className="action-pill double"
+            <Button
+              color="yellow"
               onClick={this.handleBiddingDouble.bind(this)}
+              size="large"
             >
-              ⚡ Double
-            </button>
+              <Icon name="bolt" />
+              Double
+            </Button>
           )}
+
+          {/* Re-Double button - only for opponents if already doubled */}
           {isBiddingTeam && bidDouble && !bidReDouble && (
-            <button
-              className="action-pill re-double"
+            <Button
+              color="violet"
+              size="large"
               onClick={this.handleBiddingReDouble.bind(this)}
             >
-              ♚ Re-Double
-            </button>
+              <Icon name="chess king" />
+              Re-Double
+            </Button>
           )}
         </div>
       </div>

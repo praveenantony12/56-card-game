@@ -4,6 +4,7 @@ import { IStore } from "../../stores/IStore";
 
 interface IProps {
   store?: IStore;
+  onBack?: () => void;
 }
 
 interface IState {
@@ -173,6 +174,9 @@ class Lobby extends React.Component<IProps, IState> {
 
   private handleLeave = async () => {
     await this.store.leaveLobby();
+    if (this.props.onBack) {
+      this.props.onBack();
+    }
   };
 
   public render() {
@@ -203,6 +207,13 @@ class Lobby extends React.Component<IProps, IState> {
         {lobbyBotVoteActive && this.renderBotVoteOverlay(lobbyBotVoteOptions)}
 
         <div style={styles.card}>
+          {/* ── Back button ── */}
+          {this.props.onBack && (
+            <button style={styles.backButton} onClick={this.props.onBack}>
+              <span style={styles.backIcon}>←</span> Back to Menu
+            </button>
+          )}
+
           {/* ── Header ── */}
           <div style={styles.header}>
             <div style={styles.spinner} />
@@ -349,32 +360,61 @@ class Lobby extends React.Component<IProps, IState> {
 
 const styles: { [key: string]: React.CSSProperties } = {
   overlay: {
+    position: "fixed" as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     display: "flex",
     justifyContent: "center",
-    alignItems: "flex-start",
-    paddingTop: "40px",
-    minHeight: "100px",
+    alignItems: "center",
+    padding: "24px",
+    zIndex: 50,
+    overflowY: "auto" as const,
+  },
+  backButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "8px 16px",
+    background: "rgba(255, 255, 255, 0.04)",
+    border: "1px solid rgba(255, 255, 255, 0.06)",
+    borderRadius: "10px",
+    color: "#8b95a5",
+    fontSize: "13px",
+    fontWeight: 500,
+    fontFamily: "'Inter', sans-serif",
+    cursor: "pointer",
+    transition: "all 0.25s ease",
+    marginBottom: "20px",
+  },
+  backIcon: {
+    fontSize: "16px",
+    color: "#0ea5e9",
   },
   card: {
-    background:
-      "linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
-    borderRadius: "16px",
+    background: "rgba(15, 19, 25, 0.8)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    borderRadius: "20px",
     padding: "32px",
     width: "100%",
     maxWidth: "520px",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-    color: "#e0e0e0",
-    fontFamily: "'Segoe UI', sans-serif",
+    boxShadow:
+      "0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(255, 255, 255, 0.04)",
+    color: "#c8d1dc",
+    fontFamily: "'Inter', sans-serif",
   },
   header: {
     textAlign: "center",
     marginBottom: "24px",
   },
   spinner: {
-    width: "48px",
-    height: "48px",
-    border: "4px solid rgba(255,255,255,0.15)",
-    borderTop: "4px solid #4fc3f7",
+    width: "44px",
+    height: "44px",
+    border: "3px solid rgba(255, 255, 255, 0.06)",
+    borderTop: "3px solid #0ea5e9",
     borderRadius: "50%",
     margin: "0 auto 16px",
     animation: "spin 1s linear infinite",
@@ -382,30 +422,30 @@ const styles: { [key: string]: React.CSSProperties } = {
   title: {
     margin: "0 0 8px",
     fontSize: "22px",
-    color: "#ffffff",
+    color: "#f0f4f8",
     fontWeight: 700,
-    letterSpacing: "0.5px",
+    letterSpacing: "-0.01em",
   },
   subtitle: {
     margin: 0,
     fontSize: "13px",
-    color: "#90caf9",
+    color: "#8b95a5",
     lineHeight: 1.5,
   },
   subtitleNote: {
-    color: "#78909c",
+    color: "#5a6577",
     fontStyle: "italic",
   },
   progressTrack: {
-    background: "rgba(255,255,255,0.1)",
+    background: "rgba(255, 255, 255, 0.06)",
     borderRadius: "8px",
-    height: "8px",
+    height: "6px",
     margin: "0 0 16px",
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    background: "linear-gradient(90deg, #4fc3f7, #0288d1)",
+    background: "linear-gradient(90deg, #0284c7, #0ea5e9, #38bdf8)",
     borderRadius: "8px",
     transition: "width 0.6s ease",
   },
@@ -416,81 +456,82 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "20px",
   },
   countLabel: {
-    fontSize: "13px",
-    color: "#90caf9",
+    fontSize: "11px",
+    color: "#8b95a5",
     textTransform: "uppercase",
     letterSpacing: "1px",
+    fontWeight: 600,
   },
   countBadge: {
     fontSize: "22px",
     fontWeight: 700,
-    color: "#4fc3f7",
+    color: "#0ea5e9",
   },
   countTotal: {
     fontSize: "16px",
-    color: "#78909c",
+    color: "#5a6577",
   },
   seatGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "12px",
+    gap: "10px",
     marginBottom: "24px",
   },
   seatFilled: {
-    background: "rgba(79, 195, 247, 0.12)",
-    border: "1px solid rgba(79, 195, 247, 0.4)",
-    borderRadius: "10px",
+    background: "rgba(14, 165, 233, 0.08)",
+    border: "1px solid rgba(14, 165, 233, 0.2)",
+    borderRadius: "12px",
     padding: "12px 8px",
     textAlign: "center",
     position: "relative",
   },
   seatEmpty: {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px dashed rgba(255,255,255,0.15)",
-    borderRadius: "10px",
+    background: "rgba(255, 255, 255, 0.02)",
+    border: "1px dashed rgba(255, 255, 255, 0.08)",
+    borderRadius: "12px",
     padding: "12px 8px",
     textAlign: "center",
   },
   avatar: {
-    width: "36px",
-    height: "36px",
+    width: "34px",
+    height: "34px",
     borderRadius: "50%",
-    background: "linear-gradient(135deg, #0288d1, #4fc3f7)",
+    background: "linear-gradient(135deg, #0284c7, #0ea5e9)",
     color: "#fff",
-    fontSize: "16px",
+    fontSize: "14px",
     fontWeight: 700,
-    lineHeight: "36px",
+    lineHeight: "34px",
     margin: "0 auto 6px",
   },
   avatarEmpty: {
-    width: "36px",
-    height: "36px",
+    width: "34px",
+    height: "34px",
     borderRadius: "50%",
-    background: "rgba(255,255,255,0.08)",
-    color: "rgba(255,255,255,0.3)",
-    fontSize: "18px",
-    lineHeight: "36px",
+    background: "rgba(255, 255, 255, 0.04)",
+    color: "rgba(255, 255, 255, 0.2)",
+    fontSize: "16px",
+    lineHeight: "34px",
     margin: "0 auto 6px",
   },
   seatName: {
     display: "block",
-    fontSize: "12px",
-    color: "#e0e0e0",
+    fontSize: "11px",
+    color: "#c8d1dc",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
   seatNameEmpty: {
     display: "block",
-    fontSize: "12px",
-    color: "rgba(255,255,255,0.25)",
+    fontSize: "11px",
+    color: "rgba(255, 255, 255, 0.2)",
     fontStyle: "italic",
   },
   youBadge: {
     position: "absolute",
     top: "4px",
     right: "4px",
-    background: "#0288d1",
+    background: "#0ea5e9",
     color: "#fff",
     fontSize: "9px",
     fontWeight: 700,
@@ -503,8 +544,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    background: "rgba(255,255,255,0.05)",
-    borderRadius: "8px",
+    background: "rgba(255, 255, 255, 0.03)",
+    borderRadius: "10px",
     padding: "10px 14px",
     marginBottom: "20px",
   },
@@ -512,104 +553,109 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    background: "rgba(255, 152, 0, 0.12)",
-    border: "1px solid rgba(255,152,0,0.4)",
-    borderRadius: "8px",
+    background: "rgba(245, 158, 11, 0.08)",
+    border: "1px solid rgba(245, 158, 11, 0.2)",
+    borderRadius: "10px",
     padding: "10px 14px",
     marginBottom: "20px",
   },
   timerIcon: {
-    fontSize: "18px",
+    fontSize: "16px",
   },
   timerLabel: {
     fontSize: "13px",
-    color: "#b0bec5",
+    color: "#8b95a5",
     fontVariantNumeric: "tabular-nums",
   },
   leaveBtn: {
     width: "100%",
     padding: "12px",
     background: "transparent",
-    border: "1px solid rgba(255,255,255,0.2)",
-    borderRadius: "8px",
-    color: "rgba(255,255,255,0.6)",
-    fontSize: "14px",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRadius: "10px",
+    color: "#5a6577",
+    fontSize: "13px",
+    fontWeight: 500,
+    fontFamily: "'Inter', sans-serif",
     cursor: "pointer",
-    transition: "all 0.2s ease",
+    transition: "all 0.25s ease",
   },
-  // Game-starting overlay
   startingOverlay: {
     position: "fixed",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    background: "rgba(0,0,0,0.7)",
+    background: "rgba(0, 0, 0, 0.75)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 9999,
-    backdropFilter: "blur(4px)",
+    backdropFilter: "blur(8px)",
   },
   startingCard: {
-    background: "linear-gradient(135deg, #0a2342, #0f3460)",
-    borderRadius: "20px",
+    background: "rgba(15, 19, 25, 0.9)",
+    backdropFilter: "blur(24px)",
+    borderRadius: "24px",
     padding: "48px 40px",
     textAlign: "center",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+    boxShadow:
+      "0 24px 64px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
     maxWidth: "380px",
     width: "90vw",
-    border: "1px solid rgba(79,195,247,0.4)",
+    border: "1px solid rgba(14, 165, 233, 0.15)",
   },
   startingIcon: {
-    fontSize: "56px",
+    fontSize: "52px",
     marginBottom: "16px",
   },
   startingTitle: {
-    color: "#4fc3f7",
-    fontSize: "28px",
+    color: "#0ea5e9",
+    fontSize: "26px",
     fontWeight: 700,
     margin: "0 0 10px",
+    letterSpacing: "-0.01em",
   },
   startingSubtitle: {
-    color: "#b0bec5",
-    fontSize: "15px",
+    color: "#8b95a5",
+    fontSize: "14px",
     lineHeight: 1.5,
     margin: "0 0 24px",
   },
   countdown: {
-    width: "72px",
-    height: "72px",
+    width: "68px",
+    height: "68px",
     borderRadius: "50%",
-    background: "rgba(79,195,247,0.15)",
-    border: "3px solid #4fc3f7",
-    color: "#4fc3f7",
-    fontSize: "32px",
+    background: "rgba(14, 165, 233, 0.1)",
+    border: "2px solid #0ea5e9",
+    color: "#0ea5e9",
+    fontSize: "30px",
     fontWeight: 700,
-    lineHeight: "66px",
+    lineHeight: "64px",
     margin: "0 auto",
     animation: "pulse 1s ease-in-out infinite",
   },
-  // Bot vote overlay
   voteCard: {
-    background: "linear-gradient(135deg, #1a0a2e, #2e1060)",
-    borderRadius: "20px",
+    background: "rgba(15, 19, 25, 0.9)",
+    backdropFilter: "blur(24px)",
+    borderRadius: "24px",
     padding: "40px 36px",
     textAlign: "center",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.7)",
+    boxShadow:
+      "0 24px 64px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
     maxWidth: "400px",
     width: "90vw",
-    border: "1px solid rgba(179,136,255,0.4)",
+    border: "1px solid rgba(212, 168, 67, 0.15)",
   },
   voteTitle: {
-    color: "#ce93d8",
-    fontSize: "22px",
+    color: "#d4a843",
+    fontSize: "20px",
     fontWeight: 700,
     margin: "0 0 10px",
   },
   voteSubtitle: {
-    color: "#b0bec5",
-    fontSize: "14px",
+    color: "#8b95a5",
+    fontSize: "13px",
     lineHeight: 1.5,
     margin: "0 0 20px",
   },
@@ -621,26 +667,26 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "12px",
   },
   voteCount: {
-    fontSize: "28px",
+    fontSize: "26px",
     fontWeight: 700,
-    color: "#ce93d8",
+    color: "#d4a843",
     fontVariantNumeric: "tabular-nums",
   },
   voteCountLabel: {
-    fontSize: "14px",
-    color: "#90a4ae",
+    fontSize: "13px",
+    color: "#5a6577",
   },
   voteTimer: {
     marginBottom: "24px",
   },
   voteTimerLabel: {
     fontSize: "13px",
-    color: "#78909c",
+    color: "#5a6577",
     fontVariantNumeric: "tabular-nums",
   },
   voteTimerUrgent: {
     fontSize: "13px",
-    color: "#ff7043",
+    color: "#ef4444",
     fontWeight: 700,
     fontVariantNumeric: "tabular-nums",
   },
@@ -651,36 +697,26 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   voteBtnYes: {
     padding: "12px",
-    background: "linear-gradient(90deg, #2e7d32, #388e3c)",
+    background: "linear-gradient(135deg, #16a34a, #22c55e)",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "10px",
     color: "#fff",
-    fontSize: "15px",
+    fontSize: "14px",
     fontWeight: 600,
+    fontFamily: "'Inter', sans-serif",
     cursor: "pointer",
+    boxShadow: "0 4px 16px rgba(34, 197, 94, 0.2)",
   },
   voteBtnNo: {
     padding: "12px",
     background: "transparent",
-    border: "1px solid rgba(255,255,255,0.25)",
-    borderRadius: "8px",
-    color: "rgba(255,255,255,0.6)",
-    fontSize: "15px",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRadius: "10px",
+    color: "#5a6577",
+    fontSize: "14px",
+    fontFamily: "'Inter', sans-serif",
     cursor: "pointer",
   },
 };
-
-// Inject CSS keyframes for the spinner/pulse animations
-if (typeof document !== "undefined") {
-  const styleSheet = document.createElement("style");
-  styleSheet.textContent = `
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(79,195,247,0.4); }
-      50% { box-shadow: 0 0 0 12px rgba(79,195,247,0); }
-    }
-  `;
-  document.head.appendChild(styleSheet);
-}
 
 export default Lobby;

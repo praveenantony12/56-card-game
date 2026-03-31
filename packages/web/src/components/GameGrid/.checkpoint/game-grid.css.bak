@@ -1,0 +1,591 @@
+#game-grid {
+  min-height: 100px;
+  margin-top: 20px;
+}
+
+/* === TEAM COLOR THEME === */
+/* Team A = Blue (#2185d0) | Team B = Emerald Green (#27ae60) */
+
+.teamACards,
+.teamBCards {
+  border-top: none;
+  padding-top: 0 !important;
+  border-radius: 0;
+}
+
+.card-container {
+  height: 100%;
+}
+
+.flip_image {
+  z-index: -1;
+}
+
+.normal_image {
+  z-index: 1;
+}
+
+.btn-group {
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.btn-group button {
+  background-color: #4caf50;
+  /* Green background */
+  border: 1px solid green;
+  /* Green border */
+  color: white;
+  /* White text */
+  padding: 10px 24px;
+  /* Some padding */
+  cursor: pointer;
+  /* Pointer/hand icon */
+  float: left;
+  /* Float the buttons side by side */
+}
+
+/* Clear floats (clearfix hack) */
+.btn-group:after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+.btn-group button:not(:last-child) {
+  border-right: none;
+  /* Prevent double borders */
+}
+
+/* Add a background color on hover */
+.btn-group button:hover {
+  background-color: #3e8e41;
+}
+
+.container {
+  display: block;
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 12px;
+  /* font-size: 22px; */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default radio button */
+.container input {
+  position: absolute;
+  opacity: 0;
+}
+
+/* Create a custom radio button */
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: #eee;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* On mouse-over, add a grey background color */
+.container:hover input~.checkmark {
+  background-color: #ccc;
+}
+
+/* When the radio button is checked, add a blue background */
+.container input:checked~.checkmark {
+  background-color: #2196f3;
+}
+
+/* Create the indicator (the dot/circle - hidden when not checked) */
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Show the indicator (dot/circle) when checked */
+.container input:checked~.checkmark:after {
+  display: block;
+}
+
+/* Style the indicator (dot/circle) */
+.container .checkmark:after {
+  top: 9px;
+  left: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+.disabled {
+  pointer-events: none;
+}
+
+.plusminusButtons {
+  font-size: 0.75rem !important;
+}
+
+.bidInProgress {
+  background: initial;
+}
+
+.bidFinal {
+  background: indianred !important;
+}
+
+.cardHeight {
+  min-height: 13rem;
+  margin-bottom: 1rem;
+}
+
+.clearButton {
+  font-size: 0.75rem !important;
+  background: #2185d0 !important;
+}
+
+.ui.inverted.dimmer {
+  background-color: rgba(8, 10, 14, 0.62) !important;
+  font-family: cursive;
+}
+
+@media only screen and (max-width: 480px) {
+  .ui.inverted.dimmer {
+    font-size: x-small;
+    left: 25%;
+    font-size: x-small;
+  }
+}
+
+.marginBottom2 {
+  margin-bottom: 2rem;
+}
+
+.scoreContainer {
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.scoringLabel {
+  width: auto;
+}
+
+/* The slider itself */
+.slider {
+  -webkit-appearance: none;
+  /* Override default CSS styles */
+  appearance: none;
+  width: 60%;
+  /* Full-width */
+  height: 25px;
+  /* Specified height */
+  background: #bababc;
+  /* Grey background */
+  border-radius: 5px;
+  outline: none;
+  /* Remove outline */
+  opacity: 1 !important;
+  /* Set transparency (for mouse-over effects on hover) */
+  -webkit-transition: 0.2s;
+  /* 0.2 seconds transition on hover */
+  transition: opacity 0.2s;
+  position: relative !important;
+}
+
+/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  /* Override default look */
+  appearance: none;
+  width: 25px;
+  /* Set a specific slider handle width */
+  height: 25px;
+  /* Slider handle height */
+  background: #5f5d5d;
+  /* Green background */
+  border-radius: 50%;
+  cursor: pointer;
+  /* Cursor on hover */
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  /* Set a specific slider handle width */
+  height: 25px;
+  /* Slider handle height */
+  background: #4caf50;
+  /* Green background */
+  cursor: pointer;
+  /* Cursor on hover */
+}
+
+.cardTable {
+  background: url("./cardTable8.png") no-repeat;
+  height: 25rem;
+  background-position: center;
+  background-size: 60rem;
+
+  /* Laptops/Small Desktops (769px to 1024px) */
+  @media screen and (max-width: 1024px) {
+    background-size: 56rem;
+  }
+
+  /* Standard Tablets (Portrait, 600px to 768px) */
+  @media screen and (max-width: 768px) {
+    background-size: 42rem;
+    height: 20rem;
+  }
+
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen and (max-width: 599px) {
+    background-size: 36rem;
+    height: 16rem;
+  }
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) {
+    background-size: 30rem;
+    height: 15rem;
+  }
+}
+
+.cardOnTable {
+  display: flex;
+  justify-content: center;
+  padding-top: 8rem;
+
+  /* Laptops/Small Desktops (769px to 1024px) */
+  @media screen and (max-width: 1024px) {
+    padding-top: 8rem;
+  }
+
+  /* Standard Tablets (Portrait, 600px to 768px) */
+  @media screen and (max-width: 768px) {
+    padding-top: 6.5rem;
+  }
+
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen and (max-width: 599px) {
+    padding-top: 4.5rem;
+  }
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) {
+    padding-top: 4.75rem;
+  }
+}
+
+.myCards {
+  display: flex;
+  justify-content: center;
+  margin: -2.5rem 0 3rem;
+  flex-wrap: wrap;
+}
+
+.biddingGrid {
+  margin-top: 1rem;
+}
+
+.scoreSlider {
+  opacity: 1 !important;
+  top: 100%;
+  transform: rotate(360deg);
+  width: 11%;
+}
+
+.hideSlider {
+  display: none;
+}
+
+.showSlider {
+  display: inline;
+  cursor: pointer;
+}
+
+.teamCards {
+  margin: 1rem;
+}
+
+.teamCards .card {
+  margin-bottom: .25rem !important;
+
+  @media screen and (max-width: 1376px) {
+    font-size: 18pt;
+  }
+
+  @media screen and (max-width: 1308px) {
+    font-size: 17pt;
+  }
+
+  @media screen and (max-width: 1240px) {
+    font-size: 16pt;
+  }
+
+  @media screen and (max-width: 1172px) {
+    font-size: 14pt;
+  }
+
+  @media screen and (max-width: 1036px) {
+    font-size: 12pt;
+  }
+
+  @media screen and (max-width: 900px) {
+    font-size: 11pt;
+  }
+
+  @media screen and (max-width: 832px) {
+    font-size: 10pt;
+  }
+
+  @media screen and (max-width: 764px) {
+    font-size: 9pt;
+  }
+
+  @media screen and (max-width: 696px) {
+    font-size: 8pt;
+  }
+
+  @media screen and (max-width: 696px) {
+    font-size: 7pt;
+  }
+
+  @media screen and (max-width: 560px) {
+    font-size: 6.5pt;
+  }
+
+  @media screen and (max-width: 560px) {
+    font-size: 6.5pt;
+  }
+
+  @media screen and (max-width: 526px) {
+    font-size: 6pt;
+  }
+
+  @media screen and (max-width: 492px) {
+    font-size: 5.75pt;
+  }
+
+  @media screen and (max-width: 474px) {
+    font-size: 5.5pt;
+  }
+
+  @media screen and (max-width: 458px) {
+    font-size: 5.25pt;
+  }
+
+  @media screen and (max-width: 440px) {
+    font-size: 5pt;
+  }
+
+  @media screen and (max-width: 424px) {
+    font-size: 4.75pt;
+  }
+
+  @media screen and (max-width: 406px) {
+    font-size: 4.5pt;
+  }
+
+  @media screen and (max-width: 390px) {
+    font-size: 4.25pt;
+  }
+
+  @media screen and (max-width: 372px) {
+    font-size: 4pt;
+  }
+
+  @media screen and (max-width: 356px) {
+    font-size: 3.75pt;
+  }
+
+  @media screen and (max-width: 338px) {
+    font-size: 3.5pt;
+  }
+}
+
+.teamAButtonGroup {
+  padding-left: 1rem !important;
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) {
+    display: inline-block !important;
+    padding-left: .25rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+.teamBButtonGroup {
+  padding-right: 1rem !important;
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) {
+    display: inline-block !important;
+    padding-right: .25rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+.handleBiddingPass {
+  padding-top: 3rem;
+
+  @media screen and (max-width: 768px) {
+    padding-top: 2.5rem;
+  }
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) {
+    padding-top: 1.5rem;
+  }
+}
+
+.handleBiddingPassPostRaise {
+  padding-top: 2.5rem;
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) {
+    padding-top: 1.5rem;
+    padding: 10px;
+    border-radius: 5px;
+  }
+}
+
+.raiseYourBidContainer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -170%);
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 16px;
+  border-radius: 15px;
+  text-align: center;
+  z-index: 1000;
+  min-width: 400px;
+
+  @media screen and (max-width: 906px) {
+    transform: translate(-50%, -230%);
+  }
+
+  @media screen and (max-width: 856px) {
+    min-width: 500px;
+  }
+
+  @media screen and (max-width: 840px) {
+    transform: translate(-50%, -230%);
+    padding: 12px;
+    border-radius: 10px;
+    min-width: 440px;
+  }
+
+  @media screen and (max-width: 768px) {
+    transform: translate(-50%, -110%);
+    padding: 12px;
+    border-radius: 10px;
+    min-width: 400px;
+  }
+}
+
+.showCursor {
+  cursor: pointer;
+}
+
+.round-timer {
+  position: absolute;
+  top: 20%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 1.75rem;
+  font-weight: bold;
+  padding: .75rem;
+  border-radius: 10px;
+  z-index: 1000;
+  white-space: nowrap;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: pulse 1s infinite;
+  background: #db2728;
+
+  /* Standard Tablets (Portrait, 600px to 768px) */
+  @media screen and (max-width: 768px) {
+    top: 23%;
+    margin-top: 0;
+    font-size: 1.5rem;
+    padding: .5rem;
+    border-radius: 5px;
+  }
+
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen and (max-width: 599px) {
+    top: 17%;
+    margin-top: 0;
+    font-size: 1rem;
+    padding: 0.35rem;
+    border-radius: 6px;
+  }
+
+  /* Mobile only (0 to 480px) */
+  @media screen and (max-width: 480px) {
+    top: 20%;
+    font-size: 1.25rem;
+    padding: 0.35rem;
+    border-radius: 5px;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.cardOnTable {
+  position: relative;
+}
+
+.pass-button {
+  /* position: absolute;
+  right: 15%;
+  top: 50%; */
+  transform: translateY(-50%);
+  /* padding: 12px 16px !important; */
+  /* min-width: 50px !important; */
+  color: #db2728 !important;
+  border-color: #ca0a0a !important;
+  transition: all 0.3s ease;
+  cursor: pointer
+    /* border-radius: 8px; */
+    /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); */
+}
+
+.pass-button:hover {
+  color: #ff1e1e !important;
+  /* box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); */
+  transform: translateY(-50%) scale(1.1);
+}
+
+.pass-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.game-winner-message {
+
+  /* Small Tablets / Large Phones (481px to 599px) */
+  @media screen and (max-width: 599px) {
+    top: 10%;
+    font-size: 15px;
+    max-width: 800px;
+  }
+}

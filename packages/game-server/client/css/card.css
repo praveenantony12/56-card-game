@@ -19,7 +19,7 @@
   box-shadow: 2px 0rem 1rem 1px rgb(6, 6, 6);
 
  /* Standard Tablets (Portrait, 600px to 768px) */
-  @media screen and (max-width: 768px) {
+  @media screen and (max-width: 912px) {
     font-size: 13pt;
   }
   /* Mobile only (0 to 480px) */

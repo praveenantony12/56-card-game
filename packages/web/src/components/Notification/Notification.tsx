@@ -1,8 +1,9 @@
 import { inject, observer } from "mobx-react";
 import * as React from "react";
-import { Button, Message } from "semantic-ui-react";
 
 import { IStore } from "../../stores/IStore";
+
+import "./notification.css";
 
 interface IProps {
   store?: IStore;
@@ -84,89 +85,110 @@ class Notification extends React.Component<IProps, {}> {
         : notification?.message || "Unnkown notification");
 
     return (
-      <Message warning={true} onDismiss={this.handleDismiss}>
-        <Message.Header>Game notification!</Message.Header>
-        <p>{message}</p>
-      </Message>
+      <div className="notif-bar warn">
+        <button className="notif-dismiss" onClick={this.handleDismiss}>
+          ✕
+        </button>
+        <div className="notif-header">Game notification!</div>
+        <div className="notif-body">
+          <p>{message}</p>
+        </div>
+      </div>
     );
   }
 
   private renderReconnectionRequest(data: any) {
     return (
-      <Message info>
-        <Message.Header>Player Reconnection Request</Message.Header>
-        <p>
-          Player "{data.playerName}" wants to rejoin the game. Do you approve?
-        </p>
-        <Button.Group>
-          <Button
-            positive
+      <div className="notif-bar info">
+        <div className="notif-header">Player Reconnection Request</div>
+        <div className="notif-body">
+          <p>
+            Player "{data.playerName}" wants to rejoin the game. Do you approve?
+          </p>
+        </div>
+        <div className="notif-actions">
+          <button
+            className="notif-btn approve"
             onClick={() => this.handleReconnectionApproval(data.playerId, true)}
           >
             Approve
-          </Button>
-          <Button
-            negative
+          </button>
+          <button
+            className="notif-btn deny"
             onClick={() =>
               this.handleReconnectionApproval(data.playerId, false)
             }
           >
             Deny
-          </Button>
-        </Button.Group>
-      </Message>
+          </button>
+        </div>
+      </div>
     );
   }
 
   private renderForfeitRequest(data: any) {
     return (
-      <Message warning>
-        <Message.Header>Game Forfeit Request</Message.Header>
-        <p>
-          Player "{data.requestedBy}" from {data.team} has requested to forfeit
-          the game.
-        </p>
-        <p>Do you approve? All team members must approve to forfeit.</p>
-        <Button.Group>
-          <Button positive onClick={() => this.handleForfeitApproval(true)}>
+      <div className="notif-bar warn">
+        <div className="notif-header">Game Forfeit Request</div>
+        <div className="notif-body">
+          <p>
+            Player "{data.requestedBy}" from {data.team} has requested to
+            forfeit the game.
+          </p>
+          <p>Do you approve? All team members must approve to forfeit.</p>
+        </div>
+        <div className="notif-actions">
+          <button
+            className="notif-btn approve"
+            onClick={() => this.handleForfeitApproval(true)}
+          >
             Approve Forfeit
-          </Button>
-          <Button negative onClick={() => this.handleForfeitApproval(false)}>
+          </button>
+          <button
+            className="notif-btn deny"
+            onClick={() => this.handleForfeitApproval(false)}
+          >
             Deny Forfeit
-          </Button>
-        </Button.Group>
-      </Message>
+          </button>
+        </div>
+      </div>
     );
   }
 
   private renderForfeitWaiting(data: any) {
     return (
-      <Message info>
-        <Message.Header>Forfeit Request Sent</Message.Header>
-        <p>{data.message}</p>
-      </Message>
+      <div className="notif-bar info">
+        <div className="notif-header">Forfeit Request Sent</div>
+        <div className="notif-body">
+          <p>{data.message}</p>
+        </div>
+      </div>
     );
   }
 
   private renderForfeitApprovalUpdate(data: any) {
     return (
-      <Message info>
-        <Message.Header>Forfeit Approval Progress</Message.Header>
-        <p>
-          Approvals: {data.approvedCount} / {data.totalNeeded}
-        </p>
-      </Message>
+      <div className="notif-bar info">
+        <div className="notif-header">Forfeit Approval Progress</div>
+        <div className="notif-body">
+          <p>
+            Approvals: {data.approvedCount} / {data.totalNeeded}
+          </p>
+        </div>
+      </div>
     );
   }
 
   private renderGameForfeited(data: any) {
     return (
-      <Message error>
-        <Message.Header>Game Forfeited!</Message.Header>
-        <p>{data.message}</p>
-        <p>Team A Score: {data.teamAScore}</p>
-        <p>Team B Score: {data.teamBScore}</p>
-      </Message>
+      <div className="notif-bar error">
+        <div className="notif-header">Game Forfeited!</div>
+        <div className="notif-body">
+          <p>{data.message}</p>
+          <p>Team A Score: {data.teamAScore}</p>
+          <p>Team B Score: {data.teamBScore}</p>
+        </div>
+      </div>
     );
   }
 
@@ -199,24 +221,26 @@ class Notification extends React.Component<IProps, {}> {
 
   private renderPositionSwitchRequest(data: any) {
     return (
-      <Message info>
-        <Message.Header>Team Seating Shuffle Request</Message.Header>
-        <p>{data.message}</p>
-        <Button.Group>
-          <Button
-            positive
+      <div className="notif-bar info">
+        <div className="notif-header">Team Seating Shuffle Request</div>
+        <div className="notif-body">
+          <p>{data.message}</p>
+        </div>
+        <div className="notif-actions">
+          <button
+            className="notif-btn approve"
             onClick={() => this.handlePositionSwitchApproval(true)}
           >
             Approve
-          </Button>
-          <Button
-            negative
+          </button>
+          <button
+            className="notif-btn deny"
             onClick={() => this.handlePositionSwitchApproval(false)}
           >
             Deny
-          </Button>
-        </Button.Group>
-      </Message>
+          </button>
+        </div>
+      </div>
     );
   }
 

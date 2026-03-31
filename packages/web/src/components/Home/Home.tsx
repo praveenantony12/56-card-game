@@ -1,6 +1,4 @@
 import * as React from "react";
-import Footer from "../../components/Footer/Footer";
-import Header from "../../components/Header/Header";
 import Game from "../Game/Game";
 
 import "./home.css";
@@ -8,13 +6,20 @@ import "./home.css";
 class Home extends React.Component<{}, {}> {
   public render() {
     return (
-      <React.Fragment>
-        <Header />
-        <div className="container">
+      <div
+        className="background"
+        style={{
+          minHeight: "100vh",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        <div className="game-wrapper">
           <Game />
         </div>
-        <Footer />
-      </React.Fragment>
+      </div>
     );
   }
 }
