@@ -111,7 +111,7 @@ class Game extends React.Component<IProps, IState> {
 
   public render() {
     const { flowState, playerName } = this.state;
-    const { canStartGame, isInLobby } = this.gameInfo;
+    const { canStartGame } = this.gameInfo;
 
     // If game is active (canStartGame), show the game grid and related components
     const isPlaying = canStartGame || this.store.user.isSignedIn;
@@ -145,24 +145,13 @@ class Game extends React.Component<IProps, IState> {
           />
         )}
 
-        {!isPlaying && flowState === "find" && isInLobby && (
-          <div style={styles.lobbyOverlay}>
-            <button
-              onClick={this.handleBackToMenu}
-              style={styles.lobbyBackButton}
-            >
-              ← Back to Menu
-            </button>
-          </div>
-        )}
-
         {!isPlaying && flowState === "watch" && (
           <WatchGame onBack={this.handleBackToMenu} playerName={playerName} />
         )}
 
         {/* Always render existing game components - they show/hide based on internal logic */}
-        <BotSelection />
-        <Lobby />
+        <BotSelection onBack={this.handleBackToMenu} />
+        <Lobby onBack={this.handleBackToMenu} />
         <WaitMesssage />
         <Notification />
         <PlayersList />
@@ -184,29 +173,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "stretch",
     minHeight: 0,
     background: "transparent",
-  },
-  lobbyOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    padding: "20px",
-  },
-  lobbyBackButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "12px 20px",
-    background: "rgba(26, 26, 37, 0.8)",
-    backdropFilter: "blur(10px)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-    borderRadius: "12px",
-    color: "#a1a1aa",
-    fontSize: "14px",
-    fontWeight: 500,
-    cursor: "pointer",
-    transition: "all 250ms ease",
   },
 };
 

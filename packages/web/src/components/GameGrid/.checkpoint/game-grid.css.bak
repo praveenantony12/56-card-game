@@ -151,9 +151,8 @@
 }
 
 .ui.inverted.dimmer {
-  background-color: rgba(11, 14, 20, 0.72) !important;
-  backdrop-filter: blur(4px);
-  font-family: 'Inter', sans-serif;
+  background-color: rgba(8, 10, 14, 0.62) !important;
+  font-family: cursive;
 }
 
 @media only screen and (max-width: 480px) {
@@ -460,9 +459,7 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -170%);
-  background-color: rgba(15, 19, 25, 0.88);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: rgba(0, 0, 0, 0.85);
   color: white;
   padding: 16px;
   border-radius: 15px;

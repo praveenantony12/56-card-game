@@ -46,51 +46,56 @@ class MainMenu extends React.Component<IProps, IState> {
       icon: string;
       title: string;
       description: string;
-      color: string;
+      accentColor: string;
+      glowColor: string;
     }[] = [
       {
         action: "host",
-        icon: "👑",
+        icon: "♠",
         title: "Host a Table",
         description: "Create a new game and invite friends or play with bots",
-        color: "#6366f1",
+        accentColor: "#d4a843",
+        glowColor: "rgba(212, 168, 67, 0.12)",
       },
       {
         action: "join",
-        icon: "🎮",
+        icon: "♦",
         title: "Enter Game ID",
         description: "Join an existing game using a Game ID",
-        color: "#10b981",
+        accentColor: "#22c55e",
+        glowColor: "rgba(34, 197, 94, 0.12)",
       },
       {
         action: "find",
-        icon: "🔍",
+        icon: "♣",
         title: "Find a Table",
         description: "Join the lobby and match with other players",
-        color: "#f59e0b",
+        accentColor: "#0ea5e9",
+        glowColor: "rgba(14, 165, 233, 0.12)",
       },
       {
         action: "watch",
-        icon: "👁️",
+        icon: "♥",
         title: "Watch a Table",
         description: "Spectate an ongoing game as a viewer",
-        color: "#8b5cf6",
+        accentColor: "#8b95a5",
+        glowColor: "rgba(139, 149, 165, 0.08)",
       },
     ];
 
     return (
       <div style={styles.container}>
-        <div style={styles.glowEffect} />
+        <div style={styles.glowOrb} />
 
         <div style={styles.content}>
           {/* Header */}
           <div style={styles.header}>
             <div style={styles.welcomeBadge}>
-              <span style={styles.welcomeIcon}>👋</span>
-              Welcome, <span style={styles.playerName}>{playerName}</span>
+              <span style={styles.welcomeDot} />
+              Welcome back, <span style={styles.playerName}>{playerName}</span>
             </div>
             <h1 style={styles.title}>Choose Your Path</h1>
-            <p style={styles.subtitle}>Select how you'd like to play</p>
+            <p style={styles.subtitle}>Select how you'd like to play tonight</p>
           </div>
 
           {/* Menu Grid */}
@@ -102,30 +107,38 @@ class MainMenu extends React.Component<IProps, IState> {
                 onMouseEnter={() => this.handleCardHover(item.action)}
                 onMouseLeave={() => this.handleCardHover(null)}
                 style={{
-                  ...styles.card,
+                  ...styles.menuCard,
                   borderColor:
                     hoveredCard === item.action
-                      ? `${item.color}40`
-                      : "rgba(255, 255, 255, 0.05)",
+                      ? `${item.accentColor}30`
+                      : "rgba(255, 255, 255, 0.04)",
                   boxShadow:
                     hoveredCard === item.action
-                      ? `0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px ${item.color}30`
-                      : "0 10px 30px rgba(0, 0, 0, 0.3)",
+                      ? `0 20px 40px rgba(0, 0, 0, 0.4), 0 0 40px ${item.accentColor}15`
+                      : "0 8px 24px rgba(0, 0, 0, 0.3)",
                   transform:
                     hoveredCard === item.action
                       ? "translateY(-4px)"
                       : "translateY(0)",
-                  animationDelay: `${index * 0.1}s`,
+                  animationDelay: `${index * 0.08}s`,
                 }}
               >
-                {/* Card Icon */}
+                {/* Icon */}
                 <div
                   style={{
                     ...styles.iconContainer,
-                    background: `linear-gradient(135deg, ${item.color}20 0%, ${item.color}10 100%)`,
+                    background: item.glowColor,
+                    color: item.accentColor,
                   }}
                 >
-                  <span style={styles.icon}>{item.icon}</span>
+                  <span
+                    style={{
+                      ...styles.icon,
+                      animation: `suitFloat 3s ease-in-out ${index * 0.4}s infinite`,
+                    }}
+                  >
+                    {item.icon}
+                  </span>
                 </div>
 
                 {/* Card Content */}
@@ -134,12 +147,12 @@ class MainMenu extends React.Component<IProps, IState> {
                   <p style={styles.cardDescription}>{item.description}</p>
                 </div>
 
-                {/* Arrow indicator */}
+                {/* Arrow */}
                 <div
                   style={{
                     ...styles.arrow,
-                    color: item.color,
-                    opacity: hoveredCard === item.action ? 1 : 0.5,
+                    color: item.accentColor,
+                    opacity: hoveredCard === item.action ? 1 : 0.3,
                     transform:
                       hoveredCard === item.action
                         ? "translateX(4px)"
@@ -148,37 +161,19 @@ class MainMenu extends React.Component<IProps, IState> {
                 >
                   →
                 </div>
-
-                {/* Hover glow effect */}
-                {hoveredCard === item.action && (
-                  <div
-                    style={{
-                      ...styles.cardGlow,
-                      background: `radial-gradient(ellipse at center, ${item.color}20 0%, transparent 70%)`,
-                    }}
-                  />
-                )}
               </div>
             ))}
           </div>
 
-          {/* Footer info */}
+          {/* Footer */}
           <div style={styles.footer}>
             <p style={styles.footerText}>
               You can always return to this menu by leaving your current game
             </p>
           </div>
         </div>
-        <p
-          style={{
-            position: "absolute",
-            bottom: "20px",
-            fontSize: "12px",
-            color: "#9CA3AF",
-            opacity: 0.75,
-            margin: 0,
-          }}
-        >
+
+        <p style={styles.copyright}>
           &copy; {new Date().getFullYear()} Praveen Antony
         </p>
       </div>
@@ -199,16 +194,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "transparent",
     position: "relative",
     overflow: "hidden",
+    minHeight: "100vh",
   },
-  glowEffect: {
+  glowOrb: {
     position: "absolute",
-    top: "50%",
+    top: "40%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    width: "800px",
-    height: "800px",
+    width: "700px",
+    height: "700px",
     background:
-      "radial-gradient(ellipse at center, rgba(99, 102, 241, 0.1) 0%, transparent 70%)",
+      "radial-gradient(ellipse at center, rgba(14, 165, 233, 0.06) 0%, transparent 65%)",
     pointerEvents: "none",
   },
   content: {
@@ -217,155 +213,132 @@ const styles: { [key: string]: React.CSSProperties } = {
     position: "relative",
     zIndex: 1,
     animation: "fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-    background: "linear-gradient(145deg, #0f0f18 0%, #12121a 100%)",
-    borderRadius: "24px",
+    background: "rgba(15, 19, 25, 0.75)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    borderRadius: "28px",
     padding: "40px",
-    border: "1px solid rgba(255, 255, 255, 0.05)",
-    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.4)",
+    border: "1px solid rgba(255, 255, 255, 0.04)",
+    boxShadow:
+      "0 24px 48px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
   },
   header: {
     textAlign: "center",
-    marginBottom: "40px",
+    marginBottom: "36px",
   },
   welcomeBadge: {
     display: "inline-flex",
     alignItems: "center",
     gap: "8px",
-    padding: "10px 18px",
-    background: "rgba(99, 102, 241, 0.1)",
-    border: "1px solid rgba(99, 102, 241, 0.2)",
+    padding: "8px 16px",
+    background: "rgba(14, 165, 233, 0.08)",
+    border: "1px solid rgba(14, 165, 233, 0.15)",
     borderRadius: "9999px",
-    fontSize: "14px",
-    color: "#a1a1aa",
+    fontSize: "13px",
+    color: "#8b95a5",
     marginBottom: "20px",
   },
-  welcomeIcon: {
-    fontSize: "16px",
+  welcomeDot: {
+    width: "6px",
+    height: "6px",
+    borderRadius: "50%",
+    background: "#22c55e",
+    boxShadow: "0 0 8px rgba(34, 197, 94, 0.5)",
   },
   playerName: {
-    color: "#ffffff",
+    color: "#f0f4f8",
     fontWeight: 600,
   },
   title: {
-    fontSize: "40px",
+    fontSize: "38px",
     fontWeight: 800,
-    color: "#ffffff",
+    color: "#f0f4f8",
     margin: "0 0 8px 0",
     letterSpacing: "-0.02em",
   },
   subtitle: {
-    fontSize: "18px",
-    color: "#71717a",
+    fontSize: "16px",
+    color: "#5a6577",
     margin: 0,
   },
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "20px",
-    marginBottom: "40px",
+    gap: "16px",
+    marginBottom: "32px",
   },
-  card: {
+  menuCard: {
     position: "relative",
-    background: "linear-gradient(145deg, #1a1a25 0%, #16161f 100%)",
+    background: "rgba(21, 26, 35, 0.8)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
     borderRadius: "20px",
-    border: "1px solid rgba(255, 255, 255, 0.05)",
-    padding: "28px",
+    border: "1px solid rgba(255, 255, 255, 0.04)",
+    padding: "24px",
     cursor: "pointer",
     display: "flex",
     flexDirection: "column",
     alignItems: "flex-start",
-    gap: "16px",
+    gap: "14px",
     transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
     overflow: "hidden",
     animation: "fadeInScale 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards",
     opacity: 0,
   },
   iconContainer: {
-    width: "56px",
-    height: "56px",
-    borderRadius: "16px",
+    width: "52px",
+    height: "52px",
+    borderRadius: "14px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   icon: {
-    fontSize: "28px",
+    fontSize: "24px",
   },
   cardContent: {
     flex: 1,
   },
   cardTitle: {
-    fontSize: "20px",
+    fontSize: "18px",
     fontWeight: 700,
-    color: "#ffffff",
-    margin: "0 0 8px 0",
+    color: "#f0f4f8",
+    margin: "0 0 6px 0",
   },
   cardDescription: {
-    fontSize: "14px",
-    color: "#a1a1aa",
+    fontSize: "13px",
+    color: "#5a6577",
     margin: 0,
     lineHeight: 1.5,
   },
   arrow: {
     position: "absolute",
-    bottom: "24px",
-    right: "24px",
-    fontSize: "20px",
+    bottom: "20px",
+    right: "20px",
+    fontSize: "18px",
     fontWeight: 700,
     transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
-  },
-  cardGlow: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: "none",
-    opacity: 0.5,
   },
   footer: {
     textAlign: "center",
   },
   footerText: {
-    fontSize: "14px",
-    color: "#71717a",
+    fontSize: "13px",
+    color: "#5a6577",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: "8px",
   },
-  footerIcon: {
-    fontSize: "14px",
+  copyright: {
+    position: "absolute",
+    bottom: "20px",
+    fontSize: "11px",
+    color: "#5a6577",
+    opacity: 0.6,
+    margin: 0,
   },
 };
-
-// Add keyframe animations
-if (typeof document !== "undefined") {
-  const styleSheet = document.createElement("style");
-  styleSheet.textContent = `
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    @keyframes fadeInScale {
-      from {
-        opacity: 0;
-        transform: scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-  `;
-  document.head.appendChild(styleSheet);
-}
 
 export default MainMenu;
