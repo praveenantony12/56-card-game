@@ -367,7 +367,7 @@ class GameGrid extends React.Component<IProps, IState> {
 
         {/* ── Team Card Piles ── */}
         <div className="team-piles-row">
-          <div className="team-pile" style={{ textAlign: "center" }}>
+          <div className="team-pile">
             <div className="team-pile-header team-a">
               Team A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
               <span
@@ -392,7 +392,7 @@ class GameGrid extends React.Component<IProps, IState> {
               {this.renderCards(teamACards, false, true)}
             </div>
           </div>
-          <div className="team-pile" style={{ textAlign: "center" }}>
+          <div className="team-pile">
             <div className="team-pile-header team-b">
               Team B [{secondPlayer} {fourthPlayer} {lastPlayer}]
               <span
@@ -448,7 +448,7 @@ class GameGrid extends React.Component<IProps, IState> {
             <>
               <span className="game-action-sep">or</span>
               <button
-                className="game-action-btn primary"
+                className="game-action-btn"
                 onClick={this.handleSwitchPositions.bind(this, "A")}
                 disabled={this.state.isProcessingAction}
                 title="Randomly shuffle Team A seating positions (one-time)"
@@ -461,7 +461,7 @@ class GameGrid extends React.Component<IProps, IState> {
             <>
               <span className="game-action-sep">or</span>
               <button
-                className="game-action-btn primary"
+                className="game-action-btn"
                 onClick={this.handleSwitchPositions.bind(this, "B")}
                 disabled={this.state.isProcessingAction}
                 title="Randomly shuffle Team B seating positions (one-time)"
