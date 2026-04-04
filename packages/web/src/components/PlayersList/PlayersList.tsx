@@ -52,6 +52,7 @@ class PlayersList extends React.Component<IProps, {}> {
       startingPlayerId,
     } = this.gameInfo;
     const { droppedCards } = this.store.game;
+    const selfPlayerId = this.store.user.playerId as string;
 
     if (!players) {
       return null;
@@ -146,6 +147,15 @@ class PlayersList extends React.Component<IProps, {}> {
                 Start
               </Label>
             </div>
+          )}
+          {player !== selfPlayerId && this.store.showReconnectMode && (
+            <button
+              className="force-reconnect-btn"
+              title={`Force reconnect ${player}`}
+              onClick={() => this.store.forceReconnect(player)}
+            >
+              ↺
+            </button>
           )}
         </Grid.Column>
       );

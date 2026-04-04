@@ -2978,6 +2978,83 @@ export class GameCore {
   }
 
   /**
+   * Force-disconnect a player by request from another player in the same game.
+   * Useful when a player's socket appears stuck/stale on the server.
+   * @param payload Contains gameId, targetPlayerId, requestingPlayerId
+   * @param cb The callback function
+   */
+  public forcePlayerReconnect(
+    payload: {
+      gameId: string;
+      targetPlayerId: string;
+      requestingPlayerId: string;
+    },
+    cb: Function,
+  ): void {
+    const { gameId, targetPlayerId, requestingPlayerId } = payload;
+
+    if (targetPlayerId === requestingPlayerId) {
+      cb(
+        null,
+        errorResponse(RESPONSE_CODES.failed, "Cannot force-reconnect yourself"),
+      );
+      return;
+    }
+
+    const game = this.inMemoryStore.fetchGame(gameId);
+    if (!game || !game.players) {
+      cb(null, errorResponse(RESPONSE_CODES.failed, "Game not found"));
+      return;
+    }
+
+    const playerIndex = game.players.findIndex(
+      (p: IPlayer) => p.playerId === targetPlayerId,
+    );
+    if (playerIndex === -1) {
+      cb(
+        null,
+        errorResponse(RESPONSE_CODES.failed, "Player not found in game"),
+      );
+      return;
+    }
+
+    const player = (game.players as any)[playerIndex];
+
+    if (player.isDisconnected) {
+      cb(
+        null,
+        successResponse(RESPONSE_CODES.success, {
+          message: `${targetPlayerId} is already marked as disconnected`,
+        }),
+      );
+      return;
+    }
+
+    const socketId: string = player.socketId;
+
+    // Try to forcibly terminate the actual socket — the disconnect handler will
+    // call handlePlayerDisconnection automatically.
+    const targetSocket = this.ioServer.sockets.connected[socketId];
+    if (targetSocket) {
+      targetSocket.disconnect(true);
+    } else {
+      // Socket not found (already gone but state not updated) — update directly
+      this.handlePlayerDisconnection(gameId, targetPlayerId, socketId);
+    }
+
+    console.log(
+      `[FORCE RECONNECT] ${requestingPlayerId} triggered force-disconnect of ${targetPlayerId} in game ${gameId}`,
+    );
+
+    cb(
+      null,
+      successResponse(RESPONSE_CODES.success, {
+        message: `${targetPlayerId} has been disconnected and can now reconnect.`,
+      }),
+    );
+  }
+
+  /**
    * Set timeout for player disconnection
    * @param gameId The game id
    * @param playerId The player id

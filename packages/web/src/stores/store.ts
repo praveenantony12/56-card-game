@@ -18,6 +18,7 @@ class Store implements IStore {
 
   private gameService: GameService;
   @observable private isReconnecting: boolean = false;
+  @observable public showReconnectMode: boolean = false;
 
   constructor() {
     this.gameService = new GameService(
@@ -492,6 +493,19 @@ class Store implements IStore {
     this.clearNotifications();
   }
 
+  public async forceReconnect(targetPlayerId: string) {
+    const { gameId, playerId } = this.userInfo;
+    try {
+      await this.gameService.forceReconnect(
+        gameId as string,
+        targetPlayerId,
+        playerId as string,
+      );
+    } catch (error) {
+      console.log("forceReconnect error ===> " + error);
+    }
+  }
+
   public async selectPlayer(playerId: string) {
     const { gameId, token } = this.userInfo;
     this.clearNotifications();
@@ -709,6 +723,10 @@ class Store implements IStore {
 
   public hideBotSelection(): void {
     this.gameInfo.showBotSelection = false;
+  }
+
+  public toggleReconnectMode(): void {
+    this.showReconnectMode = !this.showReconnectMode;
   }
 
   private initializeStore() {

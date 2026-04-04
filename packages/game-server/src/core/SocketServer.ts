@@ -217,6 +217,11 @@ export class SocketServer {
         );
         break;
 
+      case MESSAGES.forceReconnect:
+        const forceReconnectRequest = payload as any;
+        this.gameCore.forcePlayerReconnect(forceReconnectRequest, cb);
+        break;
+
       default:
         break;
     }

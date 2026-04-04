@@ -23,6 +23,7 @@ import {
   joinLobbyPayload,
   leaveLobbyPayload,
   lobbyBotVotePayload,
+  forceReconnectPayload,
 } from "@rcg/common";
 
 import * as io from "socket.io-client";
@@ -235,6 +236,16 @@ class GameService {
    */
   public forfeitGame(gameId: string, playerId: string): Promise<any> {
     return this.sendRequest(forfeitGamePayload(gameId, playerId));
+  }
+
+  public forceReconnect(
+    gameId: string,
+    targetPlayerId: string,
+    requestingPlayerId: string,
+  ): Promise<any> {
+    return this.sendRequest(
+      forceReconnectPayload(gameId, targetPlayerId, requestingPlayerId),
+    );
   }
 
   /**

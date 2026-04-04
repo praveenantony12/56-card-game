@@ -10,6 +10,9 @@ export interface IStore {
 
   isPendingReconnectionApproval: boolean;
 
+  showReconnectMode: boolean;
+  toggleReconnectMode(): void;
+
   signIn(userId: string): Promise<any>;
 
   reconnect(): Promise<any>;
@@ -69,6 +72,8 @@ export interface IStore {
   denyForfeit(): Promise<void>;
 
   forfeitGame(gameId: string): Promise<void>;
+
+  forceReconnect(targetPlayerId: string): Promise<void>;
 
   getShareableGameUrl(gameId: string): string;
 

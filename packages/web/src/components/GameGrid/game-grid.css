@@ -665,6 +665,23 @@
   cursor: not-allowed;
 }
 
+.game-action-btn.reconnect-toggle-btn {
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+}
+
+.game-action-btn.reconnect-toggle-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+}
+
+.game-action-btn.reconnect-toggle-btn.active {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #fbbf24;
+}
+
 .game-action-sep {
   color: #3a4555;
   font-size: 11px;

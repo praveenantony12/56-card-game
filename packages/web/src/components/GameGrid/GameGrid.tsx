@@ -478,6 +478,18 @@ class GameGrid extends React.Component<IProps, IState> {
               </button>
             </>
           )}
+          <>
+            <span className="game-action-sep">or</span>
+            <button
+              className={`game-action-btn reconnect-toggle-btn${this.store.showReconnectMode ? " active" : ""}`}
+              onClick={() => this.store.toggleReconnectMode()}
+              title="Show/hide per-player force-reconnect buttons"
+            >
+              {this.store.showReconnectMode
+                ? "Hide Reconnect"
+                : "Show Reconnect"}
+            </button>
+          </>
         </div>
       </Dimmer.Dimmable>
     );

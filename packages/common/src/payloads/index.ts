@@ -170,3 +170,14 @@ export const leaveLobbyPayload = (playerId: string) => {
 export const lobbyBotVotePayload = (playerId: string, vote: boolean) => {
   return { operation: MESSAGES.lobbyBotVote, payload: { playerId, vote } };
 };
+
+export const forceReconnectPayload = (
+  gameId: string,
+  targetPlayerId: string,
+  requestingPlayerId: string,
+) => {
+  return {
+    operation: MESSAGES.forceReconnect,
+    payload: { gameId, targetPlayerId, requestingPlayerId },
+  };
+};

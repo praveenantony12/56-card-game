@@ -52,4 +52,5 @@ export const MESSAGES = {
   lobbyBotVoteRequest: "LOBBY_BOT_VOTE_REQUEST",
   lobbyBotVote: "LOBBY_BOT_VOTE",
   lobbyCleared: "LOBBY_CLEARED",
+  forceReconnect: "FORCE_RECONNECT",
 };
