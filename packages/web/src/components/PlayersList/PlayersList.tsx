@@ -90,11 +90,13 @@ class PlayersList extends React.Component<IProps, {}> {
       const isCurrentTurn =
         hasGameStarted && !!(currentPlayerId && player === currentPlayerId);
 
+      const isPreGameStartingPlayer =
+        !isBiddingPhase && !hasGameStarted && isStartingPlayer;
       const status = isBiddingPhase
         ? isCurrentBiddingPlayer
           ? "Bid"
           : "Wait"
-        : isCurrentTurn
+        : isCurrentTurn || isPreGameStartingPlayer
           ? "Play"
           : "Wait";
 
@@ -122,7 +124,7 @@ class PlayersList extends React.Component<IProps, {}> {
                       ? "blue"
                       : "green"
                     : "grey"
-                  : isCurrentTurn
+                  : isCurrentTurn || isPreGameStartingPlayer
                     ? playerTeam === "A"
                       ? "blue"
                       : "green"

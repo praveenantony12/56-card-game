@@ -1120,16 +1120,41 @@ export class GameCore {
       return;
     }
 
-    // Move to next player clockwise for the new game - fix the rotation logic
-    const currentStarterIndex = this.gameStartIndex;
-    const newStarterIndex = (currentStarterIndex + 1) % currentPlayers.length;
-    this.gameStartIndex = newStarterIndex;
+    // Build the filtered players array FIRST so we can compute indices correctly.
+    // onSelectPlayer() may have rearranged currentPlayers during the round, so we
+    // must locate the current starter by playerId (not by gameStartIndex position)
+    // and then advance clockwise to the next non-disconnected player.
+    const playersForRestart = currentPlayers
+      .filter((p) => !p.isDisconnected)
+      .map((player) => ({ ...player }));
+
+    // Find the current round's starter by ID in currentPlayers
+    const currentStarterId = currentGameObj.startingPlayerId as
+      | string
+      | undefined;
+    const currentSeatIndex = currentStarterId
+      ? currentPlayers.findIndex((p) => p.playerId === currentStarterId)
+      : this.gameStartIndex;
+    const baseIndex = currentSeatIndex >= 0 ? currentSeatIndex : 0;
+
+    // Advance clockwise in currentPlayers until we find a non-disconnected player
+    let nextStarterPlayerId: string | undefined;
+    for (let i = 1; i <= currentPlayers.length; i++) {
+      const idx = (baseIndex + i) % currentPlayers.length;
+      if (!currentPlayers[idx].isDisconnected) {
+        nextStarterPlayerId = currentPlayers[idx].playerId;
+        break;
+      }
+    }
+
+    // Map that player to their index inside playersForRestart
+    const newStarterIndex = nextStarterPlayerId
+      ? playersForRestart.findIndex((p) => p.playerId === nextStarterPlayerId)
+      : 0;
+    this.gameStartIndex = newStarterIndex >= 0 ? newStarterIndex : 0;
 
     console.log(
-      `[RESTART] Game ${gameId}: starter moving from index ${currentStarterIndex} to ${newStarterIndex}`,
-    );
-    console.log(
-      `[RESTART] New starter: ${currentPlayers[newStarterIndex]?.playerId}`,
+      `[RESTART] Game ${gameId}: starter rotating from ${currentStarterId} to ${nextStarterPlayerId} (index ${this.gameStartIndex})`,
     );
 
     // Preserve team score before restarting
@@ -1140,14 +1165,6 @@ export class GameCore {
       currentGameObj?.teamAPositionSwitchUsed || false;
     const preserveTeamBPositionSwitchUsed =
       currentGameObj?.teamBPositionSwitchUsed || false;
-
-    // Update socket IDs from current game state to handle reconnected players
-    const playersForRestart = currentPlayers
-      .filter((p) => !p.isDisconnected)
-      .map((player) => ({
-        ...player,
-        // Ensure we have the most current socket ID for each player
-      }));
 
     // Start the game with updated starter index — preserve existing player order so teams don't change
     this.startGame(gameId, playersForRestart, true);
@@ -1261,12 +1278,12 @@ export class GameCore {
       null,
       successResponse(RESPONSE_CODES.gameNotification, {
         message: "Game restarted successfully",
-        newStarter: currentPlayers[newStarterIndex]?.playerId,
+        newStarter: nextStarterPlayerId,
       }),
     );
 
     console.log(
-      `[RESTART] Game ${gameId} restarted successfully. New starter: ${currentPlayers[newStarterIndex]?.playerId}`,
+      `[RESTART] Game ${gameId} restarted successfully. New starter: ${nextStarterPlayerId}`,
     );
   }
 
