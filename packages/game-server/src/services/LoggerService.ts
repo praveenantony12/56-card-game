@@ -1,5 +1,5 @@
 // Log level hierarchy: info < warn < error
-// Production default: "warn"  — only logEvent + logError emit output.
+// Production default: "info"  — logEvent + logError emit output.
 // Local default:      "info"  — everything emits (easy to flip back).
 // Override via env:   LOG_LEVEL=info|warn|error
 const LEVELS = { info: 0, warn: 1, error: 2 } as const;
@@ -21,8 +21,8 @@ function getSentry(): any {
 function activeLevel(): Level {
   const env = (process.env.LOG_LEVEL || "").toLowerCase();
   if (env === "info" || env === "warn" || env === "error") return env;
-  // Default: warn in production, info everywhere else
-  return process.env.NODE_ENV === "production" ? "warn" : "info";
+  // Default: info in all environments
+  return "info";
 }
 
 function shouldLog(msgLevel: Level): boolean {
@@ -44,13 +44,13 @@ export class LoggerService {
     );
   }
 
-  /** Key game/user events (warn level — visible in production by default) */
+  /** Key game/user events (info level) */
   public static logEvent(event: string, data: Record<string, any> = {}) {
-    if (process.env.NODE_ENV === "test" || !shouldLog("warn")) return;
+    if (process.env.NODE_ENV === "test" || !shouldLog("info")) return;
 
     console.log(
       JSON.stringify({
-        level: "warn",
+        level: "info",
         event,
         ...data,
         ts: new Date().toISOString(),
