@@ -257,9 +257,17 @@ class GameGrid extends React.Component<IProps, IState> {
           <div className="cardOnTable">
             {/* Post-raise UI in center */}
             {(() => {
-              const { postRaiseDoubleRound } = this.store.game;
+              const { postRaiseDoubleRound, bidRaisePhase, bidRaiseOfferedTo } =
+                this.store.game;
               if (postRaiseDoubleRound && isBiddingPhase) {
                 return this.renderPostRaiseButtonsInCenter();
+              }
+              if (
+                bidRaisePhase &&
+                bidRaiseOfferedTo === playerId &&
+                isBiddingPhase
+              ) {
+                return this.renderBidRaiseUI();
               }
               return null;
             })()}
@@ -770,70 +778,13 @@ class GameGrid extends React.Component<IProps, IState> {
   };
 
   private renderBiddingUI(isYourBiddingTurn: boolean) {
-    const {
-      bidRaisePhase,
-      bidRaiseOfferedTo,
-      currentBet,
-      trumpSuit,
-      postRaiseDoubleRound,
-    } = this.store.game;
+    const { bidRaisePhase, bidRaiseOfferedTo, postRaiseDoubleRound } =
+      this.store.game;
     const playerId = this.store.user.playerId as string;
 
-    // Show bid raise UI if in bid raise phase and it's this player's turn
+    // Bid raise phase is rendered inside cardOnTable via renderBidRaiseUI()
     if (bidRaisePhase && bidRaiseOfferedTo === playerId) {
-      const currentBidValue = parseInt(currentBet || "28");
-      const availableLevels: number[] = [];
-
-      if (currentBidValue < 40) {
-        availableLevels.push(40, 48, 56);
-      } else if (currentBidValue < 48) {
-        availableLevels.push(48, 56);
-      } else if (currentBidValue < 56) {
-        availableLevels.push(56);
-      }
-
-      return (
-        <>
-          <div className="raiseYourBidContainer">
-            <h2 style={{ marginBottom: "20px" }}>Raise your Bid?</h2>
-            <p style={{ marginBottom: "10px" }}>
-              You won the bidding with{" "}
-              <strong>
-                {currentBidValue} {trumpSuit}
-              </strong>
-            </p>
-            <p
-              style={{ marginBottom: "20px", fontSize: "14px", color: "#ccc" }}
-            >
-              You can raise your bid to a higher level for the same suit
-            </p>
-            <div className="bid-actions-row" style={{ marginBottom: "20px" }}>
-              {availableLevels.map((level) => (
-                <button
-                  key={level}
-                  className="action-pill bid"
-                  style={{ margin: "5px" }}
-                  onClick={() => this.handleRaiseBid(level)}
-                  disabled={this.state.isProcessingAction}
-                >
-                  {this.state.isProcessingAction
-                    ? "Processing..."
-                    : `Raise to ${level}`}
-                </button>
-              ))}
-            </div>
-            <button
-              className="action-pill pass"
-              onClick={this.handleSkipRaise.bind(this)}
-              disabled={this.state.isProcessingAction}
-            >
-              {this.state.isProcessingAction
-                ? "Processing..."
-                : "Skip - Start Game"}
-            </button>
-          </div>
-        </>
-      );
+      return null;
     }
 
     // Show notification if in post-raise double round
@@ -1630,6 +1581,69 @@ class GameGrid extends React.Component<IProps, IState> {
       this.setState({ isProcessingAction: false });
     }, 2000);
   };
+
+  private renderBidRaiseUI() {
+    const { currentBet, trumpSuit } = this.store.game;
+    const currentBidValue = parseInt(currentBet || "28");
+    const availableLevels: number[] = [];
+
+    if (currentBidValue < 40) {
+      availableLevels.push(40, 48, 56);
+    } else if (currentBidValue < 48) {
+      availableLevels.push(48, 56);
+    } else if (currentBidValue < 56) {
+      availableLevels.push(56);
+    }
+
+    const suitNameMap: Record<string, string> = {
+      H: "Hearts ♥",
+      E: "Spades ♠",
+      D: "Diamonds ♦",
+      C: "Clubs ♣",
+      N: "Noes",
+    };
+    const suitDisplay =
+      (trumpSuit && suitNameMap[trumpSuit]) || trumpSuit || "";
+
+    return (
+      <div className="raiseYourBidContainer">
+        <h2 style={{ marginBottom: "20px" }}>Raise your Bid?</h2>
+        <p style={{ marginBottom: "10px" }}>
+          You won the bidding with{" "}
+          <strong>
+            {currentBidValue} {suitDisplay}
+          </strong>
+        </p>
+        <p style={{ marginBottom: "20px", fontSize: "14px", color: "#ccc" }}>
+          You can raise your bid to a higher level for the same suit
+        </p>
+        <div className="bid-actions-row" style={{ marginBottom: "20px" }}>
+          {availableLevels.map((level) => (
+            <button
+              key={level}
+              className="action-pill bid"
+              style={{ margin: "5px" }}
+              onClick={() => this.handleRaiseBid(level)}
+              disabled={this.state.isProcessingAction}
+            >
+              {this.state.isProcessingAction
+                ? "Processing..."
+                : `Raise to ${level}`}
+            </button>
+          ))}
+        </div>
+        <button
+          className="action-pill pass"
+          onClick={this.handleSkipRaise.bind(this)}
+          disabled={this.state.isProcessingAction}
+        >
+          {this.state.isProcessingAction
+            ? "Processing..."
+            : "Skip - Start Game"}
+        </button>
+      </div>
+    );
+  }
 
   private renderPostRaiseBiddingUI(isYourBiddingTurn: boolean) {
     const { bidHistory, bidDouble, bidReDouble, currentBet, trumpSuit } =

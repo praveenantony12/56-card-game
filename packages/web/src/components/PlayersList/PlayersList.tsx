@@ -93,7 +93,7 @@ class PlayersList extends React.Component<IProps, {}> {
         ? isCurrentBiddingPlayer
           ? "Bid"
           : "Wait"
-        : isCurrentTurn || player === currentPlayerId
+        : isCurrentTurn
           ? "Play"
           : "Wait";
 
