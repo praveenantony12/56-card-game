@@ -729,7 +729,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -170%);
+  transform: translate(-50%, -50%);
   background: rgba(10, 14, 20, 0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -742,15 +742,12 @@
   min-width: 380px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 
-  @media screen and (max-width: 906px) { transform: translate(-50%, -230%); }
   @media screen and (max-width: 856px) { min-width: 480px; }
   @media screen and (max-width: 840px) {
-    transform: translate(-50%, -230%);
     padding: 14px;
     min-width: 420px;
   }
   @media screen and (max-width: 768px) {
-    transform: translate(-50%, -110%);
     min-width: 360px;
   }
   @media screen and (max-width: 480px) {
