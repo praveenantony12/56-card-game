@@ -30,6 +30,7 @@ import { TeamBotAgent } from "../agents/TeamBotAgent";
 import { MetricsService } from "../services/MetricsService";
 import { emit } from "cluster";
 import { TrainingConfig, TRAINING_DISABLED } from "./trainingConfig";
+import { TrainingObserver } from "../training/TrainingObserver";
 
 /**
  * Optional construction settings for GameCore.
@@ -55,6 +56,9 @@ export class GameCore {
 
   /** Bot training configuration, fixed at server startup (not client-controllable). */
   public readonly training: TrainingConfig;
+
+  /** Passive training observer; only created when training mode is enabled. */
+  public readonly trainingObserver?: TrainingObserver;
 
   // Reconnection system
   private disconnectTimeouts: {
@@ -94,6 +98,9 @@ export class GameCore {
   ) {
     this.deck = new Deck();
     this.training = options.training || TRAINING_DISABLED;
+    if (this.training.botTrainingEnabled) {
+      this.trainingObserver = new TrainingObserver(this.training);
+    }
   }
 
   /**
@@ -1755,7 +1762,12 @@ export class GameCore {
       (!gameObject.teamBCards || gameObject.teamBCards.length === 0) &&
       (!gameObject.droppedCards || gameObject.droppedCards.length === 0);
 
+    // Tracks whether default bid/trump values were inserted just now, so bot
+    // training can ignore a decision whose context the human did not see.
+    let firstCardDefaultsApplied = false;
+
     if (isFirstCardOfGame && !gameObject.finalBid) {
+      firstCardDefaultsApplied = true;
       // Sets default to 28
       gameObject.finalBid = 28;
       gameObject.currentBet = "28";
@@ -1850,6 +1862,16 @@ export class GameCore {
     }
 
     const gameObj = currentGameObj;
+
+    // Bot training (no-op unless enabled at startup): passive and never throws.
+    this.trainingObserver?.observeHumanCardPlay(
+      gameObj,
+      gameId,
+      playerId,
+      card,
+      firstCardDefaultsApplied,
+    );
+
     const dropCardPlayer = `${card}-${playerId}`;
     const updateDropCardPlayers = [
       ...(gameObj.dropCardPlayer || []),

@@ -12,6 +12,10 @@ export interface TrainingConfig {
   readonly botTrainingEnabled: boolean;
   /** Directory the training JSONL files are written to. */
   readonly outputDir: string;
+  /** Application version stamped on training records ("unknown" if not set). */
+  readonly appVersion: string;
+  /** Git commit stamped on training records, from GIT_COMMIT ("unknown" if not set). */
+  readonly gitCommit: string;
 }
 
 export const DEFAULT_TRAINING_OUTPUT_DIR = "training-data";
@@ -20,6 +24,8 @@ export const DEFAULT_TRAINING_OUTPUT_DIR = "training-data";
 export const TRAINING_DISABLED: TrainingConfig = Object.freeze({
   botTrainingEnabled: false,
   outputDir: path.resolve(DEFAULT_TRAINING_OUTPUT_DIR),
+  appVersion: "unknown",
+  gitCommit: "unknown",
 });
 
 /**
@@ -48,5 +54,7 @@ export function resolveTrainingConfig(
   return Object.freeze({
     botTrainingEnabled: enabled,
     outputDir: path.resolve(DEFAULT_TRAINING_OUTPUT_DIR),
+    appVersion: env.npm_package_version || "unknown",
+    gitCommit: env.GIT_COMMIT || "unknown",
   });
 }

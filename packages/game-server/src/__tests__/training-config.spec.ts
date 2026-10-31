@@ -91,6 +91,19 @@ describe("resolveTrainingConfig", () => {
     expect(TRAINING_DISABLED.botTrainingEnabled).toBe(false);
     expect(Object.isFrozen(TRAINING_DISABLED)).toBe(true);
   });
+
+  test("version metadata comes from the environment, defaulting to unknown", () => {
+    const defaults = resolveTrainingConfig({});
+    expect(defaults.appVersion).toBe("unknown");
+    expect(defaults.gitCommit).toBe("unknown");
+
+    const stamped = resolveTrainingConfig({
+      npm_package_version: "1.2.3",
+      GIT_COMMIT: "deadbeef",
+    });
+    expect(stamped.appVersion).toBe("1.2.3");
+    expect(stamped.gitCommit).toBe("deadbeef");
+  });
 });
 
 describe("startup scripts", () => {
