@@ -16,9 +16,15 @@ export interface TrainingConfig {
   readonly appVersion: string;
   /** Git commit stamped on training records, from GIT_COMMIT ("unknown" if not set). */
   readonly gitCommit: string;
+  /**
+   * How long a hand's end-of-game summary waits for unfinished evaluations
+   * before reporting them as pending.
+   */
+  readonly finalizeTimeoutMs: number;
 }
 
 export const DEFAULT_TRAINING_OUTPUT_DIR = "training-data";
+export const DEFAULT_FINALIZE_TIMEOUT_MS = 2000;
 
 /** Shared "off" value used when no training config is supplied. */
 export const TRAINING_DISABLED: TrainingConfig = Object.freeze({
@@ -26,6 +32,7 @@ export const TRAINING_DISABLED: TrainingConfig = Object.freeze({
   outputDir: path.resolve(DEFAULT_TRAINING_OUTPUT_DIR),
   appVersion: "unknown",
   gitCommit: "unknown",
+  finalizeTimeoutMs: DEFAULT_FINALIZE_TIMEOUT_MS,
 });
 
 /**
@@ -56,5 +63,6 @@ export function resolveTrainingConfig(
     outputDir: path.resolve(DEFAULT_TRAINING_OUTPUT_DIR),
     appVersion: env.npm_package_version || "unknown",
     gitCommit: env.GIT_COMMIT || "unknown",
+    finalizeTimeoutMs: DEFAULT_FINALIZE_TIMEOUT_MS,
   });
 }

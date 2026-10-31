@@ -37,6 +37,8 @@ export function trainingFileName(gameId: string, handId: string): string {
 export class TrainingWriter {
   private chains: { [file: string]: Promise<void> } = {};
   private failedFiles: { [file: string]: boolean } = {};
+  private writtenByFile: { [file: string]: number } = {};
+  private failuresByFile: { [file: string]: number } = {};
   private dirReady = false;
   public recordsQueued = 0;
   public recordsWritten = 0;
@@ -50,6 +52,26 @@ export class TrainingWriter {
   /** Absolute path of the file for a hand. */
   public filePathFor(gameId: string, handId: string): string {
     return path.join(this.outputDir, trainingFileName(gameId, handId));
+  }
+
+  /** Records written to, and write failures for, one hand's file. */
+  public statsFor(
+    gameId: string,
+    handId: string,
+  ): { recordsWritten: number; writeFailures: number } {
+    const file = this.filePathFor(gameId, handId);
+    return {
+      recordsWritten: this.writtenByFile[file] || 0,
+      writeFailures: this.failuresByFile[file] || 0,
+    };
+  }
+
+  /** Forgets a hand's per-file counters (called once its summary is complete). */
+  public forgetHand(gameId: string, handId: string): void {
+    const file = this.filePathFor(gameId, handId);
+    delete this.writtenByFile[file];
+    delete this.failuresByFile[file];
+    delete this.failedFiles[file];
   }
 
   /**
@@ -69,7 +91,14 @@ export class TrainingWriter {
 
     this.recordsQueued++;
     const previous = this.chains[file] || Promise.resolve();
-    this.chains[file] = previous.then(() => this.write(file, line));
+    const chain = previous.then(() => this.write(file, line));
+    this.chains[file] = chain;
+    // Prune the entry once it settles, unless a newer write has replaced it.
+    chain.then(() => {
+      if (this.chains[file] === chain) {
+        delete this.chains[file];
+      }
+    });
   }
 
   /** Resolves when every queued write has finished (successfully or not). */
@@ -92,6 +121,7 @@ export class TrainingWriter {
     return appendFile(file, line).then(
       () => {
         this.recordsWritten++;
+        this.writtenByFile[file] = (this.writtenByFile[file] || 0) + 1;
       },
       (error: any) => {
         // The directory may have been removed; recreate it on the next write.
@@ -103,6 +133,7 @@ export class TrainingWriter {
 
   private fail(file: string, error: any): void {
     this.writeFailures++;
+    this.failuresByFile[file] = (this.failuresByFile[file] || 0) + 1;
     if (this.failedFiles[file]) {
       return;
     }

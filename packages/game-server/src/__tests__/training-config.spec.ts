@@ -92,6 +92,14 @@ describe("resolveTrainingConfig", () => {
     expect(Object.isFrozen(TRAINING_DISABLED)).toBe(true);
   });
 
+  test("the finalize timeout has a fixed default and cannot be set from the environment", () => {
+    expect(resolveTrainingConfig({}).finalizeTimeoutMs).toBe(2000);
+    expect(
+      resolveTrainingConfig({ BOT_TRAINING_MODE: "true", FINALIZE_TIMEOUT_MS: "1" } as any).finalizeTimeoutMs,
+    ).toBe(2000);
+    expect(TRAINING_DISABLED.finalizeTimeoutMs).toBe(2000);
+  });
+
   test("version metadata comes from the environment, defaulting to unknown", () => {
     const defaults = resolveTrainingConfig({});
     expect(defaults.appVersion).toBe("unknown");

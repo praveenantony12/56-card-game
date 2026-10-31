@@ -8,6 +8,11 @@ import { getLegalCards } from "./legalActions";
 import { seatAlias } from "./pseudonyms";
 import { ShadowEvaluator, ShadowEvaluatorLike } from "./ShadowEvaluator";
 import {
+  FinalizeReason,
+  TrainingHandSummary,
+  formatHandSummary,
+} from "./summary";
+import {
   DecisionRecord,
   RULESET_VERSION,
   ShadowVisibleState,
@@ -37,6 +42,30 @@ export interface TrainingObserverDeps {
    * EVALUATOR_NOT_ENABLED.
    */
   evaluator?: ShadowEvaluatorLike | null;
+  /** Runs a scheduled evaluation later. Defaults to setImmediate; tests hold jobs with it. */
+  defer?: (job: () => void) => void;
+  /** Prints a finished hand summary. Defaults to console.log. */
+  printSummary?: (text: string, summary: TrainingHandSummary) => void;
+  /** Overrides config.finalizeTimeoutMs (tests). */
+  finalizeTimeoutMs?: number;
+}
+
+/** Running totals for one hand, kept until its summary is complete. */
+interface HandState {
+  gameId: string;
+  handId: string;
+  captured: number;
+  skipped: number;
+  completed: number;
+  failed: number;
+  matches: number;
+  mismatches: number;
+  byPhase: { [phase: string]: { matches: number; completed: number } };
+  /** Set once the hand's summary has been requested; makes finalization idempotent. */
+  finalizing?: Promise<TrainingHandSummary | null>;
+  summaryPrinted: boolean;
+  /** Records that finished after the summary was printed. */
+  lateRecords: number;
 }
 
 export interface TrainingCounters {
@@ -91,9 +120,15 @@ export class TrainingObserver {
   private now: () => Date;
   private newId: () => string;
   private evaluator: ShadowEvaluatorLike | null;
+  private defer: (job: () => void) => void;
+  private printSummary: (text: string, summary: TrainingHandSummary) => void;
+  private finalizeTimeoutMs: number;
   private seqByHand: { [handKey: string]: number } = {};
   private pendingJobs: { [decisionId: string]: Promise<void> } = {};
   private pendingByHand: { [handKey: string]: number } = {};
+  private hands: { [handKey: string]: HandState } = {};
+  private currentHandByGame: { [gameId: string]: string } = {};
+  private waiters: { [handKey: string]: Array<() => void> } = {};
   private counters = {
     captured: 0,
     skipped: 0,
@@ -116,6 +151,12 @@ export class TrainingObserver {
     this.newId = deps.newId || getUniqueId;
     this.evaluator =
       deps.evaluator === undefined ? new ShadowEvaluator() : deps.evaluator;
+    this.defer = deps.defer || ((job) => setImmediate(job));
+    this.printSummary = deps.printSummary || ((text) => console.log(text));
+    this.finalizeTimeoutMs =
+      deps.finalizeTimeoutMs !== undefined
+        ? deps.finalizeTimeoutMs
+        : config.finalizeTimeoutMs;
   }
 
 
@@ -231,6 +272,7 @@ export class TrainingObserver {
     }
 
     const handKey = `${gameId}|${handId}`;
+    const hand = this.registerHand(gameId, handId);
     const seq = (this.seqByHand[handKey] || 0) + 1;
     this.seqByHand[handKey] = seq;
 
@@ -273,13 +315,195 @@ export class TrainingObserver {
     };
 
     this.counters.captured++;
+    hand.captured++;
     if (skipReason || !this.evaluator || !visibleState || !legalActions) {
       this.counters.skipped++;
+      hand.skipped++;
       this.writer.append(gameId, handId, record);
       return;
     }
 
     this.schedule(record, handKey, visibleState, legalActions);
+  }
+
+  /**
+   * Finds or creates the running totals for a hand. A new hand for a game
+   * means the previous one ended without a completion summary (for example a
+   * forfeit or restart), so it is finalized now, asynchronously.
+   */
+  private registerHand(gameId: string, handId: string): HandState {
+    const handKey = `${gameId}|${handId}`;
+    const previous = this.currentHandByGame[gameId];
+    if (previous !== undefined && previous !== handId) {
+      this.finalizeKey(gameId, previous, "SUPERSEDED");
+    }
+    this.currentHandByGame[gameId] = handId;
+
+    if (!this.hands[handKey]) {
+      this.hands[handKey] = {
+        gameId,
+        handId,
+        captured: 0,
+        skipped: 0,
+        completed: 0,
+        failed: 0,
+        matches: 0,
+        mismatches: 0,
+        byPhase: {},
+        summaryPrinted: false,
+        lateRecords: 0,
+      };
+    }
+    return this.hands[handKey];
+  }
+
+  /**
+   * Produces and prints the summary for a game's current hand.
+   *
+   * Never blocks the game: callers do not await it, it never rejects, and it
+   * waits at most finalizeTimeoutMs for unfinished evaluations. Anything still
+   * pending then is reported as pending and appended to the file when it
+   * finishes. Calls made while a summary is already being produced share it;
+   * once it is complete the hand's state is released, so a later call returns
+   * null and prints nothing. Resolves to null when the game has no captured
+   * human decisions.
+   */
+  public finalizeHand(gameId: string): Promise<TrainingHandSummary | null> {
+    try {
+      const handId = this.currentHandByGame[gameId];
+      if (handId === undefined) {
+        return Promise.resolve(null);
+      }
+      return this.finalizeKey(gameId, handId, "GAME_COMPLETE");
+    } catch (error) {
+      this.report("Failed to finalize a hand", error);
+      return Promise.resolve(null);
+    }
+  }
+
+  private finalizeKey(
+    gameId: string,
+    handId: string,
+    reason: FinalizeReason,
+  ): Promise<TrainingHandSummary | null> {
+    const handKey = `${gameId}|${handId}`;
+    const hand = this.hands[handKey];
+    if (!hand) {
+      return Promise.resolve(null);
+    }
+    if (!hand.finalizing) {
+      hand.finalizing = this.runFinalize(hand, handKey, reason).catch((error) => {
+        this.report("Failed to produce a hand summary", error);
+        return null;
+      });
+    }
+    return hand.finalizing;
+  }
+
+  private async runFinalize(
+    hand: HandState,
+    handKey: string,
+    reason: FinalizeReason,
+  ): Promise<TrainingHandSummary> {
+    let timer: any;
+    const deadline = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => resolve("timeout"), this.finalizeTimeoutMs);
+      if (timer && typeof timer.unref === "function") {
+        timer.unref(); // never keep the process alive for a summary
+      }
+    });
+    const ready = this.waitForHand(handKey)
+      .then(() => this.writer.flush())
+      .then(() => "ready" as "ready");
+
+    const outcome = await Promise.race([ready, deadline]);
+    clearTimeout(timer);
+
+    const summary = this.buildSummary(hand, reason, outcome === "timeout");
+    hand.summaryPrinted = true;
+    if (this.currentHandByGame[hand.gameId] === hand.handId) {
+      delete this.currentHandByGame[hand.gameId];
+    }
+
+    try {
+      this.printSummary(formatHandSummary(summary), summary);
+    } catch (error) {
+      this.report("Failed to print a hand summary", error);
+    }
+
+    this.cleanupHandIfDone(handKey);
+    return summary;
+  }
+
+  private buildSummary(
+    hand: HandState,
+    reason: FinalizeReason,
+    timedOut: boolean,
+  ): TrainingHandSummary {
+    const written = this.writer.statsFor(hand.gameId, hand.handId);
+    return {
+      gameId: hand.gameId,
+      handId: hand.handId,
+      reason,
+      decisionsCaptured: hand.captured,
+      evaluationsCompleted: hand.completed,
+      evaluationsFailed: hand.failed,
+      decisionsSkipped: hand.skipped,
+      pendingEvaluations: this.getPendingCount(hand.gameId, hand.handId),
+      exactActionMatches: hand.matches,
+      exactActionMismatches: hand.mismatches,
+      exactActionMatchByPhase: JSON.parse(JSON.stringify(hand.byPhase)),
+      recordsWritten: written.recordsWritten,
+      writeFailures: written.writeFailures,
+      timedOut,
+      filePath: this.writer.filePathFor(hand.gameId, hand.handId),
+    };
+  }
+
+  /** Resolves once a hand has no pending evaluations. */
+  private waitForHand(handKey: string): Promise<void> {
+    if (!this.pendingByHand[handKey]) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      (this.waiters[handKey] = this.waiters[handKey] || []).push(resolve);
+    });
+  }
+
+  /**
+   * Once a hand's summary is out and nothing is pending, tells the user about
+   * any records that arrived after it, then releases the hand's bookkeeping.
+   */
+  private cleanupHandIfDone(handKey: string): void {
+    const hand = this.hands[handKey];
+    if (!hand || !hand.summaryPrinted || this.pendingByHand[handKey]) {
+      return;
+    }
+
+    this.writer
+      .flush()
+      .then(() => {
+        const current = this.hands[handKey];
+        if (!current || this.pendingByHand[handKey]) {
+          return;
+        }
+        if (current.lateRecords > 0) {
+          try {
+            this.printSummary(
+              `[TRAINING] ${current.lateRecords} record(s) finished after the summary for ` +
+                `game=${current.gameId} hand=${current.handId} and were appended to ` +
+                this.writer.filePathFor(current.gameId, current.handId),
+              this.buildSummary(current, "GAME_COMPLETE", false),
+            );
+          } catch (error) {
+            this.report("Failed to print a late-record notice", error);
+          }
+        }
+        this.writer.forgetHand(current.gameId, current.handId);
+        delete this.hands[handKey];
+        delete this.seqByHand[handKey];
+      })
+      .catch((error) => this.report("Failed to release hand state", error));
   }
 
   /**
@@ -297,7 +521,7 @@ export class TrainingObserver {
     this.pendingByHand[handKey] = (this.pendingByHand[handKey] || 0) + 1;
 
     const job = new Promise<void>((resolve) => {
-      setImmediate(() => {
+      this.defer(() => {
         try {
           this.evaluateAndWrite(record, state, legalActions);
         } catch (error) {
@@ -317,6 +541,10 @@ export class TrainingObserver {
       this.pendingByHand[handKey]--;
       if (this.pendingByHand[handKey] <= 0) {
         delete this.pendingByHand[handKey];
+        const waiting = this.waiters[handKey] || [];
+        delete this.waiters[handKey];
+        waiting.forEach((wake) => wake());
+        this.cleanupHandIfDone(handKey);
       }
     });
   }
@@ -360,7 +588,37 @@ export class TrainingObserver {
       }
     }
 
+    this.recordOutcome(record);
     this.writer.append(record.gameId, record.handId, record);
+  }
+
+  /** Adds a finished evaluation to its hand's totals. */
+  private recordOutcome(record: DecisionRecord): void {
+    const hand = this.hands[`${record.gameId}|${record.handId}`];
+    if (!hand) {
+      return;
+    }
+
+    if (record.evaluationStatus === "COMPLETED") {
+      hand.completed++;
+      const phase = (hand.byPhase[record.phase] = hand.byPhase[record.phase] || {
+        matches: 0,
+        completed: 0,
+      });
+      phase.completed++;
+      if (record.exactActionAgreement === "MATCH") {
+        hand.matches++;
+        phase.matches++;
+      } else {
+        hand.mismatches++;
+      }
+    } else {
+      hand.failed++;
+    }
+
+    if (hand.summaryPrinted) {
+      hand.lateRecords++;
+    }
   }
 
   private report(context: string, error: any): void {

@@ -2587,6 +2587,11 @@ export class GameCore {
     );
 
     this.ioServer.to(gameId).emit("data", gameCompletionResponse);
+
+    // Bot training summary (no-op unless enabled at startup). Deliberately not
+    // awaited: it never rejects, never delays this event, and reports any
+    // unfinished comparisons as pending instead of waiting for them.
+    this.trainingObserver?.finalizeHand(gameId);
   }
 
   /**

@@ -7,6 +7,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { GameCore } from "../core/GameCore";
+import { suits, names as cardNames } from "../constants/deck";
 import { resolveTrainingConfig, TrainingConfig } from "../core/trainingConfig";
 import { TrainingObserver } from "../training/TrainingObserver";
 import { ShadowEvaluator } from "../training/ShadowEvaluator";
@@ -342,5 +343,141 @@ describe("training failures never interrupt the game", () => {
     expect(on.finalGame).toEqual(off.finalGame);
     expect(core.trainingObserver!.getCounters().writeFailures).toBe(SEQUENCE.length);
     fs.unlinkSync(blocker);
+  });
+});
+
+describe("game completion summary", () => {
+  const ALL_CARDS: string[] = [];
+  suits.forEach((s) => cardNames.forEach((n) => ALL_CARDS.push(s + n)));
+
+  const isGameComplete = (e: { payload: any }) =>
+    e.payload && e.payload.payload && e.payload.payload.action === "GAME_COMPLETE";
+  const summaries = () =>
+    log.mock.calls
+      .map((call) => String(call[0]))
+      .filter((text) => text.indexOf("[TRAINING] Hand summary") === 0);
+
+  async function waitFor(condition: () => boolean, ms = 1500) {
+    const started = Date.now();
+    while (!condition()) {
+      if (Date.now() - started > ms) throw new Error("timed out waiting for condition");
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+  }
+
+  /** Two human plays, then the piles hold all 48 cards so the game is complete. */
+  function playAndFill(core: GameCore) {
+    core.inMemoryStore.saveGame(GAME_ID, makeTrainingGame());
+    seatDrop(core, 0, "1HA");
+    seatDrop(core, 1, "1HK");
+    const game: any = core.inMemoryStore.fetchGame(GAME_ID);
+    game.teamACards = ALL_CARDS.slice(0, 24);
+    game.teamBCards = ALL_CARDS.slice(24);
+  }
+
+  test("GAME_COMPLETE is emitted first; the summary follows asynchronously", async () => {
+    const { io, emitted } = recordingIoServer();
+    const core = new GameCore(io, { training: trainingConfig() });
+    playAndFill(core);
+    await core.trainingObserver!.flush();
+
+    const before = emitted.length;
+    (core as any).checkGameCompletion(GAME_ID);
+
+    expect(emitted.slice(before).some(isGameComplete)).toBe(true);
+    expect(summaries()).toHaveLength(0); // not printed inside the live call
+
+    await waitFor(() => summaries().length > 0);
+
+    expect(summaries()).toHaveLength(1);
+    expect(summaries()[0]).toContain("Decisions captured: 2");
+    expect(summaries()[0]).toContain("Evaluations completed: 2");
+    expect(summaries()[0]).toContain(`${GAME_ID}--${HAND_ID}.jsonl`);
+    core.inMemoryStore.deleteGame(GAME_ID);
+  });
+
+  test("what players receive is identical with training on and off", async () => {
+    const off = recordingIoServer();
+    const offCore = new GameCore(off.io);
+    playAndFill(offCore);
+    (offCore as any).checkGameCompletion(GAME_ID);
+    offCore.inMemoryStore.deleteGame(GAME_ID);
+
+    const on = recordingIoServer();
+    const onCore = new GameCore(on.io, { training: trainingConfig() });
+    playAndFill(onCore);
+    (onCore as any).checkGameCompletion(GAME_ID);
+    await waitFor(() => summaries().length > 0);
+    onCore.inMemoryStore.deleteGame(GAME_ID);
+
+    expect(on.emitted).toEqual(off.emitted);
+    expect(on.emitted.filter(isGameComplete)).toHaveLength(1);
+  });
+
+  test("GAME_COMPLETE is not delayed by evaluations that are still pending", async () => {
+    const held: Array<() => void> = [];
+    const { io, emitted } = recordingIoServer();
+    const core = new GameCore(io, { training: trainingConfig() });
+    const observer: any = core.trainingObserver;
+    observer.defer = (job: () => void) => held.push(job);
+    observer.finalizeTimeoutMs = 30;
+
+    try {
+      playAndFill(core);
+      expect(observer.getPendingCount()).toBe(2);
+
+      const started = Date.now();
+      (core as any).checkGameCompletion(GAME_ID);
+      expect(Date.now() - started).toBeLessThan(25); // did not wait for training
+      expect(emitted.some(isGameComplete)).toBe(true);
+
+      await waitFor(() => summaries().length > 0);
+      expect(summaries()[0]).toContain("Pending evaluations: 2");
+      expect(summaries()[0]).toContain("timed out");
+    } finally {
+      held.splice(0).forEach((job) => job());
+      core.inMemoryStore.deleteGame(GAME_ID);
+    }
+  });
+
+  test("a failing summary printer cannot break the game", async () => {
+    const { io, emitted } = recordingIoServer();
+    const core = new GameCore(io, { training: trainingConfig() });
+    (core.trainingObserver as any).printSummary = () => {
+      throw new Error("printer failed");
+    };
+    playAndFill(core);
+
+    expect(() => (core as any).checkGameCompletion(GAME_ID)).not.toThrow();
+    expect(emitted.some(isGameComplete)).toBe(true);
+    await core.trainingObserver!.flush();
+    core.inMemoryStore.deleteGame(GAME_ID);
+  });
+
+  test("with training disabled nothing is summarized", () => {
+    const { io, emitted } = recordingIoServer();
+    const core = new GameCore(io);
+    playAndFill(core);
+
+    expect(() => (core as any).checkGameCompletion(GAME_ID)).not.toThrow();
+    expect(emitted.some(isGameComplete)).toBe(true);
+    expect(summaries()).toHaveLength(0);
+    core.inMemoryStore.deleteGame(GAME_ID);
+  });
+
+  test("a game completing with no human decisions prints no summary", async () => {
+    const { io, emitted } = recordingIoServer();
+    const core = new GameCore(io, { training: trainingConfig() });
+    const game: any = makeTrainingGame();
+    game.teamACards = ALL_CARDS.slice(0, 24);
+    game.teamBCards = ALL_CARDS.slice(24);
+    core.inMemoryStore.saveGame(GAME_ID, game);
+
+    (core as any).checkGameCompletion(GAME_ID);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(emitted.some(isGameComplete)).toBe(true);
+    expect(summaries()).toHaveLength(0);
+    core.inMemoryStore.deleteGame(GAME_ID);
   });
 });
