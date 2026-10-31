@@ -1,0 +1,11 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": ["src/**/*.spec.ts"],
+  "env": {
+    "NODE_ENV": "development",
+    "REACT_APP_ENABLE_BOT_REASONING_IN_UI": "false",
+    "BOT_TRAINING_MODE": "true"
+  },
+  "exec": "ts-node ./src/index.ts"
+}

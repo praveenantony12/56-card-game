@@ -15,7 +15,7 @@ import {
   AddBotsRequestPayload,
   // TableCardsRequestPayload
 } from "@rcg/common";
-import { GameCore } from "../core/GameCore";
+import { GameCore, GameCoreOptions } from "../core/GameCore";
 import { LoggerService } from "../services/LoggerService";
 import { MetricsService } from "../services/MetricsService";
 import { Server as IOServer, Socket as IOSocket } from "socket.io";
@@ -37,10 +37,11 @@ export class SocketServer {
   /**
    * Initializes a new instance of the class SocketServer.
    * @param ioServer The socket server instance.
+   * @param options Optional settings passed through to GameCore.
    */
-  constructor(ioServer: any) {
+  constructor(ioServer: any, options: GameCoreOptions = {}) {
     this.ioServer = ioServer;
-    this.gameCore = new GameCore(this.ioServer);
+    this.gameCore = new GameCore(this.ioServer, options);
   }
 
   /**

@@ -29,6 +29,15 @@ import { Server as IOServer, Socket as IOSocket } from "socket.io";
 import { TeamBotAgent } from "../agents/TeamBotAgent";
 import { MetricsService } from "../services/MetricsService";
 import { emit } from "cluster";
+import { TrainingConfig, TRAINING_DISABLED } from "./trainingConfig";
+
+/**
+ * Optional construction settings for GameCore.
+ */
+export interface GameCoreOptions {
+  /** Server-resolved training configuration. Defaults to disabled. */
+  training?: TrainingConfig;
+}
 
 /**
  * Game :- A main class that manages all the game actions/logics.
@@ -43,6 +52,9 @@ export class GameCore {
   roundTimers: { [gameId: string]: NodeJS.Timeout } = {};
   gameStartIndex: number = 0; // Track which player starts the game
   botTimers: { [gameId: string]: NodeJS.Timeout } = {}; // Bot turn timers
+
+  /** Bot training configuration, fixed at server startup (not client-controllable). */
+  public readonly training: TrainingConfig;
 
   // Reconnection system
   private disconnectTimeouts: {
@@ -74,11 +86,14 @@ export class GameCore {
   /**
    * Initializes a new instance of the class Game.
    * @param ioServer The ioServer instance.
-   * @param socket The socket instance.
-   * @param gameId The game id.
+   * @param options Optional settings, e.g. the server-resolved training config.
    */
-  constructor(private ioServer: IOServer) {
+  constructor(
+    private ioServer: IOServer,
+    options: GameCoreOptions = {},
+  ) {
     this.deck = new Deck();
+    this.training = options.training || TRAINING_DISABLED;
   }
 
   /**

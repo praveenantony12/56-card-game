@@ -38,3 +38,6 @@ pids
 *.pid
 *.seed
 *.pid.lock
+
+# Bot training mode output (local only)
+training-data/

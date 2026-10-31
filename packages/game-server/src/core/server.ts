@@ -6,6 +6,7 @@ import { SocketServer } from "../core/SocketServer";
 import { LoggerService } from "../services/LoggerService";
 import { MetricsService } from "../services/MetricsService";
 import { InMemoryStore } from "../persistence/InMemoryStore";
+import { resolveTrainingConfig } from "./trainingConfig";
 
 // Initialise Sentry only in production (when SENTRY_DSN is set).
 // Not loaded locally to avoid unnecessary overhead and to prevent sending test data to Sentry.
@@ -57,14 +58,24 @@ let ioHandlers: SocketServer;
  * @param done The callback executes after the server is started.
  */
 export function startServer(done: Function) {
+  // Resolved once here; the client has no way to influence it.
+  const training = resolveTrainingConfig(process.env, (message) =>
+    LoggerService.log("Bot training", message),
+  );
+
   httpServer.listen(PORT, () => {
     LoggerService.log(
       "Server Started:",
       `Server started and listening at port ${PORT}`,
     );
+    if (training.botTrainingEnabled) {
+      console.log(
+        `[TRAINING] Bot training mode ENABLED. Output directory: ${training.outputDir}`,
+      );
+    }
   });
 
-  ioHandlers = new SocketServer(ioServer);
+  ioHandlers = new SocketServer(ioServer, { training });
   ioHandlers.watchConnection();
 
   done();

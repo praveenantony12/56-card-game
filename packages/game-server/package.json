@@ -30,6 +30,7 @@
   },
   "scripts": {
     "start": "nodemon",
+    "start:training": "nodemon --config nodemon.training.json",
     "test": "jest",
     "test:ci": "jest --ci --runInBand",
     "build": "rimraf ./dist && tsc --noEmitOnError false"
