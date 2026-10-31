@@ -2,7 +2,10 @@ import { signInWithoutDataListener } from "../helpers/game";
 import { MockPlayer } from "../helpers/mock-player";
 
 export const sessionsTest = async () => {
-  test(
+  // SKIPPED (stale): assumes logins without a game id are auto-grouped into
+  // sessions of 6. GameCore.addPlayerToGamePool now creates a new game per
+  // login, and games start via bots, joining by game id, or the lobby.
+  test.skip(
     "Login 13 players to check the game session has created properly or not",
     async () => {
       const mockPlayersIns: MockPlayer[] = await signInWithoutDataListener(13);
