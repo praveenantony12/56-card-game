@@ -50,6 +50,7 @@ class PlayersList extends React.Component<IProps, {}> {
       isBiddingPhase,
       currentBiddingPlayerId,
       startingPlayerId,
+      isGameComplete,
     } = this.gameInfo;
     const { droppedCards } = this.store.game;
     const selfPlayerId = this.store.user.playerId as string;
@@ -60,6 +61,14 @@ class PlayersList extends React.Component<IProps, {}> {
 
     const hasGameStarted = !!(droppedCards && droppedCards.length > 0);
     const showStartLabel = isBiddingPhase && !hasGameStarted;
+
+    // Once bidding is over the server decides who plays next (round winner, or
+    // the starter before the first card). currentPlayerId carries that decision;
+    // startingPlayerId is only the seat that opened the bidding and goes stale
+    // after the first round, so it is just a fallback before any turn is announced.
+    const turnPlayerId = isGameComplete
+      ? undefined
+      : currentPlayerId || startingPlayerId;
 
     const rows = players.map((player) => {
       const isCurrentBiddingPlayer =
@@ -73,30 +82,19 @@ class PlayersList extends React.Component<IProps, {}> {
             ? "teamBSeat"
             : "";
 
-      // Determine if this player should be the active (clickable) one
-      let isActivePlayer: boolean;
-      if (isBiddingPhase) {
-        // During bidding, only the current bidding player is active
-        isActivePlayer = !!isCurrentBiddingPlayer;
-      } else if (hasGameStarted) {
-        // During gameplay, seats are not clickable — players drop cards directly
-        isActivePlayer = false;
-      } else {
-        // Bidding complete but game not started yet - only starting player is active
-        isActivePlayer = !!isStartingPlayer;
-      }
+      // Only the bidding player's seat is clickable; during play seats are
+      // indicators only — players drop cards directly.
+      const isActivePlayer = !!isCurrentBiddingPlayer;
 
       // Visual highlight for current turn (non-clickable indicator)
       const isCurrentTurn =
-        hasGameStarted && !!(currentPlayerId && player === currentPlayerId);
+        !isBiddingPhase && !!turnPlayerId && player === turnPlayerId;
 
-      const isPreGameStartingPlayer =
-        !isBiddingPhase && !hasGameStarted && isStartingPlayer;
       const status = isBiddingPhase
         ? isCurrentBiddingPlayer
           ? "Bid"
           : "Wait"
-        : isCurrentTurn || isPreGameStartingPlayer
+        : isCurrentTurn
           ? "Play"
           : "Wait";
 
@@ -124,7 +122,7 @@ class PlayersList extends React.Component<IProps, {}> {
                       ? "blue"
                       : "green"
                     : "grey"
-                  : isCurrentTurn || isPreGameStartingPlayer
+                  : isCurrentTurn
                     ? playerTeam === "A"
                       ? "blue"
                       : "green"

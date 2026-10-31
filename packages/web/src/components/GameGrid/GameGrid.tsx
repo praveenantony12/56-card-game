@@ -24,6 +24,7 @@ interface IState {
   clickOrder: "bidFirst" | "suitFirst" | null; // Track which was clicked first
   noTrumpType: "Noes" | "Pass" | "No-Trump" | null;
   isProcessingAction: boolean; // Prevent double-click and rapid actions
+  pendingDoubleAction: "double" | "re-double" | null; // Awaiting user confirmation
 }
 
 @inject("store")
@@ -53,6 +54,7 @@ class GameGrid extends React.Component<IProps, IState> {
       clickOrder: null,
       noTrumpType: null,
       isProcessingAction: false,
+      pendingDoubleAction: null,
     };
   }
 
@@ -100,6 +102,11 @@ class GameGrid extends React.Component<IProps, IState> {
       !this.state.restartLockedUntilFirstCard
     ) {
       this.setState({ restartLockedUntilFirstCard: true });
+    }
+
+    // A pending Double/Re-Double confirmation is meaningless once bidding is over
+    if (!isBiddingPhase && this.state.pendingDoubleAction) {
+      this.setState({ pendingDoubleAction: null });
     }
 
     // Detect start of a new round (drop count went from >0 to 0)
@@ -171,7 +178,6 @@ class GameGrid extends React.Component<IProps, IState> {
       biddingTeam,
       teamAScore,
       teamBScore,
-      bidHistory,
       teamAPositionSwitchUsed,
       teamBPositionSwitchUsed,
     } = this.store.game;
@@ -205,22 +211,22 @@ class GameGrid extends React.Component<IProps, IState> {
     const isYourBiddingTurn =
       isBiddingPhase && currentBiddingPlayerId === playerId;
 
-    const noBidsMade = !bidHistory || bidHistory.length === 0;
     const teamAPlayersList = [firstPlayer, thirdPlayer, fifthPlayer].filter(
       Boolean,
     );
     const teamBPlayersList = [secondPlayer, fourthPlayer, lastPlayer].filter(
       Boolean,
     );
+    // Seat shuffle is offered only between games (after a result, before restart)
+    // so teams can swap seats before the next hands are dealt
+    const canShuffleSeats = !!(isGameComplete && !isBiddingPhase);
     const showShuffleA = !!(
-      isBiddingPhase &&
-      noBidsMade &&
+      canShuffleSeats &&
       teamAPlayersList.includes(playerId as string) &&
       !teamAPositionSwitchUsed
     );
     const showShuffleB = !!(
-      isBiddingPhase &&
-      noBidsMade &&
+      canShuffleSeats &&
       teamBPlayersList.includes(playerId as string) &&
       !teamBPositionSwitchUsed
     );
@@ -491,6 +497,7 @@ class GameGrid extends React.Component<IProps, IState> {
             </button>
           </>
         </div>
+        {this.renderDoubleConfirmation()}
       </Dimmer.Dimmable>
     );
   }
@@ -1512,41 +1519,36 @@ class GameGrid extends React.Component<IProps, IState> {
     }, 2000);
   };
 
+  // Double / Re-Double are irreversible, so they require an explicit confirmation
   private handleBiddingDouble = () => {
-    // Prevent double-clicks and rapid actions while processing
-    if (this.state.isProcessingAction) {
-      return;
-    }
-
-    this.setState({ isProcessingAction: true });
-
-    this.store.biddingAction("double");
-    // Reset local bidding state
-    this.setState({
-      currentBiddingValue: 0,
-      currentBiddingsuit: "",
-      biddingHistory: [],
-      bidSelectionType: null,
-      bidModifier: 0,
-      clickOrder: null,
-      noTrumpType: null,
-    } as any);
-
-    // Re-enable after 2 seconds
-    setTimeout(() => {
-      this.setState({ isProcessingAction: false });
-    }, 2000);
+    this.requestDoubleConfirmation("double");
   };
 
   private handleBiddingReDouble = () => {
-    // Prevent double-clicks and rapid actions while processing
+    this.requestDoubleConfirmation("re-double");
+  };
+
+  private requestDoubleConfirmation = (action: "double" | "re-double") => {
     if (this.state.isProcessingAction) {
       return;
     }
+    this.setState({ pendingDoubleAction: action });
+  };
 
-    this.setState({ isProcessingAction: true });
+  private cancelDoubleConfirmation = () => {
+    this.setState({ pendingDoubleAction: null });
+  };
 
-    this.store.biddingAction("re-double");
+  private confirmDoubleAction = () => {
+    const action = this.state.pendingDoubleAction;
+    // Prevent double-clicks and rapid actions while processing
+    if (!action || this.state.isProcessingAction) {
+      return;
+    }
+
+    this.setState({ isProcessingAction: true, pendingDoubleAction: null });
+
+    this.store.biddingAction(action);
     // Reset local bidding state
     this.setState({
       currentBiddingValue: 0,
@@ -1563,6 +1565,39 @@ class GameGrid extends React.Component<IProps, IState> {
       this.setState({ isProcessingAction: false });
     }, 2000);
   };
+
+  private renderDoubleConfirmation() {
+    const { pendingDoubleAction } = this.state;
+    if (!pendingDoubleAction) {
+      return null;
+    }
+    const label = pendingDoubleAction === "double" ? "Double" : "Re-Double";
+    return (
+      <div className="confirm-overlay" role="dialog" aria-modal="true">
+        <div className="confirm-dialog">
+          <strong className="confirm-title">Confirm {label}?</strong>
+          <p className="confirm-text">
+            This cannot be undone once confirmed.
+          </p>
+          <div className="bid-actions-row">
+            <button
+              className="action-pill pass"
+              onClick={this.cancelDoubleConfirmation}
+            >
+              Cancel
+            </button>
+            <button
+              className={`action-pill ${pendingDoubleAction}`}
+              onClick={this.confirmDoubleAction}
+              disabled={this.state.isProcessingAction}
+            >
+              Yes, {label}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   private handleRaiseBid = (newBidValue: number) => {
     // Prevent double-clicks and rapid actions while processing

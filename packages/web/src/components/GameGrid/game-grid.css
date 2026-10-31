@@ -1114,3 +1114,34 @@
 /* ── Legacy compat — hide old Semantic UI button groups ────── */
 .teamAButtonGroup { display: none !important; }
 .teamBButtonGroup { display: none !important; }
+/* ── Double / Re-Double confirmation ─────────────────────────── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.confirm-dialog {
+  background: #151c22;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 20px 24px;
+  max-width: 340px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-title {
+  font-size: 16px;
+}
+
+.confirm-text {
+  margin: 8px 0 16px;
+  font-size: 13px;
+  opacity: 0.8;
+}

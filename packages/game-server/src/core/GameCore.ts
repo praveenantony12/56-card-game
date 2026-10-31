@@ -2533,6 +2533,11 @@ export class GameCore {
       scoreResetOccurred: scoreResetOccurred,
     };
 
+    // Persist the completed state so seat shuffles (allowed only between games)
+    // and reconnecting clients can rely on it
+    gameObj.isGameComplete = true;
+    gameObj.isGameCompleted = true;
+
     // Save game state
     this.inMemoryStore.saveGame(gameId, gameObj);
 
@@ -4369,7 +4374,8 @@ export class GameCore {
 
   /**
    *  Handle a team position switch request.
-   *  Only valid before any bid is made in the current round.
+   *  Only valid after a game has finished and before it is restarted, so that
+   *  seats are swapped before the next set of cards is dealt.
    */
   public onSwitchTeamPositions(req: any, cb: Function): void {
     const { gameId, playerId, team } = req;
@@ -4380,16 +4386,12 @@ export class GameCore {
       return;
     }
 
-    // Must be in bidding phase and no bids made yet
-    if (
-      !game.isBiddingPhase ||
-      (game.bidHistory && game.bidHistory.length > 0)
-    ) {
+    if (!game.isGameComplete) {
       cb(
         null,
         errorResponse(
           RESPONSE_CODES.failed,
-          "Position switch is only allowed before any bid is made.",
+          "Position switch is only allowed after a game ends and before it is restarted.",
         ),
       );
       return;
@@ -4536,6 +4538,19 @@ export class GameCore {
       return;
     }
 
+    if (!game.isGameComplete) {
+      delete game.pendingPositionSwitch;
+      this.inMemoryStore.saveGame(gameId, game);
+      cb(
+        null,
+        errorResponse(
+          RESPONSE_CODES.failed,
+          "Position switch is only allowed after a game ends and before it is restarted.",
+        ),
+      );
+      return;
+    }
+
     if (!approved) {
       // Switch denied - clear pending request and notify requester
       const requesterId = game.pendingPositionSwitch.requestedBy;
@@ -4589,8 +4604,9 @@ export class GameCore {
   /**
    * Execute the position shuffle for the specified team.
    * Only the seats (array indices) for that team are shuffled.
-   * The gameStartIndex seat doesn't change value, so whoever ends up in that
-   * seat becomes the new starting/bidding player.
+   * The starter rotation tracks the seat, not the player, so startingPlayerId
+   * is re-pointed to whoever ends up in the starter's seat. Runs only between
+   * games; the next restart deals fresh cards and rotates from that seat.
    */
   private executePositionSwitch(
     gameId: string,
@@ -4599,6 +4615,11 @@ export class GameCore {
   ): void {
     const players = game.players as IPlayer[];
     const teamIndices = team === "A" ? [0, 2, 4] : [1, 3, 5];
+
+    // Remember the starter's seat before the shuffle moves players around
+    const starterSeat = players.findIndex(
+      (p: IPlayer) => p.playerId === game.startingPlayerId,
+    );
 
     // Collect players at team positions
     const teamPlayers = teamIndices
@@ -4618,12 +4639,9 @@ export class GameCore {
         (game.players as any)[idx] = teamPlayers[arrayPos];
       });
 
-    // Update currentBiddingPlayerId to reflect who is now in the starting seat
-    game.currentBiddingPlayerId =
-      players[this.gameStartIndex]?.playerId || game.currentBiddingPlayerId;
-
-    // The "Start" label tracks the seat, not the player - keep startingPlayerId in sync
-    game.startingPlayerId = game.currentBiddingPlayerId;
+    if (starterSeat >= 0) {
+      game.startingPlayerId = players[starterSeat].playerId;
+    }
 
     // Mark this team's switch as used
     if (team === "A") {
@@ -4636,25 +4654,9 @@ export class GameCore {
     delete game.pendingPositionSwitch;
     this.inMemoryStore.saveGame(gameId, game);
 
-    // Broadcast updated player list and bidding start notification
+    // Broadcast updated player list
     const playerIds = players.map((p: IPlayer) => p.playerId);
     this.sendPlayersInfo(gameId, playerIds);
-
-    // Also send a biddingPhaseStart so the frontend resets correctly
-    const biddingStartPayload: GameActionResponse = {
-      action: "biddingPhaseStart",
-      data: {
-        currentBiddingPlayerId: game.currentBiddingPlayerId,
-        startingPlayerId: game.startingPlayerId,
-      },
-    };
-
-    this.ioServer
-      .to(gameId)
-      .emit(
-        "data",
-        successResponse(RESPONSE_CODES.gameNotification, biddingStartPayload),
-      );
 
     // Broadcast switch-completed notification to all players
     const switchCompletePayload = {
@@ -4674,7 +4676,7 @@ export class GameCore {
       );
 
     console.log(
-      `[POSITION SWITCH] Team ${team} positions shuffled in game ${gameId}. New bidding player: ${game.currentBiddingPlayerId}`,
+      `[POSITION SWITCH] Team ${team} positions shuffled in game ${gameId}. Starter seat now held by: ${game.startingPlayerId}`,
     );
   }
 
