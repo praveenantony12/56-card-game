@@ -34,7 +34,7 @@ export class MockPlayer {
   // This is to simulate parallel request given to server and check whether the game pool
   // is working correct or not. Just give request and forget about the result.
   login(): Promise<any> {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       Socket.sendData(this.ioClient, loginPayload(this.name))
         .then((response: SuccessResponse) => {
           if (response.code !== RESPONSE_CODES.loginSuccess) {
