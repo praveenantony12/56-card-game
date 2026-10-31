@@ -80,3 +80,17 @@ export function makeTrainingGame(
 export function fakeIoServer(): any {
   return { to: () => ({ emit: () => {} }), sockets: { connected: {} } };
 }
+
+/** Like fakeIoServer, but records every room emit so tests can compare what players would receive. */
+export function recordingIoServer() {
+  const emitted: Array<{ room: string; event: string; payload: any }> = [];
+  const io: any = {
+    to: (room: string) => ({
+      emit: (event: string, payload: any) => {
+        emitted.push({ room, event, payload: JSON.parse(JSON.stringify(payload === undefined ? null : payload)) });
+      },
+    }),
+    sockets: { connected: {} },
+  };
+  return { io, emitted };
+}

@@ -8,6 +8,8 @@ import * as os from "os";
 import * as path from "path";
 import { GameCore } from "../core/GameCore";
 import { resolveTrainingConfig, TrainingConfig } from "../core/trainingConfig";
+import { TrainingObserver } from "../training/TrainingObserver";
+import { ShadowEvaluator } from "../training/ShadowEvaluator";
 import {
   GAME_ID,
   HAND_ID,
@@ -17,10 +19,14 @@ import {
   fakeIoServer,
   makePlayers,
   makeTrainingGame,
+  recordingIoServer,
 } from "./helpers/training-fixtures";
 
 let dir: string;
 let warn: jest.SpyInstance;
+let log: jest.SpyInstance;
+let observe: jest.SpyInstance;
+const usedObservers: TrainingObserver[] = [];
 
 function trainingConfig(outputDir = dir): TrainingConfig {
   return {
@@ -63,12 +69,28 @@ function readRecords(): any[] {
 
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), "training-gamecore-"));
-  // notifyTurn warns about the (absent) sockets of the fake server.
+  // notifyTurn warns about the (absent) sockets of the fake server, and the
+  // bot prints decision banners when the shadow comparison runs.
   warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  log = jest.spyOn(console, "log").mockImplementation(() => {});
+
+  // Remember every observer that was used, so cleanup can wait for its
+  // in-flight evaluations and writes instead of racing them.
+  const original = TrainingObserver.prototype.observeHumanCardPlay;
+  observe = jest
+    .spyOn(TrainingObserver.prototype, "observeHumanCardPlay")
+    .mockImplementation(function (this: TrainingObserver, ...args: any[]) {
+      if (usedObservers.indexOf(this) === -1) usedObservers.push(this);
+      return (original as any).apply(this, args);
+    });
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await Promise.all(usedObservers.map((o) => o.flush()));
+  usedObservers.length = 0;
+  observe.mockRestore();
   warn.mockRestore();
+  log.mockRestore();
   fs.readdirSync(dir).forEach((f) => {
     const p = path.join(dir, f);
     fs.statSync(p).isDirectory() ? fs.rmdirSync(p) : fs.unlinkSync(p);
@@ -133,8 +155,53 @@ describe("training records", () => {
     expect(records.map((r) => r.decisionKind)).toEqual(["LEAD", "FOLLOW", "FOLLOW", "FOLLOW"]);
     expect(records.map((r) => r.positionInTrick)).toEqual([0, 1, 2, 3]);
     expect(records.map((r) => r.actor.ref)).toEqual(["seat_0", "seat_1", "seat_2", "seat_3"]);
-    expect(records.every((r) => r.skipReason === "EVALUATOR_NOT_ENABLED")).toBe(true);
+    expect(records.every((r) => r.skipReason === null)).toBe(true);
+    expect(records.every((r) => r.evaluationStatus === "COMPLETED")).toBe(true);
+    expect(records.every((r) => r.botActionLegal === true)).toBe(true);
+    expect(records.every((r) => r.legalActions.indexOf(r.botAction.card) !== -1)).toBe(true);
+    expect(records.every((r) => ["MATCH", "MISMATCH"].indexOf(r.exactActionAgreement) !== -1)).toBe(true);
+    expect(records.every((r) => r.botPolicyVersion === "team-bot-agent@1")).toBe(true);
     expect(records[3].legalActions).toEqual(["1DJ", "1EA"]);
+  });
+
+  test("the comparison runs after the live move: records appear only once evaluations finish", async () => {
+    const evaluate = jest.spyOn(ShadowEvaluator.prototype, "evaluate");
+    try {
+      const core = new GameCore(fakeIoServer(), { training: trainingConfig() });
+      playSequence(core);
+
+      // All four human plays are already applied, but the bot has not been asked yet.
+      expect(evaluate).not.toHaveBeenCalled();
+      expect(core.trainingObserver!.getCounters().pending).toBe(SEQUENCE.length);
+      expect(readRecords()).toHaveLength(0);
+
+      await core.trainingObserver!.flush();
+
+      expect(evaluate).toHaveBeenCalledTimes(SEQUENCE.length);
+      expect(core.trainingObserver!.getCounters()).toMatchObject({
+        captured: 4,
+        completed: 4,
+        failed: 0,
+        pending: 0,
+      });
+      expect(readRecords()).toHaveLength(4);
+    } finally {
+      evaluate.mockRestore();
+    }
+  });
+
+  test("training sends nothing extra to players and never emits bot_reasoning", async () => {
+    const off = recordingIoServer();
+    playSequence(new GameCore(off.io));
+
+    const on = recordingIoServer();
+    const core = new GameCore(on.io, { training: trainingConfig() });
+    playSequence(core);
+    await core.trainingObserver!.flush();
+
+    expect(on.emitted).toEqual(off.emitted);
+    expect(on.emitted.some((e) => e.event === "bot_reasoning")).toBe(false);
+    expect(on.emitted.length).toBeGreaterThan(0);
   });
 
   test("the file contains no names, tokens or socket ids", async () => {
@@ -220,6 +287,34 @@ describe("training records", () => {
 });
 
 describe("training failures never interrupt the game", () => {
+  test("a shadow evaluation that fails is recorded and the game is unaffected", async () => {
+    const off = recordingIoServer();
+    const offRun = playSequence(new GameCore(off.io));
+
+    const on = recordingIoServer();
+    const core = new GameCore(on.io, { training: trainingConfig() });
+    (core.trainingObserver as any).evaluator = {
+      evaluate: () => {
+        throw new Error("bot exploded");
+      },
+    };
+    const onRun = playSequence(core);
+    await core.trainingObserver!.flush();
+
+    expect(onRun.callbacks).toEqual(offRun.callbacks);
+    expect(onRun.finalGame).toEqual(offRun.finalGame);
+    expect(on.emitted).toEqual(off.emitted);
+
+    const records = readRecords();
+    expect(records).toHaveLength(SEQUENCE.length);
+    records.forEach((r) => {
+      expect(r.evaluationStatus).toBe("FAILED");
+      expect(r.evaluationError).toBe("Error: bot exploded");
+      expect(r.humanAction.card).toEqual(expect.any(String));
+    });
+    expect(core.trainingObserver!.getCounters()).toMatchObject({ failed: 4, completed: 0, pending: 0 });
+  });
+
   test("an observer that throws is contained", () => {
     const core = new GameCore(fakeIoServer(), { training: trainingConfig() });
     const observer: any = core.trainingObserver;

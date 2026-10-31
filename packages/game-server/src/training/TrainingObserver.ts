@@ -6,29 +6,59 @@ import { LoggerService } from "../services/LoggerService";
 import { getUniqueId } from "../utils/misc";
 import { getLegalCards } from "./legalActions";
 import { seatAlias } from "./pseudonyms";
+import { ShadowEvaluator, ShadowEvaluatorLike } from "./ShadowEvaluator";
 import {
   DecisionRecord,
   RULESET_VERSION,
+  ShadowVisibleState,
   SkipReason,
   TRAINING_SCHEMA_VERSION,
 } from "./types";
 import { buildVisibleState } from "./visibleState";
 import { TrainingErrorHandler, TrainingWriter } from "./TrainingWriter";
 
+/** An evaluation slower than this is reported, because it ran on the game's event loop. */
+export const SLOW_EVALUATION_MS = 250;
+
+const MAX_ERROR_CHARS = 300;
+const MAX_STRATEGY_CHARS = 200;
+const MAX_REASONING_CHARS = 2000;
+
 export interface TrainingObserverDeps {
   writer?: TrainingWriter;
   onError?: TrainingErrorHandler;
+  /** Reports non-error conditions such as a slow evaluation. */
+  onWarn?: (message: string) => void;
   now?: () => Date;
   newId?: () => string;
+  /**
+   * Produces the shadow bot's decision. Defaults to the production bot. Pass
+   * null to disable comparison, in which case records are SKIPPED with
+   * EVALUATOR_NOT_ENABLED.
+   */
+  evaluator?: ShadowEvaluatorLike | null;
 }
 
 export interface TrainingCounters {
   captured: number;
   skipped: number;
+  completed: number;
+  failed: number;
+  /** Evaluations scheduled but not yet written. */
+  pending: number;
   captureFailures: number;
   recordsWritten: number;
   writeFailures: number;
 }
+
+const truncate = (text: string | null, max: number): string | null =>
+  text === null || text === undefined ? null : String(text).slice(0, max);
+
+const describeError = (error: any): string =>
+  truncate(
+    `${(error && error.name) || "Error"}: ${(error && error.message) || String(error)}`,
+    MAX_ERROR_CHARS,
+  ) as string;
 
 /**
  * Identifies one deal. gameId is reused across restarts, so the hand is
@@ -45,16 +75,32 @@ export function toHandId(gameStartTime: any): string {
  * Passive observer of human card plays.
  *
  * It only reads the live game, never mutates it, and never throws into the
- * caller. In this version it records the pseudonymized decision context and the
- * human's card; every record is SKIPPED because no bot comparison runs yet.
+ * caller. For each human decision it captures the pseudonymized pre-action
+ * state synchronously, then (on a later turn of the event loop) asks the
+ * shadow bot what it would have played from that frozen snapshot and appends
+ * ONE final record containing both actions. Nothing it does is visible to
+ * players: no socket events, no hints, no change to the live game.
+ *
+ * Records are written when their evaluation finishes, so a slow evaluation
+ * can land after a later decision; `seq` preserves capture order.
  */
 export class TrainingObserver {
   private writer: TrainingWriter;
   private onError: TrainingErrorHandler;
+  private onWarn: (message: string) => void;
   private now: () => Date;
   private newId: () => string;
+  private evaluator: ShadowEvaluatorLike | null;
   private seqByHand: { [handKey: string]: number } = {};
-  private counters = { captured: 0, skipped: 0, captureFailures: 0 };
+  private pendingJobs: { [decisionId: string]: Promise<void> } = {};
+  private pendingByHand: { [handKey: string]: number } = {};
+  private counters = {
+    captured: 0,
+    skipped: 0,
+    completed: 0,
+    failed: 0,
+    captureFailures: 0,
+  };
 
   constructor(
     private config: TrainingConfig,
@@ -63,10 +109,15 @@ export class TrainingObserver {
     this.onError =
       deps.onError ||
       ((context, error) => LoggerService.logError(`[TRAINING] ${context}`, error));
+    this.onWarn =
+      deps.onWarn || ((message) => LoggerService.log("[TRAINING]", message));
     this.writer = deps.writer || new TrainingWriter(config.outputDir, this.onError);
     this.now = deps.now || (() => new Date());
     this.newId = deps.newId || getUniqueId;
+    this.evaluator =
+      deps.evaluator === undefined ? new ShadowEvaluator() : deps.evaluator;
   }
+
 
   /**
    * Called by GameCore.onDropCard after the move passed validation and before
@@ -97,15 +148,36 @@ export class TrainingObserver {
     return {
       captured: this.counters.captured,
       skipped: this.counters.skipped,
+      completed: this.counters.completed,
+      failed: this.counters.failed,
+      pending: this.getPendingCount(),
       captureFailures: this.counters.captureFailures,
       recordsWritten: this.writer.recordsWritten,
       writeFailures: this.writer.writeFailures,
     };
   }
 
-  /** Resolves when all queued records have been written (or have failed). */
+  /**
+   * Evaluations scheduled but not yet written, overall or for one hand.
+   * Explicit tracking lets callers report unfinished work instead of assuming
+   * it is done.
+   */
+  public getPendingCount(gameId?: string, handId?: string): number {
+    if (gameId !== undefined && handId !== undefined) {
+      return this.pendingByHand[`${gameId}|${handId}`] || 0;
+    }
+    return Object.keys(this.pendingJobs).length;
+  }
+
+  /** Resolves when every scheduled evaluation has finished and been written (or has failed). */
   public flush(): Promise<void> {
-    return this.writer.flush();
+    const ids = Object.keys(this.pendingJobs);
+    if (ids.length === 0) {
+      return this.writer.flush();
+    }
+    return Promise.all(ids.map((id) => this.pendingJobs[id])).then(() =>
+      this.flush(),
+    );
   }
 
   private capture(
@@ -130,7 +202,7 @@ export class TrainingObserver {
       team: resolvePlayerTeam(players, actor.playerId),
     };
 
-    let skipReason: SkipReason = "EVALUATOR_NOT_ENABLED";
+    let skipReason: SkipReason | null = null;
     let visibleState: DecisionRecord["visibleState"] = null;
     let legalActions: string[] | null = null;
 
@@ -152,6 +224,10 @@ export class TrainingObserver {
           skipReason = "CARD_NOT_IN_LEGAL_ACTIONS";
         }
       }
+    }
+
+    if (!skipReason && !this.evaluator) {
+      skipReason = "EVALUATOR_NOT_ENABLED";
     }
 
     const handKey = `${gameId}|${handId}`;
@@ -197,8 +273,94 @@ export class TrainingObserver {
     };
 
     this.counters.captured++;
-    this.counters.skipped++;
-    this.writer.append(gameId, handId, record);
+    if (skipReason || !this.evaluator || !visibleState || !legalActions) {
+      this.counters.skipped++;
+      this.writer.append(gameId, handId, record);
+      return;
+    }
+
+    this.schedule(record, handKey, visibleState, legalActions);
+  }
+
+  /**
+   * Runs the shadow evaluation on a later turn of the event loop, so the live
+   * move (and its response to the player) is never held up by it. Only the
+   * frozen snapshot is handed over.
+   */
+  private schedule(
+    record: DecisionRecord,
+    handKey: string,
+    state: ShadowVisibleState,
+    legalActions: string[],
+  ): void {
+    const id = record.decisionId;
+    this.pendingByHand[handKey] = (this.pendingByHand[handKey] || 0) + 1;
+
+    const job = new Promise<void>((resolve) => {
+      setImmediate(() => {
+        try {
+          this.evaluateAndWrite(record, state, legalActions);
+        } catch (error) {
+          // evaluateAndWrite handles its own failures; this is a last resort.
+          this.report("Training job failed unexpectedly", error);
+        } finally {
+          resolve();
+        }
+      });
+    });
+    this.pendingJobs[id] = job;
+
+    // Cleanup hangs off the job's promise (registered before any flush() can
+    // wait on it), so a settled job can never remain in the registry.
+    job.then(() => {
+      delete this.pendingJobs[id];
+      this.pendingByHand[handKey]--;
+      if (this.pendingByHand[handKey] <= 0) {
+        delete this.pendingByHand[handKey];
+      }
+    });
+  }
+
+  private evaluateAndWrite(
+    record: DecisionRecord,
+    state: ShadowVisibleState,
+    legalActions: string[],
+  ): void {
+    const started = Date.now();
+    try {
+      const decision = this.evaluator!.evaluate(state);
+      if (!decision || typeof decision.card !== "string" || !decision.card) {
+        throw new Error("INVALID_DECISION");
+      }
+
+      record.evaluationMs = Date.now() - started;
+      record.botAction = { card: decision.card };
+      record.botActionLegal = legalActions.indexOf(decision.card) !== -1;
+      record.botStrategy = truncate(decision.strategy, MAX_STRATEGY_CHARS);
+      record.botReasoning = truncate(decision.reasoning, MAX_REASONING_CHARS);
+      record.exactActionAgreement =
+        decision.card === record.humanAction.card ? "MATCH" : "MISMATCH";
+      record.evaluationStatus = "COMPLETED";
+      this.counters.completed++;
+    } catch (error) {
+      record.evaluationMs = Date.now() - started;
+      record.evaluationStatus = "FAILED";
+      record.evaluationError = describeError(error);
+      this.counters.failed++;
+      this.report("Shadow evaluation failed", error);
+    }
+
+    if (record.evaluationMs !== null && record.evaluationMs > SLOW_EVALUATION_MS) {
+      try {
+        this.onWarn(
+          `Slow shadow evaluation: ${record.evaluationMs}ms (decision ${record.decisionId})`,
+        );
+      } catch (_) {
+        // Reporting must never break the game.
+      }
+    }
+
+    this.writer.append(record.gameId, record.handId, record);
   }
 
   private report(context: string, error: any): void {
