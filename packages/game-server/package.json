@@ -33,6 +33,7 @@
     "start:training": "nodemon --config nodemon.training.json",
     "test": "jest",
     "test:ci": "jest --ci --runInBand",
-    "build": "rimraf ./dist && tsc --noEmitOnError false"
+    "build": "rimraf ./dist && tsc --noEmitOnError false",
+    "test:coverage": "jest --ci --runInBand --coverage --collectCoverageFrom=src/core/*.ts --collectCoverageFrom=src/utils/*.ts --collectCoverageFrom=src/constants/*.ts --collectCoverageFrom=src/persistence/*.ts --collectCoverageFrom=src/agents/*.ts"
   }
 }
