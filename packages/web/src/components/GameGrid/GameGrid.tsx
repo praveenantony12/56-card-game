@@ -366,36 +366,44 @@ class GameGrid extends React.Component<IProps, IState> {
             <span className="score-label">{lastPlayer}'s Team</span>
           </div>
         </div>
-        {isFirstPlayer && !gameStarted && (
-          <input
-            type="range"
-            min="-10"
-            max="10"
-            step="1"
-            value={gameScore}
-            className="scoreSlider showSlider"
-            id="gameScoreSlider"
-            onChange={this.updateScore.bind(this)}
-          />
-        )}
+        {isFirstPlayer &&
+          !gameStarted &&
+          !(
+            !isBiddingPhase &&
+            this.store.game.bidHistory &&
+            this.store.game.bidHistory.length > 0
+          ) && (
+            <input
+              type="range"
+              min="-10"
+              max="10"
+              step="1"
+              value={gameScore}
+              className="scoreSlider showSlider"
+              id="gameScoreSlider"
+              onChange={this.updateScore.bind(this)}
+            />
+          )}
 
         {/* ── Team Card Piles ── */}
         <div className="team-piles-row">
           <div className="team-pile">
             <div className="team-pile-header team-a">
-              Team A [{firstPlayer} {thirdPlayer} {fifthPlayer}]
+              <span className="team-pile-name">
+                <span className="team-pile-tag">Team A</span>[{firstPlayer} {thirdPlayer} {fifthPlayer}]
+              </span>
               <span
                 className="team-pile-points team-a"
                 style={
                   isGameComplete && biddingTeam === "A"
                     ? {
-                        background: gameCompleteData?.biddingTeamAchievedBid
-                          ? "rgba(34, 197, 94, 0.3)"
-                          : "rgba(239, 68, 68, 0.3)",
-                        color: gameCompleteData?.biddingTeamAchievedBid
-                          ? "#86efac"
-                          : "#fca5a5",
-                      }
+                      background: gameCompleteData?.biddingTeamAchievedBid
+                        ? "rgba(34, 197, 94, 0.3)"
+                        : "rgba(239, 68, 68, 0.3)",
+                      color: gameCompleteData?.biddingTeamAchievedBid
+                        ? "#86efac"
+                        : "#fca5a5",
+                    }
                     : {}
                 }
               >
@@ -408,19 +416,21 @@ class GameGrid extends React.Component<IProps, IState> {
           </div>
           <div className="team-pile">
             <div className="team-pile-header team-b">
-              Team B [{secondPlayer} {fourthPlayer} {lastPlayer}]
+              <span className="team-pile-name">
+                <span className="team-pile-tag">Team B</span>[{secondPlayer} {fourthPlayer} {lastPlayer}]
+              </span>
               <span
                 className="team-pile-points team-b"
                 style={
                   isGameComplete && biddingTeam === "B"
                     ? {
-                        background: gameCompleteData?.biddingTeamAchievedBid
-                          ? "rgba(34, 197, 94, 0.3)"
-                          : "rgba(239, 68, 68, 0.3)",
-                        color: gameCompleteData?.biddingTeamAchievedBid
-                          ? "#86efac"
-                          : "#fca5a5",
-                      }
+                      background: gameCompleteData?.biddingTeamAchievedBid
+                        ? "rgba(34, 197, 94, 0.3)"
+                        : "rgba(239, 68, 68, 0.3)",
+                      color: gameCompleteData?.biddingTeamAchievedBid
+                        ? "#86efac"
+                        : "#fca5a5",
+                    }
                     : {}
                 }
               >
@@ -882,49 +892,47 @@ class GameGrid extends React.Component<IProps, IState> {
         {/* Bid status bar */}
         <div className="bid-status-bar">
           <div
-            className={`bid-status-chip ${
-              hasActualBid
-                ? lastBidTeam === "A"
-                  ? "team-a"
-                  : lastBidTeam === "B"
-                    ? "team-b"
-                    : ""
-                : ""
-            }`}
+            className={`bid-status-chip ${hasActualBid
+              ? lastBidTeam === "A"
+                ? "team-a"
+                : lastBidTeam === "B"
+                  ? "team-b"
+                  : ""
+              : ""
+              }`}
           >
             {hasActualBid
               ? `${lastBiddingPlayer} → ${this.formatBidDisplay(
-                  lastBidValue,
-                  lastBidsuit,
-                  lastBidValue,
-                  lastSuitInfo,
-                  lastBidSelectionType,
-                  lastBidModifier,
-                  lastBidClickOrder,
-                  lastNoTrumpType,
-                )}`
+                lastBidValue,
+                lastBidsuit,
+                lastBidValue,
+                lastSuitInfo,
+                lastBidSelectionType,
+                lastBidModifier,
+                lastBidClickOrder,
+                lastNoTrumpType,
+              )}`
               : "No Bids Yet"}
             {bidDouble && " (Double)"}
             {bidReDouble && " (Re-Double)"}
           </div>
           {isYourBiddingTurn && (
             <div
-              className={`bid-status-chip ${
-                myTeam === "A" ? "team-a" : myTeam === "B" ? "team-b" : ""
-              }`}
+              className={`bid-status-chip ${myTeam === "A" ? "team-a" : myTeam === "B" ? "team-b" : ""
+                }`}
             >
               Your Bid:{" "}
               {hasPlayerMadeSelections
                 ? this.formatBidDisplay(
-                    currentBiddingValue,
-                    currentBiddingsuit,
-                    lastBidValue,
-                    displayedSuitInfo,
-                    undefined,
-                    undefined,
-                    undefined,
-                    noTrumpType,
-                  )
+                  currentBiddingValue,
+                  currentBiddingsuit,
+                  lastBidValue,
+                  displayedSuitInfo,
+                  undefined,
+                  undefined,
+                  undefined,
+                  noTrumpType,
+                )
                 : "Not selected"}
             </div>
           )}
@@ -940,9 +948,8 @@ class GameGrid extends React.Component<IProps, IState> {
                 return (
                   <button
                     key={bidValue}
-                    className={`bid-num-btn ${
-                      currentBiddingValue === bidValue ? "selected" : ""
-                    }`}
+                    className={`bid-num-btn ${currentBiddingValue === bidValue ? "selected" : ""
+                      }`}
                     disabled={isDisabled || bidMaxedOut}
                     onClick={() =>
                       this.handleBidNumberClick(
@@ -994,9 +1001,8 @@ class GameGrid extends React.Component<IProps, IState> {
                 return (
                   <button
                     key={suit.name}
-                    className={`suit-pill ${suitColorClass} ${
-                      isSelected ? "selected" : ""
-                    }`}
+                    className={`suit-pill ${suitColorClass} ${isSelected ? "selected" : ""
+                      }`}
                     disabled={!isSuitAvailable || bidMaxedOut}
                     onClick={() => this.handleBiddingSuitClick(suit.name)}
                     title={suit.label}
@@ -1012,9 +1018,8 @@ class GameGrid extends React.Component<IProps, IState> {
                 return (
                   <button
                     key={type.name}
-                    className={`suit-pill purple ${
-                      isSelected ? "selected" : ""
-                    }`}
+                    className={`suit-pill purple ${isSelected ? "selected" : ""
+                      }`}
                     disabled={bidMaxedOut}
                     onClick={() =>
                       this.handleNoTrumpTypeClick(
@@ -1189,15 +1194,22 @@ class GameGrid extends React.Component<IProps, IState> {
 
     const label =
       (hasCurrentBid || hasFinalBid) && playerName
-        ? `${playerName}'s bid → ${suitDisplay} [${bidValue}]${
-            bidDouble ? " (Double)" : ""
-          }${bidReDouble ? " (Re-Double)" : ""}`
+        ? `${playerName}'s bid → ${suitDisplay} [${bidValue}]${bidDouble ? " (Double)" : ""
+        }${bidReDouble ? " (Re-Double)" : ""}`
         : "Game Starting...";
 
-    const bidTeamClass =
-      biddingTeam === "A" ? "team-a" : biddingTeam === "B" ? "team-b" : "";
+    // Team of the bidder, falling back to the store's bidding team
+    const bidderTeam = (playerName ? this.getPlayerTeam(playerName) : null) || biddingTeam;
+    const bidTeamClass = bidderTeam === "A" ? "team-a" : bidderTeam === "B" ? "team-b" : "";
 
-    return <div className={`bid-info-bar ${bidTeamClass}`}>{label}</div>;
+    return (
+      <div className={`bid-info-bar ${bidTeamClass}`}>
+        {bidTeamClass && (
+          <span className="bid-info-team-tag">Team {bidderTeam}</span>
+        )}
+        {label}
+      </div>
+    );
   }
 
   private handleBidNumberClick = (
@@ -1787,18 +1799,18 @@ class GameGrid extends React.Component<IProps, IState> {
     const postRaiseTheme =
       lastBiddingTeam === "A"
         ? {
-            backgroundColor: "rgba(59, 130, 246, 0.88)",
-            boxShadow: "0 10px 30px rgba(59, 130, 246, 0.35)",
-          }
+          backgroundColor: "rgba(59, 130, 246, 0.88)",
+          boxShadow: "0 10px 30px rgba(59, 130, 246, 0.35)",
+        }
         : lastBiddingTeam === "B"
           ? {
-              backgroundColor: "rgba(34, 197, 94, 0.88)",
-              boxShadow: "0 10px 30px rgba(34, 197, 94, 0.35)",
-            }
+            backgroundColor: "rgba(34, 197, 94, 0.88)",
+            boxShadow: "0 10px 30px rgba(34, 197, 94, 0.35)",
+          }
           : {
-              backgroundColor: "rgba(245, 158, 11, 0.88)",
-              boxShadow: "0 10px 30px rgba(245, 158, 11, 0.3)",
-            };
+            backgroundColor: "rgba(245, 158, 11, 0.88)",
+            boxShadow: "0 10px 30px rgba(245, 158, 11, 0.3)",
+          };
 
     // Determine available actions based on team
     const isOpponentTeam =
