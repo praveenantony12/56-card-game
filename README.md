@@ -15,7 +15,7 @@ A multiplayer card game built with Socket.IO + React + Node.js + TypeScript.
 
 Config files (`render.yaml`, `fly.toml`) are already set up.
 
-## 🎮 Local Development
+## 🎮 Local Development TEST
 
 ### Installation
 
